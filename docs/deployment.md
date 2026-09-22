@@ -15,48 +15,22 @@ ValueIQ uses GitHub Actions to deploy two Workers in one Cloudflare account. Con
 
 Use normal merge commits for recurring `develop` → `main` release PRs to preserve shared history. Merge production hotfixes back into `develop`. GitHub Actions is the supported deployment path; do not enable an additional Cloudflare Git build for the same Workers.
 
-## One-time Cloudflare setup
+## Environments and access
 
-The account owner runs:
+| Environment | Branch    | Worker and D1  | URL                                      |
+| ----------- | --------- | -------------- | ---------------------------------------- |
+| Development | `develop` | `valueiq-dev`  | <https://valueiq-dev.zhanz.workers.dev>  |
+| Production  | `main`    | `valueiq-prod` | <https://valueiq-prod.zhanz.workers.dev> |
 
-```sh
-pnpm exec wrangler login
-pnpm exec wrangler whoami
-pnpm exec wrangler d1 create valueiq-dev
-pnpm exec wrangler d1 create valueiq-prod
-```
+Both environments belong to the maintainer’s Cloudflare account. [wrangler.jsonc](../wrangler.jsonc) is the source of truth for resource bindings and non-secret database IDs. The top-level configuration is local-only in the supported workflow. Each deployed Worker owns its own Durable Object namespace; do not add a cross-environment `script_name` or reuse the other environment’s database ID.
 
-Confirm the intended account before creating resources. Replace each all-zero `database_id` in [wrangler.jsonc](../wrangler.jsonc) with the corresponding returned ID. IDs are non-secret configuration and should be committed through a PR. Keep the databases separate. The placeholders allow credential-free local checks, but the deployment target check rejects them before any remote mutation.
+GitHub environment branch policies allow only `develop` into development and `main` into production. Each environment contains secret `CLOUDFLARE_API_TOKEN` and variables `CLOUDFLARE_ACCOUNT_ID` and `DEPLOY_URL`. Keep `DEPLOY_URL` synchronized with the deployed HTTPS origin when changing domains. Missing configuration fails a release.
 
-The two environments explicitly declare their D1 and Durable Object bindings. Each Worker owns its own `ValueIQAgent` namespace; do not add a cross-environment `script_name`. The top-level configuration remains the local-development default. There are no D1 tables or SQL migrations yet, so deployment skips migrations until `drizzle/*.sql` exists. Durable Object class migration `v1` is applied by Worker deployment independently of D1.
+Rotate deployment tokens in Cloudflare and replace the corresponding GitHub environment secrets before revoking the old credentials. Limit tokens to the intended account and required Worker/D1 permissions. Separate tokens isolate access only when their permission scopes differ. Runtime secrets, such as future model API keys, belong to each Worker separately; local secrets belong in ignored `.dev.vars` files.
 
-Enable your account's Workers subdomain in Cloudflare. The initial URLs are:
+Contributors submit PRs; protected branches require the `verify` check and up-to-date branches, prohibit force pushes/deletion, and require resolved conversations. Review workflow, deployment script, and resource-binding changes carefully: workflow editing can expose credentials. The account owner retains administrative access. Do not assume repository files alone enforce external GitHub settings.
 
-- Development: `https://valueiq-dev.<your-subdomain>.workers.dev`
-- Production: `https://valueiq-prod.<your-subdomain>.workers.dev`
-
-Create deployment-specific API tokens in Cloudflare, one per environment. Restrict them to the intended account and, where supported, the relevant resources. Worker publishing needs Workers editing permissions; the migration step also needs D1 editing permissions. Start with the Edit Cloudflare Workers template and verify D1 permissions. Separate tokens only provide isolation to the extent their actual permission scopes differ. Do not use a Global API Key or share account login credentials with contributors.
-
-Runtime secrets, such as future model API keys, belong in each Worker's secrets. They are separate from the GitHub deployment credential. Keep local secrets in ignored `.dev.vars` files. The application currently has no runtime secrets.
-
-## One-time GitHub setup
-
-Create `develop` from the agreed starting commit and create two environments under **Settings → Environments**:
-
-| Setting                          | `development`                | `production`                |
-| -------------------------------- | ---------------------------- | --------------------------- |
-| Allowed deployment branch        | `develop` only               | `main` only                 |
-| Secret `CLOUDFLARE_API_TOKEN`    | Development deployment token | Production deployment token |
-| Variable `CLOUDFLARE_ACCOUNT_ID` | Your account ID              | Same account ID             |
-| Variable `DEPLOY_URL`            | Development HTTPS origin     | Production HTTPS origin     |
-
-`DEPLOY_URL` must be an origin without a path, query, or credentials. It is used for the deployment link and post-deploy HTTP checks. Remove old repository-wide deployment credentials after migrating them to the environments. Missing environment configuration fails the deployment rather than reporting a successful release.
-
-Protect **both** `develop` and `main`: require PRs, one approval, the `verify` status check from the Check workflow, and up-to-date branches; block force pushes and deletion. Select the actual emitted check in GitHub after the first PR run. Limit production merges to the maintainer where available. Require maintainer review for changes to `.github/workflows/`, `wrangler.jsonc`, and deployment scripts (for example, via CODEOWNERS with your real maintainer handle). Workflow-edit access can be used to access credentials; hiding secret values alone is not a permission boundary.
-
-If your plan supports environment required reviewers, add the owner to `production`. Branch review remains necessary even with deployment review. On private repositories, environment secrets and deployment branch policies require an eligible paid GitHub plan; required deployment reviewers have additional restrictions. Verify availability before relying on them. If your plan cannot enforce these controls, use an eligible plan or keep deployment in a separate maintainer-controlled private repository; do not substitute an unrestricted repository secret and assume equivalent protection.
-
-These settings are external to the repository and are **not** created by committing these files.
+There are no D1 tables or SQL migrations yet. Deployment skips D1 migrations until `drizzle/*.sql` exists. Durable Object migration `v1` is applied separately by Worker deployment. Generate future D1 migrations from `db/schema.ts`, review and commit the SQL, and test it locally before merging.
 
 ## Release mechanics
 
@@ -71,7 +45,7 @@ CLOUDFLARE_ENV=development pnpm build
 pnpm deploy:check
 ```
 
-The generated `build/server/wrangler.json` is the deployment configuration. CI explicitly uses it for both remote migrations and publishing; changing an environment flag after building does not retarget the artifact. Never commit generated build files.
+The generated `build/server/wrangler.json` is the deployment configuration. CI explicitly uses it for both remote migrations and publishing; set `CLOUDFLARE_ENV` only for the build command. Passing it to Wrangler with this flattened config can append the environment suffix again and publish the wrong Worker, so deployment validation rejects it. Never commit generated build files.
 
 Deploy runs are serialized per branch, with in-progress cancellation disabled so a new commit does not interrupt migrations or publishing. GitHub concurrency may replace a pending run with a newer one; it is not a FIFO release queue. Deployments on the two branches can run independently.
 
