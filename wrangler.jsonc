@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "valueiq",
+  "main": "workers/app.ts",
+  "compatibility_date": "2026-09-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "./build/client" },
+  "durable_objects": {
+    "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ValueIQAgent"] }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "valueiq",
+      "migrations_dir": "drizzle",
+    },
+  ],
+}

@@ -1,0 +1,308 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono:
+    "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+  Single source of color values: shadcn semantic tokens in :root and .dark.
+  Pair surfaces with their foreground tokens; muted-foreground is helper text.
+  Use accent/accent-foreground for interaction, primary for brand emphasis.
+  Decorative gradients derive from these tokens, never a separate palette.
+  Palette: cool neutral surfaces with one deep teal accent. The accent is
+  reserved for primary actions, live status and verified states. Values are
+  never colour-coded as "good" or "bad"; this product reports estimates, not
+  verdicts.
+*/
+:root {
+  --background: oklch(0.986 0.003 197);
+  --foreground: oklch(0.235 0.016 213);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.235 0.016 213);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.235 0.016 213);
+  --primary: oklch(0.45 0.088 187);
+  --primary-foreground: oklch(0.985 0.008 190);
+  --secondary: oklch(0.957 0.008 200);
+  --secondary-foreground: oklch(0.315 0.024 210);
+  --muted: oklch(0.962 0.006 200);
+  --muted-foreground: oklch(0.5 0.018 210);
+  --accent: oklch(0.948 0.02 190);
+  --accent-foreground: oklch(0.33 0.05 190);
+  --destructive: oklch(0.55 0.2 27);
+  --border: oklch(0.914 0.007 205);
+  --input: oklch(0.914 0.007 205);
+  --ring: oklch(0.55 0.075 187);
+  --chart-1: oklch(0.55 0.088 187);
+  --chart-2: oklch(0.66 0.07 200);
+  --chart-3: oklch(0.44 0.05 230);
+  --chart-4: oklch(0.72 0.09 100);
+  --chart-5: oklch(0.55 0.12 320);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.975 0.004 200);
+  --sidebar-foreground: oklch(0.235 0.016 213);
+  --sidebar-primary: oklch(0.45 0.088 187);
+  --sidebar-primary-foreground: oklch(0.985 0.008 190);
+  --sidebar-accent: oklch(0.948 0.02 190);
+  --sidebar-accent-foreground: oklch(0.33 0.05 190);
+  --sidebar-border: oklch(0.914 0.007 205);
+  --sidebar-ring: oklch(0.55 0.075 187);
+}
+
+.dark {
+  --background: oklch(0.19 0.014 213);
+  --foreground: oklch(0.955 0.006 200);
+  --card: oklch(0.226 0.015 213);
+  --card-foreground: oklch(0.955 0.006 200);
+  --popover: oklch(0.226 0.015 213);
+  --popover-foreground: oklch(0.955 0.006 200);
+  --primary: oklch(0.75 0.105 183);
+  --primary-foreground: oklch(0.205 0.03 200);
+  --secondary: oklch(0.282 0.014 213);
+  --secondary-foreground: oklch(0.955 0.006 200);
+  --muted: oklch(0.265 0.012 213);
+  --muted-foreground: oklch(0.72 0.014 205);
+  --accent: oklch(0.305 0.028 195);
+  --accent-foreground: oklch(0.93 0.012 195);
+  --destructive: oklch(0.68 0.19 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.62 0.08 187);
+  --chart-1: oklch(0.75 0.105 183);
+  --chart-2: oklch(0.68 0.08 210);
+  --chart-3: oklch(0.62 0.06 240);
+  --chart-4: oklch(0.78 0.1 100);
+  --chart-5: oklch(0.68 0.12 320);
+  --sidebar: oklch(0.21 0.014 213);
+  --sidebar-foreground: oklch(0.955 0.006 200);
+  --sidebar-primary: oklch(0.75 0.105 183);
+  --sidebar-primary-foreground: oklch(0.205 0.03 200);
+  --sidebar-accent: oklch(0.305 0.028 195);
+  --sidebar-accent-foreground: oklch(0.93 0.012 195);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.62 0.08 187);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+@layer components {
+  /*
+    Hero light field. Three stacked layers, the way the reference site builds
+    it: a tinted radial field anchored below the fold, faint column lines on
+    the 24-column grid, and a top fade that keeps the copy on flat background.
+    All three are class-only; the section positions them absolutely.
+  */
+  .hero-glow {
+    background-image: radial-gradient(
+      90% 80% at 50% 100%,
+      color-mix(in oklch, var(--primary) 55%, var(--background)) 0%,
+      color-mix(in oklch, var(--primary) 32%, var(--background)) 45%,
+      color-mix(in oklch, var(--primary) 72%, var(--background)) 100%
+    );
+  }
+
+  .column-lines {
+    background-image: repeating-linear-gradient(
+      to right,
+      color-mix(in oklch, var(--background) 78%, transparent) 0 1px,
+      transparent 1px calc(100% / 24)
+    );
+  }
+
+  .top-fade {
+    background-image: radial-gradient(
+      70% 106.667% at 50% 0%,
+      var(--background) 32%,
+      transparent 64%
+    );
+  }
+
+  /*
+    Wash for the stat band and the closing call to action: a single accent
+    field rising from the bottom edge over the page background.
+  */
+  .brand-wash {
+    background-image: radial-gradient(
+      120% 90% at 50% 115%,
+      color-mix(in oklch, var(--primary) 12%, transparent) 0%,
+      transparent 62%
+    );
+  }
+
+  .soft-wash {
+    background-image: linear-gradient(
+      color-mix(in oklch, var(--primary) 12%, transparent),
+      transparent 85%
+    );
+  }
+
+  /* Fixed, non-interactive film grain. Keep it cheap: one composited layer. */
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .dark .grain {
+    opacity: 0.05;
+  }
+
+  .rule {
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklch, var(--border) 90%, transparent),
+      transparent
+    );
+  }
+
+  /*
+    Ambient fluid mesh gradient utilities.
+    Combines OKLCH spheres with organic drifting keyframes and heavy blur.
+  */
+  .ambient-mesh-glow {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+  }
+}
+
+@keyframes mesh-drift-1 {
+  0% {
+    transform: translate3d(-5%, -5%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(12%, -18%, 0) scale(1.15);
+  }
+  100% {
+    transform: translate3d(-10%, 12%, 0) scale(0.92);
+  }
+}
+
+@keyframes mesh-drift-2 {
+  0% {
+    transform: translate3d(5%, 10%, 0) scale(1.1);
+  }
+  50% {
+    transform: translate3d(-15%, 8%, 0) scale(0.9);
+  }
+  100% {
+    transform: translate3d(10%, -12%, 0) scale(1.18);
+  }
+}
+
+@keyframes mesh-drift-3 {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  50% {
+    transform: translate3d(14%, 15%, 0) scale(1.2);
+  }
+  100% {
+    transform: translate3d(-12%, -10%, 0) scale(1.02);
+  }
+}
+
+.animate-mesh-drift-1 {
+  animation: mesh-drift-1 22s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.animate-mesh-drift-2 {
+  animation: mesh-drift-2 27s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.animate-mesh-drift-3 {
+  animation: mesh-drift-3 19s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-mesh-drift-1,
+  .animate-mesh-drift-2,
+  .animate-mesh-drift-3,
+  .animate-shimmer {
+    animation: none !important;
+  }
+}
