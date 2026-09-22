@@ -13,7 +13,7 @@ Keep the chosen stack wired end to end and empty out the application design:
 - The stack stays wired: React Router v8 in framework mode on Cloudflare Workers, the `DB` D1 binding with the Drizzle client, the `ValueIQAgent` Durable Object binding and class, Tailwind v4 with the vendored shadcn/Base UI and beUI components, and the full check chain.
 - The application design is emptied: `agents/valueiq-agent.ts` is an empty `ValueIQAgent` class with no state shape, tools, or methods; `db/schema.ts` declares no tables and `drizzle/` holds no migrations; the calculation tools, application skill conventions, and assessment server helper are gone.
 - The interface keeps exactly two surfaces: the landing page at `/` and the mock workspace at `/workspace`, neither of them with a loader or an action.
-- Direction stays in prose: core beliefs, user stories, the architecture document, and this directory. Nothing in the code implies a design that has not been made.
+- Direction stays in prose: core beliefs, the architecture document, and this directory. Nothing in the code implies a design that has not been made.
 
 ## Alternatives considered
 

@@ -79,4 +79,4 @@ Deployment is a team decision, and the team has not chosen a Cloudflare account 
 - Do not commit account IDs, database IDs, or API tokens.
 - Keep `pnpm deploy:check` credential-free so CI keeps covering the packaging path.
 
-When the team settles the release process, record the account ownership and the deploy path in a decision record, and prefer a team-owned automation identity over any individual's credentials. See [README.md](README.md#cloudflare-deployment) for the commands the process will build on.
+When the team settles the release process, record the account ownership and the deploy path in a decision record, and prefer a team-owned automation identity over any individual's credentials.
