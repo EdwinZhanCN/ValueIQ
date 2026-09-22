@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ is a project value assessment product. A conversation gathers what a project would change and which facts are still missing; deterministic TypeScript turns the confirmed inputs into an explainable estimate; D1 keeps the project, its inputs, and its results after the conversation ends.
+ValueIQ is a technology-stack skeleton for a project value assessment product. What exists is the chosen stack, wired end to end, plus two interface surfaces. What does not exist is the application design: no database tables, no agent state, no agent tools, and no shared domain types have been decided, and nothing in the repository pretends otherwise.
 
 ## Stack
 
@@ -19,28 +19,32 @@ ValueIQ is a project value assessment product. A conversation gathers what a pro
 | Route        | Layout                            | Contents                                                                                    |
 | ------------ | --------------------------------- | ------------------------------------------------------------------------------------------- |
 | `/`          | `app/routes/site-layout.tsx`      | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
-| `/workspace` | `app/routes/workspace-layout.tsx` | The assessment workspace from `app/components/agents/`, given the whole viewport            |
+| `/workspace` | `app/routes/workspace-layout.tsx` | The interface skeleton from `app/components/agents/`, given the whole viewport              |
 
 `app/root.tsx` renders the document only: html/body, theme provider, tooltip provider, and the grain overlay. Page chrome belongs to the surface layouts, and error pages bring their own frame.
 
-## Application layer
+Neither surface has a loader or an action. `/workspace` renders example content owned by vendored components; it is a mock interface, not a working assessment, and it calls nothing.
 
-| Module                    | Responsibility                                                     |
-| ------------------------- | ------------------------------------------------------------------ |
-| `agents/valueiq-agent.ts` | The `ValueIQAgent` Durable Object that owns a project conversation |
-| `db/schema.ts`            | The Drizzle schema, and the source migrations are generated from   |
-| `app/context.server.ts`   | Typed Worker bindings for loaders and actions                      |
+## Empty shells
 
-Keep runtime database and agent access inside `.server.ts` modules or loaders and actions. The SSR build enforces the client/server bundle boundary, so importing server-only code into a component fails the build rather than leaking it to the browser.
+The application layer is structure without behaviour, and nothing fabricates a result:
+
+- `agents/valueiq-agent.ts` — an empty `ValueIQAgent` Durable Object: no state shape, no tools, no RPC methods.
+- `db/schema.ts` — the Drizzle entry point with no tables, so `drizzle/` holds no migrations yet.
+- `app/context.server.ts` — typed Worker bindings, ready for the first loader or action.
+
+Undecided on purpose: the D1 data model, agent state, agent tools, application skill conventions, and every shared domain type. Add them when the design is settled, generate migrations from `db/schema.ts`, and reconnect a surface to them deliberately.
 
 ## Runtime and generated artifacts
 
 `pnpm dev` uses the Cloudflare Vite plugin to execute SSR and bindings in local workerd. D1 and Durable Object data persist under ignored `.wrangler/state/`. `pnpm build` produces client assets and a server Worker with a generated Wrangler deployment configuration. `pnpm deploy:check` packages that build without publishing it.
 
-`wrangler.jsonc` owns binding declarations: the `DB` D1 database and the `ValueIQAgent` Durable Object. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. Review generated SQL before committing it, and never rewrite a migration that has already been applied.
+`wrangler.jsonc` owns binding declarations: the `DB` D1 database and the `ValueIQAgent` Durable Object. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. No remote resource has been provisioned: the team has not chosen a Cloudflare account, so `wrangler.jsonc` carries no account-specific D1 ID and every check runs without credentials.
 
-## Verification
+There are no model secrets, outbound model calls, MCP integrations, queues, or separate backend. No authentication or per-user authorization exists: a deployed instance is a shared prototype.
 
-The [check-selection skill](../.agents/skills/valueiq-select-checks/SKILL.md) owns command routing. The smoke test starts the real local Worker and checks that the landing page renders with the site chrome, that the workspace renders fullscreen without it, and that `/projects` is not served. The build and deployment dry run check Worker packaging and the Durable Object binding.
+## Verification boundaries
 
-Two boundaries are review-enforced: the interface stays separate from anything backend-shaped, and no page, loader, or placeholder may imply a capability that has not been implemented.
+The [check-selection skill](../.agents/skills/valueiq-select-checks/SKILL.md) owns command routing. There are no unit tests while the repository holds no calculation contracts. The smoke test starts the real local Worker and checks that the landing page renders with the site chrome, that the workspace renders fullscreen without it, and that `/projects` is not served. The build and deployment dry run check Worker packaging and the Durable Object binding.
+
+Two boundaries are review-enforced: the interface stays separate from anything backend-shaped, and an empty shell stays empty. A page, a loader, or a mock must not start implying a design that has not been made.

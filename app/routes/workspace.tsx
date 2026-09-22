@@ -10,7 +10,11 @@ export const meta: Route.MetaFunction = () => [
   },
 ];
 
-/** The assessment workspace: a project conversation at full viewport. */
+/**
+ * The workspace surface. It renders the interface skeleton only — no loader,
+ * no action, and no project or assessment data. Connecting this view to the
+ * agent and D1 backend is planned work, not wired here.
+ */
 export default function Workspace() {
   return <ChatAppExample className="h-full rounded-none border-0" />;
 }
