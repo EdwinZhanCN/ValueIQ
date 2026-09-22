@@ -1,5 +1,8 @@
 # ValueIQ
 
+[![Check](https://github.com/EdwinZhanCN/ValueIQ/actions/workflows/check.yml/badge.svg)](https://github.com/EdwinZhanCN/ValueIQ/actions/workflows/check.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A technology-stack skeleton for the ValueIQ project value assessment product: React Router v8 on Cloudflare Workers, TypeScript, the Cloudflare Agents SDK, D1 with Drizzle ORM, and a Tailwind CSS v4 interface built from shadcn/ui on Base UI primitives, beUI motion components, Lucide icons, and self-hosted Geist fonts. One Worker serves the interface and hosts a `ValueIQAgent` Durable Object class.
 
 The repository holds two surfaces — the marketing landing page at `/` and the fullscreen workspace at `/workspace` — and nothing else that behaves. Every route is static, the agent is an empty Durable Object, `db/schema.ts` declares no tables, and no data model, agent tool, skill convention, or domain type has been decided yet. Direction lives in [core beliefs](docs/core-beliefs.md) and [user stories](docs/user-stories.md); [architecture](docs/architecture.md) records what is wired and what is deliberately undecided.
@@ -102,4 +105,10 @@ Building before the remote migration refreshes Vite's generated Wrangler config 
 
 This scaffold has no authentication: a deployed instance is a shared prototype. Remote provisioning, migration, and deployment are not performed by initialization.
 
+Wrangler needs Cloudflare credentials for every step above. Run `pnpm exec wrangler login` once in an interactive terminal, or export `CLOUDFLARE_API_TOKEN` with the `Workers Scripts:Edit`, `D1:Edit`, and `Account Settings:Read` permissions. A non-interactive shell cannot complete the browser login flow.
+
 Framework setup follows the [Cloudflare React Router guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/) with the [React Router v8 context API](https://reactrouter.com/api/other-api/adapter).
+
+## License
+
+[MIT](LICENSE) © 2026 Edwin Zhan
