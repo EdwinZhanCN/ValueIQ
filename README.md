@@ -84,7 +84,11 @@ pnpm test:smoke
 
 ## Cloudflare deployment
 
-The repository is configured for local bindings without an account-specific D1 ID. To provision a remote database and deploy:
+**Deployment is a team decision that has not been made.** No Cloudflare account, D1 database, or release process has been chosen. Nothing here points at a provisioned resource, and `wrangler.jsonc` deliberately carries no account-specific D1 ID, so the repository stays usable by every contributor without access to anyone's account.
+
+The steps below are the path the team will take once it settles an account owner and a release process. Read them as documentation, not as an instruction to deploy: do not deploy from a personal account, and do not commit account or database IDs. [CONTRIBUTING.md](CONTRIBUTING.md#deployment) states the same boundary for contributors.
+
+To provision a remote database and deploy, the eventual owner runs:
 
 ```sh
 pnpm exec wrangler login
@@ -103,12 +107,18 @@ pnpm deploy
 
 Building before the remote migration refreshes Vite's generated Wrangler config with the new binding ID. The SQLite Durable Object migration registers `ValueIQAgent` on deployment; `pnpm db:migrate:remote` has nothing to apply until the first table is designed. Later model-provider secrets belong in ignored `.dev.vars` locally and `wrangler secret put` remotely.
 
-This scaffold has no authentication: a deployed instance is a shared prototype. Remote provisioning, migration, and deployment are not performed by initialization.
+This scaffold has no authentication: a deployed instance is a shared prototype. Remote provisioning, migration, and deployment are not performed by initialization, and no check in this repository requires them.
 
-Wrangler needs Cloudflare credentials for every step above. Run `pnpm exec wrangler login` once in an interactive terminal, or export `CLOUDFLARE_API_TOKEN` with the `Workers Scripts:Edit`, `D1:Edit`, and `Account Settings:Read` permissions. A non-interactive shell cannot complete the browser login flow.
+Wrangler needs Cloudflare credentials for every step above. Use the team's account, not a personal one: `pnpm exec wrangler login` in an interactive terminal, or a team-owned `CLOUDFLARE_API_TOKEN` with `Workers Scripts:Edit`, `D1:Edit`, and `Account Settings:Read`. A non-interactive shell cannot complete the browser login flow, so deployment is a manual, deliberate act rather than something CI does implicitly.
 
 Framework setup follows the [Cloudflare React Router guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/) with the [React Router v8 context API](https://reactrouter.com/api/other-api/adapter).
 
+## Contributing
+
+ValueIQ is a team project, and the repository is built so that any contributor can clone it, run every check, and open a reviewed pull request without a Cloudflare account, a paid plan, or anyone's personal credentials.
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). It covers setup, the checks to run, the pull request flow, the boundaries reviewers enforce, and when a decision record is warranted. By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md); report vulnerabilities through [SECURITY.md](SECURITY.md), never in a public issue.
+
 ## License
 
-[MIT](LICENSE) © 2026 Edwin Zhan
+[MIT](LICENSE) © 2026 ValueIQ Team — see [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
