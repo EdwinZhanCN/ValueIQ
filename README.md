@@ -34,7 +34,9 @@ CI runs these checks and packages both Cloudflare environments without credentia
 
 Merge feature PRs into `develop` to deploy the shared development environment. Merge a tested release PR into `main` to deploy production. Both run on the maintainer’s Cloudflare account with separate Workers, D1 databases, and Durable Object namespaces.
 
-See [deployment setup and recovery](docs/deployment.md) for one-time Cloudflare provisioning, GitHub environment secrets, branch protection, and release behavior.
+Live environments: [development](https://valueiq-dev.zhanz.workers.dev) and [production](https://valueiq-prod.zhanz.workers.dev).
+
+See [development and release guide](docs/deployment.md) for the team workflow, environment access, migrations, and recovery.
 
 ## License
 
