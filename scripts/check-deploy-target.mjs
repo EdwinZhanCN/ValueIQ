@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 
+assert(
+  !process.env.CLOUDFLARE_ENV,
+  "CLOUDFLARE_ENV must only be set during build, not deployment",
+);
 const environment = process.argv[2];
 const worker = { development: "valueiq-dev", production: "valueiq-prod" }[
   environment
