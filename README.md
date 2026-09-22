@@ -28,24 +28,27 @@ pnpm check        # generated types, strict TypeScript, ESLint, Prettier, build,
 pnpm test:smoke   # starts a real local Worker and asserts both surfaces render
 ```
 
-These are exactly what CI runs, and neither needs credentials. `pnpm format` fixes style.
+These are exactly what CI runs, neither needs credentials, and `main` requires the `verify` check to pass before a merge. `pnpm format` fixes style.
 
 ## Deployment
 
-Every push to `main` deploys to Cloudflare through [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which applies D1 migrations and then the Worker. It requires two repository secrets:
+Every push to `main` deploys to Cloudflare through [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which applies D1 migrations and then the Worker. It needs two repository secrets:
 
 | Secret                  | Value                                               |
 | ----------------------- | --------------------------------------------------- |
 | `CLOUDFLARE_API_TOKEN`  | API token with `Workers Scripts:Edit` and `D1:Edit` |
 | `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account ID                           |
 
-The Worker name, bindings, and D1 database live in `wrangler.jsonc`. Until the secrets exist the workflow skips with a notice instead of failing. Contributor setup is in [CONTRIBUTING.md](CONTRIBUTING.md#deployment).
+Until both exist the workflow skips with a notice instead of failing.
 
-## Contributing
+Before the first deploy, create the D1 database and put its `database_id` into the `d1_databases` entry in `wrangler.jsonc`, keeping `binding: "DB"`, `database_name: "valueiq"`, and `migrations_dir: "drizzle"`:
 
-ValueIQ is a team project. Start with [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks to run, the pull request flow, and the boundaries reviewers enforce. `main` requires the `verify` check to pass.
+```sh
+pnpm exec wrangler login
+pnpm exec wrangler d1 create valueiq
+```
 
-By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md), and report vulnerabilities through [SECURITY.md](SECURITY.md) rather than a public issue.
+The database ID is configuration, not a secret. To roll out by hand, `pnpm deploy` builds and publishes with whatever credentials Wrangler already has.
 
 ## License
 

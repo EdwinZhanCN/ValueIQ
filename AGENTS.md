@@ -1,6 +1,6 @@
 # ValueIQ agent guide
 
-Human setup commands live in [README.md](README.md); the contributor workflow lives in [CONTRIBUTING.md](CONTRIBUTING.md).
+Human setup and deployment commands live in [README.md](README.md).
 
 ## Start here
 

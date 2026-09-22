@@ -31,7 +31,7 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Deploy skipped::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both set. See CONTRIBUTING.md#deployment."
+            echo "::notice title=Deploy skipped::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are not both set. See README.md#deployment."
           fi
 
   deploy:
