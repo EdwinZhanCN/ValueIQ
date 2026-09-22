@@ -28,27 +28,13 @@ pnpm check        # generated types, strict TypeScript, ESLint, Prettier, build,
 pnpm test:smoke   # starts a real local Worker and asserts both surfaces render
 ```
 
-These are exactly what CI runs, neither needs credentials, and `main` requires the `verify` check to pass before a merge. `pnpm format` fixes style.
+CI runs these checks and packages both Cloudflare environments without credentials. Configure branch protection to require the `verify` check before merging. `pnpm format` fixes style.
 
-## Deployment
+## Deploy
 
-Every push to `main` deploys to Cloudflare through [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which applies D1 migrations and then the Worker. It needs two repository secrets:
+Merge feature PRs into `develop` to deploy the shared development environment. Merge a tested release PR into `main` to deploy production. Both run on the maintainer’s Cloudflare account with separate Workers, D1 databases, and Durable Object namespaces.
 
-| Secret                  | Value                                               |
-| ----------------------- | --------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | API token with `Workers Scripts:Edit` and `D1:Edit` |
-| `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account ID                           |
-
-Until both exist the workflow skips with a notice instead of failing.
-
-Before the first deploy, create the D1 database and put its `database_id` into the `d1_databases` entry in `wrangler.jsonc`, keeping `binding: "DB"`, `database_name: "valueiq"`, and `migrations_dir: "drizzle"`:
-
-```sh
-pnpm exec wrangler login
-pnpm exec wrangler d1 create valueiq
-```
-
-The database ID is configuration, not a secret. To roll out by hand, `pnpm deploy` builds and publishes with whatever credentials Wrangler already has.
+See [deployment setup and recovery](docs/deployment.md) for one-time Cloudflare provisioning, GitHub environment secrets, branch protection, and release behavior.
 
 ## License
 

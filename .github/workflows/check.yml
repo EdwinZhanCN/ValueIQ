@@ -1,7 +1,11 @@
 name: Check
+
+# Runs on every pull request, and is called by the Deploy workflow so a release
+# is verified by exactly the same steps a pull request goes through. There is
+# deliberately no `push` trigger: `develop` and `main` are covered by Deploy, which calls this.
 on:
-  push:
   pull_request:
+  workflow_call:
   # Lets a maintainer re-run the full suite on demand, without pushing an
   # empty commit.
   workflow_dispatch:
@@ -10,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: check-${{ github.ref }}
+  group: check-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -18,15 +22,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm peers check
       - run: pnpm check
+      - run: node --test scripts/check-deploy-target.test.mjs
       - run: pnpm test:smoke
         env:
           WRANGLER_SEND_METRICS: "false"
+      - name: Package both Cloudflare environments
+        env:
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          for target in development production; do
+            CLOUDFLARE_ENV="$target" pnpm build
+            pnpm deploy:check
+          done

@@ -16,4 +16,37 @@
       "migrations_dir": "drizzle",
     },
   ],
+  "env": {
+    "development": {
+      "name": "valueiq-dev",
+      "workers_dev": true,
+      "durable_objects": {
+        "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "valueiq-dev",
+          "database_id": "b286e047-2af8-46c3-8d46-2d2270478d5c",
+          "migrations_dir": "drizzle",
+        },
+      ],
+    },
+    "production": {
+      "name": "valueiq-prod",
+      "workers_dev": true,
+      "durable_objects": {
+        "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "valueiq-prod",
+          // Use a different database from development.
+          "database_id": "61439cc5-a8ce-4d2b-ab15-53652cac10ea",
+          "migrations_dir": "drizzle",
+        },
+      ],
+    },
+  },
 }
