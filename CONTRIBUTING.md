@@ -50,7 +50,7 @@ Formatting is automated. Run `pnpm format` rather than hand-fixing style; `pnpm 
 1. Branch from `main`.
 2. Make the change, including documentation where behavior changes.
 3. Run `pnpm check` and `pnpm test:smoke`.
-4. Open a pull request and fill in the template.
+4. Open a pull request describing what changed and why.
 5. CI must pass. `main` requires the `verify` check to be green before merge.
 
 Keep pull requests focused. A change that mixes a behavioural change with unrelated formatting or dependency churn is harder to review and harder to revert.
