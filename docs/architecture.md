@@ -39,7 +39,7 @@ Undecided on purpose: the D1 data model, agent state, agent tools, application s
 
 `pnpm dev` uses the Cloudflare Vite plugin to execute SSR and bindings in local workerd. D1 and Durable Object data persist under ignored `.wrangler/state/`. `pnpm build` produces client assets and a server Worker with a generated Wrangler deployment configuration. `pnpm deploy:check` packages that build without publishing it.
 
-`wrangler.jsonc` owns binding declarations: the `DB` D1 database and the `ValueIQAgent` Durable Object. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. Remote resource setup belongs in the README.
+`wrangler.jsonc` owns binding declarations: the `DB` D1 database and the `ValueIQAgent` Durable Object. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. No remote resource has been provisioned: the team has not chosen a Cloudflare account, so `wrangler.jsonc` carries no account-specific D1 ID and every check runs without credentials.
 
 There are no model secrets, outbound model calls, MCP integrations, queues, or separate backend. No authentication or per-user authorization exists: a deployed instance is a shared prototype.
 

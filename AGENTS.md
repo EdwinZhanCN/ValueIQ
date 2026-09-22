@@ -1,6 +1,6 @@
 # ValueIQ agent guide
 
-Human setup and deployment commands live in [README.md](README.md).
+Human setup commands live in [README.md](README.md); the contributor workflow lives in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Start here
 
@@ -14,7 +14,7 @@ Human setup and deployment commands live in [README.md](README.md).
 - `workers/app.ts`: Worker entry and the `ValueIQAgent` Durable Object export.
 - `agents/valueiq-agent.ts`: empty agent shell — no state, no tools, no methods.
 - `db/`, `drizzle/`: Drizzle client and schema entry point; no tables and no migrations yet.
-- `docs/`: [architecture](docs/architecture.md), [core beliefs](docs/core-beliefs.md), and [user stories](docs/user-stories.md).
+- `docs/`: [architecture](docs/architecture.md) and [core beliefs](docs/core-beliefs.md).
 - `.agents/`: coding-agent procedures and durable project memory.
 
 ## Implementation boundaries
@@ -35,5 +35,3 @@ Use [valueiq-select-checks](.agents/skills/valueiq-select-checks/SKILL.md) befor
 - [Decisions](.agents/decisions/README.md) preserve rationale and rejected alternatives.
 - [Postmortems](.agents/postmortems/README.md) cover escaped systemic failures and link implemented guardrails.
 - [Execution plans](.agents/exec-plans/README.md) exist only while multi-phase work remains unfinished.
-
-Harness initialized with Edwin Zhan's [minimal-agent-harness](https://github.com/EdwinZhanCN).
