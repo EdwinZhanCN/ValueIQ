@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
+  "author": "ValueIQ Team",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
