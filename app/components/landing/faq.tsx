@@ -46,7 +46,7 @@ export function Faq() {
               Questions people ask first
             </h2>
             <p className="mt-5 text-lg leading-[1.3] text-muted-foreground">
-              The honest answers, including the limits of this scaffold.
+              The honest answers, including what ValueIQ will not claim.
             </p>
           </Reveal>
         </div>

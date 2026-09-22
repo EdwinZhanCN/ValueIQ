@@ -6,7 +6,7 @@ export const meta: Route.MetaFunction = () => [
   {
     name: "description",
     content:
-      "ValueIQ workspace interface: a UI skeleton for project assessment conversations.",
+      "Assess what a project is worth: describe the change, supply the facts, and read the estimate with its inputs and formulas.",
   },
 ];
 

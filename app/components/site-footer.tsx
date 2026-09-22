@@ -32,8 +32,8 @@ export function SiteFooter() {
             from stated inputs, never from silent assumptions.
           </p>
           <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-            Early scaffold: conversations are saved; AI assessment and
-            calculations are not connected yet.
+            Conversations are saved. Assessment and calculations are not
+            connected yet.
           </p>
         </div>
         <nav

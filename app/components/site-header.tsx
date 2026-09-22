@@ -29,8 +29,8 @@ export function SiteHeader() {
         <div className="bg-muted text-foreground">
           <Container className="flex min-h-11 items-center justify-center py-2">
             <p className="text-center text-[13px] leading-snug text-muted-foreground">
-              Early scaffold: conversations are saved; AI assessment and
-              calculations are not connected yet.
+              Conversations are saved. Assessment and calculations are not
+              connected yet.
             </p>
           </Container>
         </div>
