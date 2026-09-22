@@ -12,7 +12,7 @@ const template = ts.parseConfigFileTextToJson(
   await readFile("wrangler.jsonc", "utf8"),
 ).config;
 
-async function check(environment, mutate = () => {}) {
+async function check(environment, mutate = () => {}, extraEnv = {}) {
   const cwd = await mkdtemp(join(tmpdir(), "valueiq-target-"));
   try {
     const source = structuredClone(template);
@@ -31,6 +31,7 @@ async function check(environment, mutate = () => {}) {
     return spawnSync(process.execPath, [script, environment], {
       cwd,
       encoding: "utf8",
+      env: { ...process.env, ...extraEnv },
     });
   } finally {
     await rm(cwd, { recursive: true, force: true });
@@ -73,3 +74,11 @@ for (const [name, mutate, message] of [
     assert.match(result.stderr, message);
   });
 }
+
+test("rejects an environment selector leaking into deployment", async () => {
+  const result = await check("production", undefined, {
+    CLOUDFLARE_ENV: "production",
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /only be set during build/);
+});
