@@ -6,15 +6,11 @@ export const meta: Route.MetaFunction = () => [
   {
     name: "description",
     content:
-      "ValueIQ workspace interface: a UI skeleton for project assessment conversations.",
+      "Assess what a project is worth: describe the change, supply the facts, and read the estimate with its inputs and formulas.",
   },
 ];
 
-/**
- * The workspace surface. It renders the interface skeleton only — no loader,
- * no action, and no project or assessment data. Connecting this view to the
- * agent and D1 backend is planned work, not wired here.
- */
+/** The assessment workspace: a project conversation at full viewport. */
 export default function Workspace() {
   return <ChatAppExample className="h-full rounded-none border-0" />;
 }

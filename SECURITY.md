@@ -23,11 +23,8 @@ Maintainers will acknowledge a report as soon as they can, and will keep you inf
 
 ## Scope
 
-ValueIQ is a technology-stack shell. Its attack surface is deliberately small, and understanding what is _not_ there matters when judging a report:
-
-- There is no authentication and no per-user authorization. A deployed instance is a shared prototype by design.
-- There are no model calls, no MCP integrations, no queues, and no separate backend.
-- `db/schema.ts` declares no tables, so no application data is stored.
+- There is no authentication and no per-user authorization. Anyone with the URL can reach a deployed instance, so do not put commercially sensitive data in one.
+- ValueIQ calls no third-party model or storage service. Project data stays in the deployment's own D1 database.
 - Secrets belong in ignored `.dev.vars` locally and in `wrangler secret put` remotely. A committed secret is a valid report.
 
-Vulnerabilities in dependencies are welcome as reports too, though Dependabot already watches the lockfile. If you believe an advisory does not apply here, say so — a clear "not exploitable, because…" is as useful as a fix.
+Dependency advisories are welcome as reports too. If you believe one does not apply here, say so — a clear "not exploitable, because…" is as useful as a fix.

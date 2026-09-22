@@ -10,8 +10,8 @@
 
 <!-- Reviewers check these. Tick what applies. -->
 
-- [ ] No mock, scripted, or placeholder behaviour is presented as a working assessment
-- [ ] Empty shells (`agents/valueiq-agent.ts`, `db/schema.ts`, `app/context.server.ts`) are still empty
+- [ ] Arithmetic stays in deterministic, tested TypeScript — no model produces a number
+- [ ] No placeholder implies a capability that has not been implemented
 - [ ] Server-only code stays in `.server.ts` modules or loaders and actions
 - [ ] Generated files (`worker-configuration.d.ts`, `.react-router/types/`) were not hand-edited
 - [ ] Applied migrations were not rewritten
@@ -26,4 +26,4 @@
 
 - [ ] `pnpm check`
 - [ ] `pnpm test:smoke`
-- [ ] Documentation and decision records updated where the change warrants it
+- [ ] Documentation updated where behavior changed

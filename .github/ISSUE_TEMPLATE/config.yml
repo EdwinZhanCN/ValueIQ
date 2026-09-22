@@ -8,4 +8,4 @@ contact_links:
     about: Report privately. Please do not open a public issue for a vulnerability.
   - name: Architecture and boundaries
     url: https://github.com/EdwinZhanCN/ValueIQ/blob/main/docs/architecture.md
-    about: What is wired, what is deliberately undecided, and what reviewers enforce.
+    about: How the product is put together, and what reviewers enforce.

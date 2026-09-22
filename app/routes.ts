@@ -8,10 +8,9 @@ import {
 /**
  * Two surfaces, deliberately separated:
  *
- * - `/`         marketing shell — the landing page, with the site chrome.
- * - `/workspace` application shell — the example UI at full size, with no
- *               site chrome and no server data: the UI is disconnected from
- *               the project/assessment backend on purpose.
+ * - `/`          marketing surface — the landing page, with the site chrome.
+ * - `/workspace` assessment surface — the workspace at full size, with no site
+ *                chrome, so nothing competes with the project conversation.
  */
 export default [
   layout("routes/site-layout.tsx", [index("routes/home.tsx")]),

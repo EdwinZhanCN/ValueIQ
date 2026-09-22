@@ -7,14 +7,14 @@ ValueIQ is a team project. This guide is written for anyone joining the reposito
 Read in this order before changing behaviour:
 
 1. [Core beliefs](docs/core-beliefs.md) — the claims the product is allowed to make.
-2. [Architecture](docs/architecture.md) — what is wired, and what is deliberately undecided.
+2. [Architecture](docs/architecture.md) — how the product is put together.
 3. [AGENTS.md](AGENTS.md) — repository boundaries and how verification is routed.
 
-## What this repository currently is
+## What ValueIQ is
 
-A tech-stack shell with two static surfaces: the landing page at `/` and the mock workspace at `/workspace`. The stack is wired end to end; the application design is not decided.
+A project value assessment product. `/` is the landing page and `/workspace` is the assessment workspace.
 
-Do not add database tables, agent state, agent tools, skill conventions, or shared domain types. Do not wire a surface to invented behaviour, and never present scripted or mock output as a working assessment. If you believe a design decision is ready to make, open an issue or a decision record first — see [Decision records](#decision-records).
+Two rules shape every change. Arithmetic belongs in deterministic, tested TypeScript — a model may choose questions and tools, but it never produces a number. And a missing fact becomes a follow-up question rather than an invented value, because an unsupported figure is worse than an acknowledged gap.
 
 ## Set up
 
@@ -48,7 +48,7 @@ Formatting is automated. Run `pnpm format` rather than hand-fixing style; `pnpm 
 ## Open a pull request
 
 1. Branch from `main`.
-2. Make the change, including documentation and a decision record when the change warrants one.
+2. Make the change, including documentation where behavior changes.
 3. Run `pnpm check` and `pnpm test:smoke`.
 4. Open a pull request and fill in the template.
 5. CI must pass. `main` requires the `verify` check to be green before merge.
@@ -60,23 +60,20 @@ Write commit subjects in the imperative mood and explain _why_ in the body when 
 ## Boundaries reviewers enforce
 
 - The interface stays separate from anything backend-shaped. Server-only code lives in `.server.ts` modules or in loaders and actions; the SSR build checks the client/server bundle boundary and will fail if you cross it.
-- An empty shell stays empty. `agents/valueiq-agent.ts`, `db/schema.ts`, and `app/context.server.ts` are structure without behaviour on purpose.
-- Scripted behaviour is never presented as a working assessment.
+- Arithmetic stays in deterministic, tested TypeScript. A model may choose questions and tools; it never produces a number.
+- No placeholder may imply a capability that has not been implemented.
 - Generated files are not hand-edited. `worker-configuration.d.ts` and `.react-router/types/` come from `pnpm typegen`.
 - Applied migrations are never rewritten. Generate SQL from `db/schema.ts` with `pnpm db:generate`, review it, and commit it with its metadata.
 
-## Decision records
-
-[`.agents/decisions/`](.agents/decisions/README.md) preserves rationale that later work would otherwise re-litigate — architecture boundaries, dependency policy, storage formats, rejected directions. Write one when a later contributor would otherwise have to guess why, and include the alternatives you rejected and why they lost.
-
-Current implementation detail belongs in `docs/architecture.md`; the decision record explains the reasoning.
-
 ## Deployment
 
-Deployment is a team decision, and the team has not chosen a Cloudflare account or a release process yet. Until it does:
+Merging to `main` deploys to Cloudflare through [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): it applies D1 migrations, then builds and deploys the Worker. The workflow reads two repository secrets, `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, and skips with a notice when they are absent, so a contributor without Cloudflare access gets a green run instead of a failure.
 
-- Do not deploy from a personal Cloudflare account.
-- Do not commit account IDs, database IDs, or API tokens.
-- Keep `pnpm deploy:check` credential-free so CI keeps covering the packaging path.
+Two rules keep that workable for everyone:
 
-When the team settles the release process, record the account ownership and the deploy path in a decision record, and prefer a team-owned automation identity over any individual's credentials.
+- Never commit account IDs, database IDs, or API tokens.
+- Keep `pnpm deploy:check` credential-free, so CI keeps covering the packaging path.
+
+`wrangler.jsonc` holds the Worker name, its bindings, and the D1 database. Changing a binding affects deployment; call it out in the pull request.
+
+To deploy by hand, `pnpm deploy` builds and publishes using whatever credentials Wrangler already has.

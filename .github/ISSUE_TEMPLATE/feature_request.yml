@@ -6,10 +6,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        The application design here is deliberately undecided: there are no
-        tables, no agent state, no tools, and no domain types. A proposal that
-        settles part of that design is welcome — but it should say which
-        decision it makes, and why now.
+        ValueIQ values projects with deterministic, tested arithmetic: a model
+        chooses questions and tools, but it never produces a number. Proposals
+        that extend the assessment are welcome — say what the product should do,
+        and why it matters now.
 
         Read [core beliefs](https://github.com/EdwinZhanCN/ValueIQ/blob/main/docs/core-beliefs.md)
         and [architecture](https://github.com/EdwinZhanCN/ValueIQ/blob/main/docs/architecture.md) first.
