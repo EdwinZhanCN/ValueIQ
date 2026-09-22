@@ -2,6 +2,13 @@ allowBuilds:
   core-js-pure: false
   esbuild: true
   workerd: true
+overrides:
+  # drizzle-kit loads drizzle.config.ts through the deprecated @esbuild-kit
+  # loader, whose core-utils pins esbuild to ~0.18.20. That version carries
+  # GHSA-67mh-4wv8-2f99. The loader only calls the stable transform/build API,
+  # so a scoped bump is safe; a global override would wrongly drag wrangler's
+  # esbuild down to 0.25.
+  "@esbuild-kit/core-utils>esbuild": "^0.25.0"
 minimumReleaseAgeExclude:
   - "@cloudflare/vite-plugin@1.54.8"
   - "@cloudflare/workerd-darwin-64@1.20260911.1"
