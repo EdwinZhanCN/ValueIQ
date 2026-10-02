@@ -56,3 +56,6 @@ We will hold each other accountable to this agreement.
 ValueIQ will move with more shared awareness, less ambiguity, and better execution because every member is expected to contribute, document, communicate, and unblock the work consistently.
 
 We are committing to a standard where research is library-backed, communication is frequent, and blockers are exposed and resolved quickly.
+
+Jonathan — My 15% Commitment
+If I get stuck on a ValueIQ task for more than two hours of active work, I will post in our team chat explaining the problem, what I have tried, and what help I need. I will ask for help instead of staying silent until the deadline. This is something I can do immediately to make blockers visible and help our team address problems earlier.
