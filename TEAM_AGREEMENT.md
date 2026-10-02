@@ -17,7 +17,7 @@ The repo library is the source of truth for project knowledge. If it is not in t
 ## Working rhythm
 Each team member will communicate more frequently and with more clarity.
 
-- We will provide a brief update at least 2-3 times per week in the agreed team channel or project tracker.
+- We will provide a brief update at least 2–3 times per week in the agreed team channel or project tracker.
 - Updates must include: what I completed, what I am working on, what is blocked, and what I need from others.
 - We will surface risks early instead of waiting for them to become delivery issues.
 - We will respond to teammate questions and blockers within a reasonable turnaround window, not leave them waiting in silence.
