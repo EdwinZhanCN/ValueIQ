@@ -35,3 +35,7 @@ The status and phase list must change in the same work that changes reality. Val
 ## Completion and abandonment
 
 Before completion, verify the validation boundaries, extract durable rationale into `.agents/decisions/`, move surviving debt to its owning tracker, and update `docs/architecture.md`. Then delete the active plan; version control retains its history. If a rejected direction remains tempting, record the rejection as a decision before deleting the plan.
+
+## Archive
+
+`archive/` keeps superseded plans that maintainers want to reread. It is human reference only: agents do not read, cite, or implement from it. Nothing outside `archive/` links into it.
