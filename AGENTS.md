@@ -6,7 +6,7 @@ Human setup and deployment commands live in [README.md](README.md).
 
 - Read [architecture](docs/architecture.md) before changing UI/server, agent, or storage boundaries.
 - Read [core beliefs](docs/core-beliefs.md) when changing assessment behavior or product scope.
-- Read only relevant unfinished plans in [.agents/exec-plans/active](.agents/exec-plans/active/README.md).
+- Read only relevant unfinished plans in [.agents/exec-plans/active](.agents/exec-plans/active/README.md). Never read or cite `.agents/exec-plans/archive/`; it is human reference only.
 
 ## Repository map
 

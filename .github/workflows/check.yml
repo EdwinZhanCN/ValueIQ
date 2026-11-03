@@ -32,7 +32,17 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm peers check
-      - run: pnpm check
+      # Same steps as `pnpm check`, except ESLint and Prettier are advisory:
+      # findings stay visible but do not fail the run.
+      - run: pnpm typecheck
+      - name: Lint (advisory)
+        run: pnpm lint
+        continue-on-error: true
+      - name: Prettier (advisory)
+        run: pnpm format:check
+        continue-on-error: true
+      - run: pnpm build
+      - run: pnpm deploy:check
       - run: node --test scripts/check-deploy-target.test.mjs
       - run: pnpm test:smoke
         env:

@@ -40,4 +40,4 @@ See [development and release guide](docs/deployment.md) for the team workflow, e
 
 ## License
 
-[MIT](LICENSE) © 2026 ValueIQ Team
+[MIT](LICENSE) © 2026 ValueIQ Team ...
