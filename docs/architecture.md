@@ -19,11 +19,11 @@ ValueIQ is a technology-stack skeleton for a project value assessment product. W
 | Route        | Layout                            | Contents                                                                                    |
 | ------------ | --------------------------------- | ------------------------------------------------------------------------------------------- |
 | `/`          | `app/routes/site-layout.tsx`      | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
-| `/workspace` | `app/routes/workspace-layout.tsx` | The interface skeleton from `app/components/agents/`, given the whole viewport              |
+| `/workspace` | `app/routes/workspace-layout.tsx` | Local intake form from `app/components/intake/`, given the whole viewport                   |
 
 `app/root.tsx` renders the document only: html/body, theme provider, tooltip provider, and the grain overlay. Page chrome belongs to the surface layouts, and error pages bring their own frame.
 
-Neither surface has a loader or an action. `/workspace` renders example content owned by vendored components; it is a mock interface, not a working assessment, and it calls nothing.
+Neither surface has a loader or an action. `/workspace` provides a local intake preview: project name, multiple goals, an optional decision, a project description file, and described data-file groups. Review validates local entries only. Files remain in memory and are neither read nor uploaded; nothing is saved and no assessment runs. Temporary selection limits are 10 files total and 10 MB per file until #55 / Q7 settles upload limits. Persistence and the shared form contract remain dependent on #53 and #58.
 
 ## Empty shells
 

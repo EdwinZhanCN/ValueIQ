@@ -1,20 +1,16 @@
 import type { Route } from "./+types/workspace";
-import { ChatAppExample } from "../components/agents/chat-app-example";
+import { IntakeForm } from "../components/intake/intake-form";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Workspace · ValueIQ" },
+  { title: "Project intake · ValueIQ" },
   {
     name: "description",
     content:
-      "Assess what a project is worth: describe the change, supply the facts, and read the estimate with its inputs and formulas.",
+      "Describe your project, choose goals, and select supporting files.",
   },
 ];
 
-/**
- * The workspace surface. It renders the interface skeleton only — no loader,
- * no action, and no project or assessment data. Connecting this view to the
- * agent and D1 backend is planned work, not wired here.
- */
+// Local UI only. Form persistence (#53 / #58) and upload (#55) are not connected.
 export default function Workspace() {
-  return <ChatAppExample className="h-full rounded-none border-0" />;
+  return <IntakeForm />;
 }
