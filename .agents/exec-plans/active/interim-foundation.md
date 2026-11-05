@@ -1,6 +1,6 @@
 # Interim foundation: sign-in, teams, saved projects, storage
 
-Status: active - 2026-11-05, Q2–Q4 and Q13 answered (#88–#90, #99); the Phase 0 decision record is still to write. Phase 0 freezes the contracts below at STOP 1 (Wed Nov 4 noon). This plan ends at STOP 2 (Fri Nov 6): the Input, AI, Math, and Output tracks build on it. Owner: Zihao. Tracked on the [ValueIQ Team board](https://github.com/users/EdwinZhanCN/projects/7) as Z1–Z5, Z7 (#57–#61, #63) and Q2–Q4, Q13 (#88–#90, #99).
+Status: active - 2026-11-05, Q2–Q4 and Q13 answered (#88–#90, #99). Phase 0 freezes the contracts below at STOP 1 (Wed Nov 4 noon). This plan ends at STOP 2 (Fri Nov 6): the Input, AI, Math, and Output tracks build on it. Owner: Zihao. Tracked on the [ValueIQ Team board](https://github.com/users/EdwinZhanCN/projects/7) as Z1–Z5, Z7 (#57–#61, #63) and Q2–Q4, Q13 (#88–#90, #99).
 
 Goal: on `valueiq-dev`, a person signs up with email and password, creates a team, adds teammates by email, creates and opens a project, saves the project's form file, uploads files that each carry a description, signs out, signs back in, and finds everything still there. Signed-out visitors and members of other teams see none of it.
 
@@ -14,7 +14,7 @@ Goal: on `valueiq-dev`, a person signs up with email and password, creates a tea
 
 ## Fixed contracts (proposed; freeze in Phase 0)
 
-1. **Identity.** Better Auth with email/password and the organization plugin, on D1 through its Drizzle adapter. A team is a Better Auth organization. Creating a team makes the creator `owner`. "Add people" adds an existing account to the team by email; no invitation email is sent. Confirm in Phase 0 that the current Better Auth release runs on Workers with React Router v8 and D1; if it does not, stop and re-decide before writing code.
+1. **Identity.** Better Auth with email/password and the organization plugin, on D1 through its Drizzle adapter. A team is a Better Auth organization. Creating a team makes the creator `owner`. "Add people" adds an existing account to the team by email; no invitation email is sent. Confirmed 2026-11-05 by a local spike: Better Auth 1.7.18 with the organization plugin and its Drizzle adapter runs in local workerd on D1 under React Router 8.3.1, and the Worker packages with `deploy:check`. Its scrypt password hashing takes about 50 ms of CPU per sign-up or sign-in. That fits the paid Workers plan this account uses, but not the free plan's 10 ms limit. The first sign-up on `valueiq-dev` (Phase 4) confirms it deployed.
 2. **Access rule.** One server function, `requireProjectAccess(request, projectId)` in `app/server/access.server.ts`: the caller must be signed in and a member of the project's team, or the response is a redirect to `/sign-in` (signed out) or 404 (any other team). Every loader, action, and resource route that touches a project calls it. Its core, `checkProjectAccess(request, projectId)` in the same module, returns `{ userId, role }` or `signed_out` / `forbidden` without building a response; the agent connect path calls that and answers 401 or 404 (see [`integration-contract.md`](integration-contract.md) section 7).
 3. **Tables (Ag6, designed with Jonathan and Jeremiah after their I3 field list).** Better Auth's tables, plus:
    - `projects`: id, team_id, name, goals (JSON array), created_by, created_at, updated_at.
@@ -32,13 +32,13 @@ Goal: on `valueiq-dev`, a person signs up with email and password, creates a tea
 
 - Answered Nov 5: Q4 (all storage on Cloudflare, #90), Q3 (team-held key, #89), Q13 (`owner | member`, #99), Q2 (team settings, #88).
 - Design the tables with the Input team once I3 gives the field list (Ag6).
-- Write `.agents/decisions/2026-11-04-identity-and-storage.md` (Better Auth, team = organization, R2, key handling, alternatives rejected).
-- Exit: the decision record is merged; Q2–Q4 and Q13 are closed on the board or explicitly deferred with a default.
+- Exit: Q2–Q4 and Q13 are closed on the board or explicitly deferred with a default.
 
 ### Phase 1 - Sign-up and teams (Z1)
 
 - Add Better Auth; schema plus the first migration; `BETTER_AUTH_SECRET` in `.dev.vars.example` and as a Worker secret per environment.
 - Sign-up, sign-in, sign-out; create a team; add a member by email; team page lists members.
+- "Add people" is our own action: it checks that the caller is the owner, looks up the account by email, then calls `auth.api.addMember`; Better Auth has no HTTP endpoint for it. Better Auth rejects a POST without a matching `Origin`, so the smoke test sends one.
 - In the same PR, lift the boundaries this replaces: `AGENTS.md` (routes and "keep the shells empty"), `docs/architecture.md`, `docs/core-beliefs.md` (authentication was out of scope), `docs/deployment.md` ("no application authentication"), and the smoke assertion that `/projects` returns 404.
 - Exit: locally, two accounts in two teams; adding a member by email works; smoke covers sign-up and reaching an empty `/projects`.
 
@@ -62,6 +62,7 @@ Goal: on `valueiq-dev`, a person signs up with email and password, creates a tea
 - `team_settings` table. A new team is seeded with the starting defaults (discount rate 10%, horizon 3 years, recapture 50%, cost-uplift tiers 15 / 30 / 50%), each labeled as a proxy with its source.
 - Owner-only edit form on `/team`; each change appends a row with rationale and source. Projects read the settings in force.
 - Exit: a setting changed once at team level appears in a new project without re-entry; a member cannot change it.
+- On completion, extract the rationale (Better Auth, team = organization, R2, key handling, rejected alternatives) into `.agents/decisions/` and update `docs/architecture.md` before deleting this plan.
 
 ## Validation boundaries
 
