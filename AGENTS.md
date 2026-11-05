@@ -15,7 +15,7 @@ Human setup and deployment commands live in [README.md](README.md).
 - `workers/app.ts`: Worker entry and the `ValueIQAgent` Durable Object export.
 - `agents/valueiq-agent.ts`: empty agent shell — no state, no tools, no methods.
 - `db/`, `drizzle/`: Drizzle client, Better Auth tables (`auth-schema.ts`, generated from `auth.cli.ts`), application tables (`schema.ts`), and their migrations.
-- `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), the signed-in user and current team (`team.server.ts`), and the project API (`projects.server.ts`).
+- `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), the signed-in user and current team (`team.server.ts`), the project API (`projects.server.ts`), and project files in R2 (`files.server.ts`).
 - `docs/`: [architecture](docs/architecture.md) and [core beliefs](docs/core-beliefs.md).
 - `.agents/`: coding-agent procedures and durable project memory.
 
