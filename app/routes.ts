@@ -13,6 +13,7 @@ import {
  *               site chrome and no server data: the UI is disconnected from
  *               the project/assessment backend on purpose.
  * - `/api/auth/*` Better Auth's endpoints (sign-up, sign-in, sessions, teams).
+ * - `/projects`  signed-in project pages, in their own layout.
  */
 export default [
   route("api/auth/*", "routes/api.auth.ts"),
@@ -30,5 +31,9 @@ export default [
   layout("routes/app-layout.tsx", [
     route("teams/new", "routes/teams.new.tsx"),
     route("team", "routes/team.tsx"),
+    // Z2: projects.
+    route("projects", "routes/projects.tsx"),
+    route("projects/new", "routes/projects.new.tsx"),
+    route("projects/:projectId", "routes/projects.$projectId.tsx"),
   ]),
 ] satisfies RouteConfig;

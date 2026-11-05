@@ -238,11 +238,18 @@ try {
   });
   assert.equal(offsite.response.headers.get("location"), "/projects");
 
-  // No project pages yet.
-  await get("/projects", 404);
+  // Z2: /projects asks a signed-out visitor to sign in, and opens for the
+  // owner signed back in.
+  const projectsOut = await page("/projects", "");
+  assert.equal(
+    projectsOut.response.headers.get("location"),
+    "/sign-in?redirectTo=%2Fprojects",
+  );
+  const projectsIn = await page("/projects", back.jar);
+  assert.equal(projectsIn.response.status, 200, "/projects signed in");
 
   console.log(
-    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, no project pages yet.",
+    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, account pages, /projects behind sign-in.",
   );
 } catch (error) {
   console.error(logs);
