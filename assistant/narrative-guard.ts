@@ -2,7 +2,15 @@
 // and (2) cite a step ref (when the output has refs). Reuses the engine's narrative scan.
 import { collectRefs, findUncitedNumbers, type RunOutput } from "../engine";
 
+export interface Diagnosis {
+  sentence: string;
+  reason: string;
+}
+
 export class NarrativeRejectedError extends Error {
+  /** Conversation up to and including the rejected model turn (set by the tool loop). */
+  contents: unknown[] = [];
+  diagnosis: Diagnosis[] = [];
   constructor(public readonly violations: string[]) {
     super(
       `Model text rejected by the narrative integrity scan (${violations.length} sentence(s))`,
@@ -30,32 +38,58 @@ function fromToolOutput(v: number, nums: number[]): boolean {
   });
 }
 
-/** Returns the offending sentences (empty = text passes). */
-export function checkModelText(text: string, out: RunOutput | null): string[] {
+/**
+ * Offending sentences with the reason. `extra` are further tool outputs of the run whose numbers
+ * the model may quote (for example preflight output before any compute).
+ */
+export function diagnoseModelText(
+  text: string,
+  out: RunOutput | null,
+  extra: readonly unknown[] = [],
+): Diagnosis[] {
   const sentences = text
     .split(/(?<=[.!?])\s+/)
     .filter((s) => s.trim().length > 0);
-  const hasDigit = (s: string) => /\d/.test(s.replace(/\[[^\]]*\]/g, ""));
-  if (!out) return sentences.filter(hasDigit);
   const nums: number[] = [];
-  leaves(out.kind === "result" ? out.result : out.gap_list, nums);
-  leaves(out.meta, nums);
-  const bad = new Set<string>();
-  if (out.kind === "result" && out.result) {
+  if (out) {
+    leaves(out.kind === "result" ? out.result : out.gap_list, nums);
+    leaves(out.meta, nums);
+  }
+  leaves(extra, nums);
+  const found = new Map<string, string>();
+  if (out?.kind === "result" && out.result) {
     for (const s of findUncitedNumbers(text, collectRefs(out.result)))
-      bad.add(s);
+      found.set(s, "number without a valid step ref after its last number");
   }
   for (const s of sentences) {
     const stripped = s.replace(/\[[^\]]*\]/g, " ");
     for (const m of stripped.matchAll(/\d[\d,]*(?:\.\d+)?/g)) {
       const v = Number(m[0].replace(/,/g, ""));
-      if (!fromToolOutput(v, nums)) bad.add(s);
+      if (!fromToolOutput(v, nums))
+        found.set(s, `the number ${m[0]} is not in any tool output`);
     }
   }
-  return [...bad];
+  return [...found].map(([sentence, reason]) => ({ sentence, reason }));
 }
 
-export function assertModelText(text: string, out: RunOutput | null): void {
-  const v = checkModelText(text, out);
-  if (v.length > 0) throw new NarrativeRejectedError(v);
+/** Returns the offending sentences (empty = text passes). */
+export function checkModelText(
+  text: string,
+  out: RunOutput | null,
+  extra: readonly unknown[] = [],
+): string[] {
+  return diagnoseModelText(text, out, extra).map((d) => d.sentence);
+}
+
+export function assertModelText(
+  text: string,
+  out: RunOutput | null,
+  extra: readonly unknown[] = [],
+): void {
+  const d = diagnoseModelText(text, out, extra);
+  if (d.length > 0) {
+    const e = new NarrativeRejectedError(d.map((x) => x.sentence));
+    e.diagnosis = d;
+    throw e;
+  }
 }

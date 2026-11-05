@@ -2,7 +2,7 @@
 // The API key is held in a closure, sent only in the x-goog-api-key header, and never logged.
 import { toGeminiSchema } from "./schema";
 import { assertExactModelId } from "./models";
-import { assertModelText } from "./narrative-guard";
+import { NarrativeRejectedError, assertModelText } from "./narrative-guard";
 import {
   ToolArgError,
   ToolRuntimeError,
@@ -52,6 +52,7 @@ export type FetchLike = (
 export interface GeminiEvent {
   type:
     | "request"
+    | "response"
     | "tool_call"
     | "model_mismatch"
     | "paused"
@@ -65,6 +66,10 @@ export interface GeminiEvent {
   returned_model?: string | null;
   error_code?: string;
   tokens?: number;
+  prompt_tokens?: number;
+  output_tokens?: number;
+  thought_tokens?: number;
+  total_tokens?: number;
 }
 
 export interface Part {
@@ -90,6 +95,8 @@ export interface LoopOptions {
   guardText?: boolean;
   log?: (e: GeminiEvent) => void;
   baseUrl?: string;
+  /** Thinking budget in tokens for this call (unset = model default). */
+  thinkingBudget?: number;
 }
 
 export interface LoopResult {
@@ -98,7 +105,12 @@ export interface LoopResult {
   contents: Content[];
   questions: unknown[];
   events: GeminiEvent[];
-  usage: { prompt: number; output: number; total: number };
+  usage: {
+    prompt: number;
+    output: number;
+    thoughts: number;
+    total: number;
+  };
 }
 
 /** Small non-cryptographic hash (cyrb53) so logs carry ids and hashes, never contents. */
@@ -131,8 +143,12 @@ export function buildRequest(
   system: string,
   contents: Content[],
   tools: readonly ToolDef[],
+  thinkingBudget?: number,
 ) {
   return {
+    ...(thinkingBudget !== undefined
+      ? { generationConfig: { thinkingConfig: { thinkingBudget } } }
+      : {}),
     systemInstruction: { parts: [{ text: system }] },
     contents,
     tools: [
@@ -164,6 +180,7 @@ interface GeminiResponse {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
     totalTokenCount?: number;
+    thoughtsTokenCount?: number;
   };
 }
 
@@ -177,11 +194,13 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
     events.push(e);
     o.log?.(e);
   };
-  const usage = { prompt: 0, output: 0, total: 0 };
+  const usage = { prompt: 0, output: 0, thoughts: 0, total: 0 };
   const contents: Content[] = structuredClone(o.contents);
 
   for (let step = 1; step <= maxSteps; step++) {
-    const body = JSON.stringify(buildRequest(o.system, contents, o.tools));
+    const body = JSON.stringify(
+      buildRequest(o.system, contents, o.tools, o.thinkingBudget),
+    );
     emit({ type: "request", model: o.model, step, args_hash: hashOf(body) });
     const res = await doFetch(`${base}/models/${o.model}:generateContent`, {
       method: "POST",
@@ -201,7 +220,18 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
     const data = (await res.json()) as GeminiResponse;
     usage.prompt += data.usageMetadata?.promptTokenCount ?? 0;
     usage.output += data.usageMetadata?.candidatesTokenCount ?? 0;
+    usage.thoughts += data.usageMetadata?.thoughtsTokenCount ?? 0;
     usage.total += data.usageMetadata?.totalTokenCount ?? 0;
+    emit({
+      type: "response",
+      model: o.model,
+      step,
+      returned_model: data.modelVersion ?? null,
+      prompt_tokens: data.usageMetadata?.promptTokenCount ?? 0,
+      output_tokens: data.usageMetadata?.candidatesTokenCount ?? 0,
+      thought_tokens: data.usageMetadata?.thoughtsTokenCount ?? 0,
+      total_tokens: data.usageMetadata?.totalTokenCount ?? 0,
+    });
     const returned = data.modelVersion ?? null;
     if (returned !== o.model) {
       emit({
@@ -215,10 +245,13 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
     const parts = data.candidates?.[0]?.content?.parts ?? [];
     const calls = parts.filter((p) => p.functionCall);
     if (calls.length === 0) {
-      const text = parts.map((p) => p.text ?? "").join("");
+      const text = parts
+        .filter((p) => p["thought"] !== true)
+        .map((p) => p.text ?? "")
+        .join("");
       if (o.guardText !== false) {
         try {
-          assertModelText(text, o.ctx.state.last);
+          assertModelText(text, o.ctx.state.last, o.ctx.state.seen);
         } catch (e) {
           emit({
             type: "text_rejected",
@@ -226,6 +259,8 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
             step,
             result_hash: hashOf(text),
           });
+          if (e instanceof NarrativeRejectedError)
+            e.contents = [...contents, { role: "model", parts }];
           throw e;
         }
       }

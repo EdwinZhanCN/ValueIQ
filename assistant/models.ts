@@ -43,3 +43,20 @@ export function resolveModels(
     calc: assertExactModelId(c, "GEMINI_MODEL_CALC"),
   };
 }
+
+/** Thinking budget (tokens) for the calculation-run model. Unset by default. */
+export const DEFAULT_THINKING_BUDGET_CALC: number | undefined = undefined;
+
+/** GEMINI_THINKING_BUDGET_CALC: integer >= -1 (-1 = dynamic, 0 = off). Unset means model default. */
+export function resolveThinkingBudget(
+  env: Record<string, string | undefined> = {},
+): number | undefined {
+  const raw = env["GEMINI_THINKING_BUDGET_CALC"];
+  if (raw === undefined || raw === "") return DEFAULT_THINKING_BUDGET_CALC;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < -1)
+    throw new ModelConfigError(
+      "GEMINI_THINKING_BUDGET_CALC must be an integer >= -1",
+    );
+  return n;
+}

@@ -39,7 +39,8 @@ export function fakeFetch(
       usageMetadata: {
         promptTokenCount: 10,
         candidatesTokenCount: 5,
-        totalTokenCount: 15,
+        totalTokenCount: 22,
+        thoughtsTokenCount: 7,
       },
     };
     return Promise.resolve({

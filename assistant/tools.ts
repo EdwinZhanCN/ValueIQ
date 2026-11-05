@@ -65,6 +65,8 @@ export const ASK_EFFECT_THRESHOLD = 0.05; // ROI.md 11.1: proxy changes a headli
 export interface ToolState {
   asked_this_run: string[];
   last: RunOutput | null;
+  /** Every tool output of this run (frozen); the provenance set for model-written numbers. */
+  seen: unknown[];
 }
 export interface ToolContext {
   readonly form: FormFile; // deep-frozen
@@ -108,7 +110,7 @@ export function createContext(
     now: o.now,
     mode: o.mode ?? "real",
     ...(o.config ? { config: o.config } : {}),
-    state: { asked_this_run: [], last: null },
+    state: { asked_this_run: [], last: null, seen: [] },
     isAccepted: o.isAccepted ?? (() => false),
   };
 }
@@ -927,7 +929,11 @@ export function callTool(
   if (!tool) throw new UnknownToolError(name);
   const problems = validateSchema(tool.parameters, args ?? {});
   if (problems.length > 0) throw new ToolArgError(name, problems);
-  return frozenCopy(tool.run((args ?? {}) as Record<string, unknown>, ctx));
+  const out = frozenCopy(
+    tool.run((args ?? {}) as Record<string, unknown>, ctx),
+  );
+  ctx.state.seen.push(out);
+  return out;
 }
 
 // ---------- host-side acceptance (not a model tool) ----------
