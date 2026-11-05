@@ -346,6 +346,25 @@ try {
   blank.set("description", "   ");
   assert.equal((await upload(alpha, blank)).status, 400, "blank description");
 
+  // The 10 MB cap: exactly at the cap is accepted; one byte over fails the
+  // file-size check, and a far larger body fails the Content-Length check.
+  const cap = 10 * 1024 * 1024;
+  for (const [size, expected, label] of [
+    [cap, 201, "upload at the cap"],
+    [cap + 1, 413, "upload one byte over the cap"],
+    [cap + 1024 * 1024, 413, "upload with an oversized body"],
+  ]) {
+    const sized = new FormData();
+    sized.set("file", new Blob([new Uint8Array(size)]), "sized.bin");
+    sized.set("description", label);
+    const response = await upload(alpha, sized);
+    assert.equal(
+      response.status,
+      expected,
+      `${label}: ${await response.text()}`,
+    );
+  }
+
   assert.equal(
     (await download(alpha.projectId, fileId, beta.cookie)).status,
     404,
