@@ -22,7 +22,7 @@ description: Use before claiming verification or preparing ValueIQ changes for r
 
 The repository currently holds no calculation contracts, so `pnpm check` has no unit-test step; add tests back with the first contract.
 
-`pnpm test:smoke` starts and stops its own local development server and checks that both surfaces render. It never accesses remote D1. Its default port is 5179; set `VALUEIQ_SMOKE_PORT` if needed. Do not run two smoke tests concurrently.
+`pnpm test:smoke` applies local D1 migrations, starts and stops its own local development server, checks that both surfaces render, and signs up a throwaway account. It needs `.dev.vars` with `BETTER_AUTH_SECRET` (copy `.dev.vars.example`). It never accesses remote D1. Its default port is 5179; set `VALUEIQ_SMOKE_PORT` if needed. Do not run two smoke tests concurrently.
 
 For a schema change, run `pnpm db:generate` again after generation; it should report no changes. Never rewrite already-applied SQL just to pass a check. Worker and route types are generated and ignored; regenerate them using `pnpm typegen`.
 

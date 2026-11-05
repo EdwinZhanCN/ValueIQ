@@ -5,6 +5,10 @@
   "compatibility_date": "2026-09-11",
   "compatibility_flags": ["nodejs_compat"],
   "assets": { "directory": "./build/client" },
+  // Hosts Better Auth may build its base URL from, comma-separated.
+  "vars": { "AUTH_ALLOWED_HOSTS": "localhost:*,127.0.0.1:*" },
+  // Set locally in .dev.vars; per environment with `wrangler secret put`.
+  "secrets": { "required": ["BETTER_AUTH_SECRET"] },
   "durable_objects": {
     "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
   },
@@ -20,6 +24,8 @@
     "development": {
       "name": "valueiq-dev",
       "workers_dev": true,
+      "vars": { "AUTH_ALLOWED_HOSTS": "valueiq-dev.zhanz.workers.dev" },
+      "secrets": { "required": ["BETTER_AUTH_SECRET"] },
       "durable_objects": {
         "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
       },
@@ -35,6 +41,8 @@
     "production": {
       "name": "valueiq-prod",
       "workers_dev": true,
+      "vars": { "AUTH_ALLOWED_HOSTS": "valueiq-prod.zhanz.workers.dev" },
+      "secrets": { "required": ["BETTER_AUTH_SECRET"] },
       "durable_objects": {
         "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
       },

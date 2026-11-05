@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ is a technology-stack skeleton for a project value assessment product. What exists is the chosen stack, wired end to end, plus two interface surfaces. What does not exist is the application design: no database tables, no agent state, no agent tools, and no shared domain types have been decided, and nothing in the repository pretends otherwise.
+ValueIQ is a technology-stack skeleton for a project value assessment product. What exists is the chosen stack, wired end to end, plus two interface surfaces. Identity and the first tables are in place (Better Auth, teams, projects, form files, uploads, team settings); there is still no agent state, no agent tools, no shared domain types, and no screen that uses the tables. Nothing in the repository pretends otherwise.
 
 ## Stack
 
@@ -9,6 +9,7 @@ ValueIQ is a technology-stack skeleton for a project value assessment product. W
 | Framework  | React Router v8 in framework mode: `app/routes.ts`, route modules, SSR through `app/entry.server.tsx`                                           |
 | Runtime    | Cloudflare Workers through the Cloudflare Vite plugin; `workers/app.ts` is the fetch entry                                                      |
 | Data       | D1 through Drizzle ORM: `db/client.ts`, `db/schema.ts`, and the `DB` binding in `wrangler.jsonc`                                                |
+| Identity   | Better Auth (email/password, organization plugin) on D1: `app/server/auth.server.ts`, endpoints at `/api/auth/*`; a team is an organization     |
 | Agent      | Cloudflare Agents SDK: the `ValueIQAgent` Durable Object class, exported from `workers/app.ts`                                                  |
 | Styling    | Tailwind CSS v4 with design tokens in `app/styles.css`                                                                                          |
 | Components | Vendored shadcn/ui on Base UI primitives (`app/components/ui/`), beUI motion (`app/components/motion/`), Lucide icons, Geist through Fontsource |
@@ -23,28 +24,31 @@ ValueIQ is a technology-stack skeleton for a project value assessment product. W
 
 `app/root.tsx` renders the document only: html/body, theme provider, tooltip provider, and the grain overlay. Page chrome belongs to the surface layouts, and error pages bring their own frame.
 
-Neither surface has a loader or an action. `/workspace` renders example content owned by vendored components; it is a mock interface, not a working assessment, and it calls nothing.
+Neither surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders example content owned by vendored components; it is a mock interface, not a working assessment, and it calls nothing.
+
+## Identity, data, and access
+
+- `db/auth-schema.ts` — Better Auth's tables, generated from `auth.cli.ts`. Keep that file's options in step with `app/server/auth.server.ts`.
+- `db/schema.ts` — `projects`, `project_forms` (the form file, stored opaquely), `files` (upload metadata; the objects go in R2), and `team_settings` (append-only team defaults), per the [interim-foundation plan](../.agents/exec-plans/active/interim-foundation.md).
+- `app/server/access.server.ts` — the one project access rule. `checkProjectAccess(request, projectId)` returns `{ userId, teamId, projectId, role }`, `signed_out`, or `forbidden`; `requireProjectAccess` throws a redirect to `/sign-in` or a 404. A missing project and another team's project both answer 404. Every loader, action, and resource route that touches a project calls it.
 
 ## Empty shells
 
-The application layer is structure without behaviour, and nothing fabricates a result:
-
 - `agents/valueiq-agent.ts` — an empty `ValueIQAgent` Durable Object: no state shape, no tools, no RPC methods.
-- `db/schema.ts` — the Drizzle entry point with no tables, so `drizzle/` holds no migrations yet.
-- `app/context.server.ts` — typed Worker bindings, ready for the first loader or action.
+- `app/context.server.ts` — typed Worker bindings for loaders and actions.
 
-Undecided on purpose: the D1 data model, agent state, agent tools, application skill conventions, and every shared domain type. Add them when the design is settled, generate migrations from `db/schema.ts`, and reconnect a surface to them deliberately.
+Undecided on purpose: agent state, agent tools, application skill conventions, and every shared domain type. Add them when the design is settled and reconnect a surface to them deliberately.
 
 ## Runtime and generated artifacts
 
 `pnpm dev` uses the Cloudflare Vite plugin to execute SSR and bindings in local workerd. D1 and Durable Object data persist under ignored `.wrangler/state/`. `pnpm build` produces client assets and a server Worker with a generated Wrangler deployment configuration. `pnpm deploy:check` packages that build without publishing it.
 
-`wrangler.jsonc` owns binding declarations: the `DB` D1 database and the `ValueIQAgent` Durable Object. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. The default configuration is local. Named `development` and `production` environments declare separate Workers, D1 databases, and Durable Object bindings. Their D1 databases are provisioned in the maintainer’s Cloudflare account, and their non-secret IDs are committed in `wrangler.jsonc`. Deployment rejects placeholder IDs and shared databases. Checks run without credentials. [Development and release guide](deployment.md) documents the live environments, access controls, and ongoing release workflow.
+`wrangler.jsonc` owns binding declarations: the `DB` D1 database and the `ValueIQAgent` Durable Object, plus each environment's `AUTH_ALLOWED_HOSTS` variable and required `BETTER_AUTH_SECRET` secret. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. The default configuration is local. Named `development` and `production` environments declare separate Workers, D1 databases, and Durable Object bindings. Their D1 databases are provisioned in the maintainer’s Cloudflare account, and their non-secret IDs are committed in `wrangler.jsonc`. Deployment rejects placeholder IDs and shared databases. Checks run without credentials. [Development and release guide](deployment.md) documents the live environments, access controls, and ongoing release workflow.
 
-There are no model secrets, outbound model calls, MCP integrations, queues, or separate backend. No authentication or per-user authorization exists: a deployed instance is a shared prototype.
+There are no model secrets, outbound model calls, MCP integrations, queues, or separate backend. Accounts can be created through `/api/auth/*`, but no page uses them yet.
 
 ## Verification boundaries
 
-The [check-selection skill](../.agents/skills/valueiq-select-checks/SKILL.md) owns command routing. There are no unit tests while the repository holds no calculation contracts. The smoke test starts the real local Worker and checks that the landing page renders with the site chrome, that the workspace renders fullscreen without it, and that `/projects` is not served. The build and deployment dry run check Worker packaging and the Durable Object binding.
+The [check-selection skill](../.agents/skills/valueiq-select-checks/SKILL.md) owns command routing. There are no unit tests while the repository holds no calculation contracts. The smoke test starts the real local Worker and checks that the landing page renders with the site chrome, that the workspace renders fullscreen without it, that sign-up returns a session, and that `/projects` is not served yet. The build and deployment dry run check Worker packaging and the Durable Object binding.
 
-Two boundaries are review-enforced: the interface stays separate from anything backend-shaped, and an empty shell stays empty. A page, a loader, or a mock must not start implying a design that has not been made.
+Two boundaries are review-enforced: the interface stays separate from anything backend-shaped, and an empty shell stays empty until its design is decided. A page, a loader, or a mock must not start implying a design that has not been made.

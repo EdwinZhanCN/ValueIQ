@@ -30,7 +30,7 @@ Rotate deployment tokens in Cloudflare and replace the corresponding GitHub envi
 
 Contributors submit PRs; protected branches require the `verify` check and up-to-date branches, prohibit force pushes/deletion, and require resolved conversations. Review workflow, deployment script, and resource-binding changes carefully: workflow editing can expose credentials. The account owner retains administrative access. Do not assume repository files alone enforce external GitHub settings.
 
-There are no D1 tables or SQL migrations yet. Deployment skips D1 migrations until `drizzle/*.sql` exists. Durable Object migration `v1` is applied separately by Worker deployment. Generate future D1 migrations from `db/schema.ts`, review and commit the SQL, and test it locally before merging.
+Deployment applies D1 migrations from `drizzle/*.sql` before publishing. Durable Object migration `v1` is applied separately by Worker deployment. Generate future D1 migrations from `db/schema.ts`, review and commit the SQL, and test it locally before merging.
 
 ## Release mechanics
 
@@ -57,7 +57,7 @@ For an application regression, revert the offending change through a PR and rede
 
 D1 migration success is not undone by a later publish failure or Worker rollback. Introduce backward-compatible schema additions first, migrate usage/data, and remove obsolete fields in a later release. Keep applied SQL and Durable Object migration history unchanged. Test future schema changes locally before release; design a data recovery procedure when real stored data is introduced.
 
-Both URLs currently serve the shared prototype without application authentication. Keep test data in development; deploying this skeleton does not add user authorization or a working assessment backend.
+Each Worker requires secret `BETTER_AUTH_SECRET` (`wrangler secret put BETTER_AUTH_SECRET --env development`, and again for `production`); set it before the first release that includes Better Auth. Accounts exist per environment, and no page uses them yet. Keep test data in development; there is no working assessment backend.
 
 ## References
 
