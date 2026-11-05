@@ -10,12 +10,12 @@ Goal: on `valueiq-dev`, a person signs up with email and password, creates a tea
 - Password reset: it needs an email sender. Stretch, after STOP 2.
 - Provider-key screen, unless Q3 keeps per-team keys.
 - Roles beyond `owner | member`, until Q13 answers.
-- Owned by other plans: intake form UI and upload UI (I4, I5), assistant (A*), loading page (L*), engine (M*), output and PDF (O*, Z6), and connecting the pieces (Z8). This plan gives them a route to mount on and a server API to call.
+- Owned by other plans: intake form UI and upload UI (I4, I5), assistant (A*), loading page (L*), engine (M*), output and PDF generation (O*), and connecting the pieces, including run tables and PDF storage (Z6, Z8: [`integration-contract.md`](integration-contract.md)). This plan gives them a route to mount on and a server API to call.
 
 ## Fixed contracts (proposed; freeze in Phase 0)
 
 1. **Identity.** Better Auth with email/password and the organization plugin, on D1 through its Drizzle adapter. A team is a Better Auth organization. Creating a team makes the creator `owner`. "Add people" adds an existing account to the team by email; no invitation email is sent. Confirm in Phase 0 that the current Better Auth release runs on Workers with React Router v8 and D1; if it does not, stop and re-decide before writing code.
-2. **Access rule.** One server function, `requireProjectAccess(request, projectId)` in `app/server/access.server.ts`: the caller must be signed in and a member of the project's team, or the response is a redirect to `/sign-in` (signed out) or 404 (any other team). Every loader, action, and resource route that touches a project calls it; so does the agent connect path once it exists.
+2. **Access rule.** One server function, `requireProjectAccess(request, projectId)` in `app/server/access.server.ts`: the caller must be signed in and a member of the project's team, or the response is a redirect to `/sign-in` (signed out) or 404 (any other team). Every loader, action, and resource route that touches a project calls it. Its core, `checkProjectAccess(request, projectId)` in the same module, returns `{ userId, role }` or `signed_out` / `forbidden` without building a response; the agent connect path calls that and answers 401 or 404 (see [`integration-contract.md`](integration-contract.md) section 7).
 3. **Tables (Ag6, designed with Jonathan and Jeremiah after their I3 field list).** Better Auth's tables, plus:
    - `projects`: id, team_id, name, goals (JSON array), created_by, created_at, updated_at.
    - `project_forms`: project_id (PK), form_json (TEXT), updated_by, updated_at. The form file is stored opaquely; its shape is Ag1 and belongs to the Input team.
