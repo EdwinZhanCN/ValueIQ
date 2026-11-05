@@ -1,6 +1,6 @@
 # Integration contract: how the pieces connect
 
-Status: active - 2026-11-05, Zihao's review edits applied (VERIFY items resolved, infrastructure names set); the contracts below freeze when the pull request for #108 merges. This plan fixes the shared ground rules for connecting the input form, intake assistant, calculation run, `ask_user`, and results/PDF. It adds no code, tables, or bindings: the shells in `AGENTS.md` stay empty until each owner's slice lands. Author: Eli. Reviewer and owner of infrastructure: Zihao. Tracked in #108 (review), #64 (Z8), #72 (A1).
+Status: active - 2026-11-05, Zihao's review edits applied (VERIFY items resolved, infrastructure names set, Q2-Q4 and Q13 answered in #88-#90 and #99); the contracts below freeze when the pull request for #108 merges. This plan fixes the shared ground rules for connecting the input form, intake assistant, calculation run, `ask_user`, and results/PDF. It adds no code, tables, or bindings: the shells in `AGENTS.md` stay empty until each owner's slice lands. Author: Eli. Reviewer and owner of infrastructure: Zihao. Tracked in #108 (review), #64 (Z8), #72 (A1).
 
 Goal: a person on `valueiq-dev` saves a form, talks to the intake assistant, starts a calculation run that can stop to ask one question, and opens a result page, with every step running on Cloudflare and every track building to the same interfaces. First observable milestone: a labeled stub run end to end by Sat Nov 7 (Phase 1), so Nov 8-10 only swaps stubs for real parts.
 
@@ -13,7 +13,7 @@ Goal: a person on `valueiq-dev` saves a form, talks to the intake assistant, sta
 
 ## Rules for every agent and human
 
-1. Build native to the repo: Workers, D1 through Drizzle, R2, Durable Objects through the Agents SDK, Cloudflare Workflows. No separate server, database, or queue outside Cloudflare. Model calls go from the Worker to Gemini with `GEMINI_API_KEY` as a Worker secret (Q3 recommendation).
+1. Build native to the repo: Workers, D1 through Drizzle, R2, Durable Objects through the Agents SDK, Cloudflare Workflows. No separate server, database, or queue outside Cloudflare (Q4, #90). Model calls go from the Worker to Gemini with one team-held `GEMINI_API_KEY` per environment as a Worker secret; there is no key screen (Q3, #89).
 2. Follow `AGENTS.md`: server-only code in `.server.ts` modules or loaders and actions, generated files stay generated (`pnpm typegen`), migrations come from `db/schema.ts` via `pnpm db:generate` and a merged migration is never edited, no secrets in git.
 3. Zihao owns identity, access, tables, storage, deploy, and secrets. Others propose changes to those in a pull request against this plan or in #108; they do not create tables, buckets, or auth code on their own.
 4. Never present mock or scripted output as a real assessment. A stub run carries `mode: "stub"` in its data and a visible STUB label in the UI.
@@ -74,7 +74,7 @@ No `any` across track boundaries.
 
 ### 4. Tables (Zihao implements)
 
-Already planned: `projects`, `project_forms`, `files`, `team_goals`. Additions:
+Already planned in [`interim-foundation.md`](interim-foundation.md): `projects`, `project_forms`, `files`, and `team_settings` (Q2, #88: the team's financial defaults, replacing `team_goals`; append-only, so `runs.settings_version` pins the settings a run used). Additions:
 
 | Table           | Columns                                                                                                                           | Phase | Purpose                                                  |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------------------- |
@@ -99,6 +99,7 @@ Browser-callable: `chat(message)` (streaming), `preflight()`, `startRun()`, `ans
 - Each connection carries the caller's user id in connection state, set in `onConnect` from the header the access gate writes (section 7). `started_by` and `answered_by` come from it, never from arguments.
 - `startRun`, `answerQuestion`, and `cancelRun` re-check team membership in D1 for that user id and fail with `ACCESS_DENIED` if it is gone; `chat` and `preflight` rely on the connection check.
 - `ask_user`: the workflow records the question (`run_questions` row and `pending_question`) in a durable step, then waits on an event typed to that question. `answerQuestion` checks that the question is pending, belongs to the current run, and that the answer matches its schema; it stores the answer, then resumes the workflow. The per-question event type keeps a late answer from resuming a later wait. Question ids use only letters, digits, and `-`. A timeout ends the run as `failed` with `QUESTION_TIMEOUT`, `retryable: true`.
+- `cancelRun` calls `terminateWorkflow(runId)` and ends the run as `cancelled`.
 
 ```ts
 // CalculationRun (workflow)
@@ -116,7 +117,7 @@ await this.sendWorkflowEvent("RUN_WORKFLOW", runId, {
 
 ### 7. Access and security
 
-- Every agent connection, callable method, server function, and file read is access-checked first. Loaders and actions use `requireProjectAccess` (signed out redirects to `/sign-in`, other team gets 404, member and owner allowed).
+- Every agent connection, callable method, server function, and file read is access-checked first. Loaders and actions use `requireProjectAccess` (signed out redirects to `/sign-in`, other team gets 404, member and owner allowed). Roles are `owner | member` only, with the same project access (Q13, #99).
 - The agent gate is `routeAgentRequest`'s `onBeforeConnect` (WebSocket) and `onBeforeRequest` (HTTP), both running the same check: reject any `route.className` other than `ValueIQAgent`, call `checkProjectAccess(request, route.name)`, return 401 for signed out and 404 for another team, and on success forward the request with `x-valueiq-user-id` set after deleting any client-sent copy. Same-origin WebSocket handshakes carry the Better Auth session cookie, so no URL token is needed. The automated access matrix covers the agent routes.
 - A file id referenced from a form must belong to the same project.
 - Secrets live only as Worker secrets; prompts and files are not logged beyond ids and hashes.
@@ -166,7 +167,8 @@ await this.sendWorkflowEvent("RUN_WORKFLOW", runId, {
 - **Context:** `docs/architecture.md` shows an empty `ValueIQAgent`, no tables, no shared types; `interim-foundation.md` covers identity, form storage, and files but not orchestration.
 - **Sources reviewed:** Cloudflare Agents documentation: store and sync state, callable methods, run workflows (developers.cloudflare.com/agents/api-reference/); this repository's `AGENTS.md`, `docs/architecture.md`, `wrangler.jsonc`, `agents/valueiq-agent.ts`, `db/schema.ts`, and `interim-foundation.md`. For the VERIFY items (Zihao, Nov 5): the docs bundled with the installed Agents SDK 0.23.0 (`node_modules/agents/docs/routing.md`, `workflows.md`, `cross-domain-authentication.md`) and the `waitForApproval` source in `node_modules/agents/dist/workflows.js`.
 - **Findings:** the SDK syncs agent state to connected clients over WebSocket; `@callable` exposes methods to clients and the docs say to treat arguments as untrusted; Workflows suit multi-step pipelines and human-in-the-loop waits, with durable steps and a progress callback to the agent; documented limits include 30 minutes per step, up to a year waiting for an event, and 10 MB per workflow state. `routeAgentRequest` takes `onBeforeConnect` and `onBeforeRequest` hooks that receive the instance name and can reject with a response before the Durable Object wakes; same-origin WebSocket handshakes carry cookies; `waitForApproval` wraps `step.waitForEvent` with a fixed `approval` event and throws on `approved: false`.
-- **Assumptions:** Gemini key as a Worker secret (Q3); one agent per project; one workflow run per calculation.
+- **Decided (Nov 5):** team-held Gemini key as a Worker secret (Q3, #89); all storage on Cloudflare (Q4, #90); roles `owner | member` (Q13, #99); team-level financial defaults in `team_settings` (Q2, #88).
+- **Assumptions:** one agent per project; one workflow run per calculation.
 - **Risks:** a run that sits blocked on a question (bounded by the 24-hour timeout); Phase 1 depends on `interim-foundation.md` reaching STOP 2 on Fri Nov 6.
 - **Recommended next step:** merge, then the stub run (Phase 1).
 

@@ -1,15 +1,15 @@
 # Interim foundation: sign-in, teams, saved projects, storage
 
-Status: active - 2026-11-03, nothing frozen. Phase 0 freezes the contracts below at STOP 1 (Wed Nov 4 noon). This plan ends at STOP 2 (Fri Nov 6): the Input, AI, Math, and Output tracks build on it. Owner: Zihao. Tracked on the [ValueIQ Team board](https://github.com/users/EdwinZhanCN/projects/7) as Z1–Z5, Z7 (#57–#61, #63) and Q2–Q4, Q13 (#88–#90, #99).
+Status: active - 2026-11-05, Q2–Q4 and Q13 answered (#88–#90, #99); the Phase 0 decision record is still to write. Phase 0 freezes the contracts below at STOP 1 (Wed Nov 4 noon). This plan ends at STOP 2 (Fri Nov 6): the Input, AI, Math, and Output tracks build on it. Owner: Zihao. Tracked on the [ValueIQ Team board](https://github.com/users/EdwinZhanCN/projects/7) as Z1–Z5, Z7 (#57–#61, #63) and Q2–Q4, Q13 (#88–#90, #99).
 
 Goal: on `valueiq-dev`, a person signs up with email and password, creates a team, adds teammates by email, creates and opens a project, saves the project's form file, uploads files that each carry a description, signs out, signs back in, and finds everything still there. Signed-out visitors and members of other teams see none of it.
 
 ## Non-goals
 
-- Share links (cut: access is by sign-in). Org settings screen and versioned settings (cut: team goals, Phase 5).
+- Share links (cut: access is by sign-in). A full org settings screen (cut: Phase 5 builds only the owner-only team settings form, Q2).
 - Password reset: it needs an email sender. Stretch, after STOP 2.
-- Provider-key screen, unless Q3 keeps per-team keys.
-- Roles beyond `owner | member`, until Q13 answers.
+- Provider-key screen (Q3: one team-held key).
+- Roles beyond `owner | member` (Q13: project owner, finance admin, and org admin wait until after the demo).
 - Owned by other plans: intake form UI and upload UI (I4, I5), assistant (A*), loading page (L*), engine (M*), output and PDF generation (O*), and connecting the pieces, including run tables and PDF storage (Z6, Z8: [`integration-contract.md`](integration-contract.md)). This plan gives them a route to mount on and a server API to call.
 
 ## Fixed contracts (proposed; freeze in Phase 0)
@@ -20,17 +20,17 @@ Goal: on `valueiq-dev`, a person signs up with email and password, creates a tea
    - `projects`: id, team_id, name, goals (JSON array), created_by, created_at, updated_at.
    - `project_forms`: project_id (PK), form_json (TEXT), updated_by, updated_at. The form file is stored opaquely; its shape is Ag1 and belongs to the Input team.
    - `files`: id, project_id, r2_key, name, mime, size, description (required), uploaded_by, uploaded_at.
-   - `team_goals`: shape set by Q2 in Phase 5.
-4. **Storage (Q4).** D1 for records; a private R2 bucket per environment (`FILES` binding: `valueiq-dev-files`, `valueiq-prod-files`, local in dev). Object key `teams/{teamId}/projects/{projectId}/files/{fileId}`. Uploads and downloads pass through the Worker after the access check; no public bucket URLs. Default cap 10 MB per file until Q7 sets limits.
-5. **Model keys (Q3).** Recommended: one team-held Gemini key per environment as Worker secret `GEMINI_API_KEY`, no key screen, P13 not shown. If Q3 keeps per-team keys, add a phase for an encrypted key table and an owner-only screen.
+   - `team_settings` (Q2, replaces `team_goals`): id, team_id, key, value_json, rationale, source, set_by, effective_from. The team's financial defaults only (discount rate, horizon, recapture, cost-uplift tiers); ROI goals stay per project in `projects.goals`. Append-only: the newest row per key is in force, and a run pins the settings it used through `settings_version` (see [`integration-contract.md`](integration-contract.md) section 4).
+4. **Storage (Q4, decided: everything on Cloudflare).** D1 for records; a private R2 bucket per environment (`FILES` binding: `valueiq-dev-files`, `valueiq-prod-files`, local in dev). Object key `teams/{teamId}/projects/{projectId}/files/{fileId}`. Uploads and downloads pass through the Worker after the access check; no public bucket URLs. Default cap 10 MB per file until Q7 sets limits.
+5. **Model keys (Q3, decided).** One team-held Gemini key per environment as Worker secret `GEMINI_API_KEY`, separate for development and production; no key screen, P13 not shown. The key never reaches the client or a prompt.
 6. **Server API for other tracks.** `app/server/projects.server.ts` exposes `getProjectForm(projectId)`, `saveProjectForm(projectId, json, userId)`, `listProjectFiles(projectId)`, and `readProjectFile(fileId)`. Callers authorize first with `requireProjectAccess`.
-7. **Routes.** `/sign-up`, `/sign-in`, `/api/auth/*`, `/teams/new`, `/team` (members and add-by-email), `/projects`, `/projects/new`, `/projects/:id` (the shell the intake form mounts into), `/projects/:id/files/:fileId` (download). `/` stays. `/workspace` stays a labelled mock until the real flow replaces it.
+7. **Routes.** `/sign-up`, `/sign-in`, `/api/auth/*`, `/teams/new`, `/team` (members, add-by-email, and team settings; only the owner edits), `/projects`, `/projects/new`, `/projects/:id` (the shell the intake form mounts into), `/projects/:id/files/:fileId` (download). `/` stays. `/workspace` stays a labelled mock until the real flow replaces it.
 
 ## Execution phases
 
 ### Phase 0 - Lock contracts (to Wed Nov 4 noon, STOP 1)
 
-- Answer Q4 (storage), Q3 (keys), Q13 (roles; default `owner | member`). Start Q2 (team goals); Phase 5 may follow later.
+- Answered Nov 5: Q4 (all storage on Cloudflare, #90), Q3 (team-held key, #89), Q13 (`owner | member`, #99), Q2 (team settings, #88).
 - Design the tables with the Input team once I3 gives the field list (Ag6).
 - Write `.agents/decisions/2026-11-04-identity-and-storage.md` (Better Auth, team = organization, R2, key handling, alternatives rejected).
 - Exit: the decision record is merged; Q2–Q4 and Q13 are closed on the board or explicitly deferred with a default.
@@ -54,13 +54,14 @@ Goal: on `valueiq-dev`, a person signs up with email and password, creates a tea
 
 ### Phase 4 - Online for the team (Z7, Fri Nov 6, STOP 2)
 
-- Maintainer creates both R2 buckets and sets `BETTER_AUTH_SECRET` (and `GEMINI_API_KEY` if Q3 chose it) on each Worker. Merge to `develop`; the deploy workflow applies migrations.
+- Maintainer creates both R2 buckets and sets `BETTER_AUTH_SECRET` and `GEMINI_API_KEY` on each Worker. Merge to `develop`; the deploy workflow applies migrations.
 - Exit: all five teammates sign up on `valueiq-dev`, join one team, and each can create a project and upload a file.
 
-### Phase 5 - Team goals (Z4, Sat Nov 7)
+### Phase 5 - Team settings (Z4, Sat Nov 7)
 
-- Build whatever Q2 defines; projects created by a team read its goals.
-- Exit: a goal set once at team level appears in a new project without re-entry.
+- `team_settings` table. A new team is seeded with the starting defaults (discount rate 10%, horizon 3 years, recapture 50%, cost-uplift tiers 15 / 30 / 50%), each labeled as a proxy with its source.
+- Owner-only edit form on `/team`; each change appends a row with rationale and source. Projects read the settings in force.
+- Exit: a setting changed once at team level appears in a new project without re-entry; a member cannot change it.
 
 ## Validation boundaries
 
