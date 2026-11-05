@@ -169,6 +169,17 @@ Rationale: a flat Forrester-style 15-25% cut per benefit would understate well-e
 
 Cross-check (S11): Salesloft's flat 25% and 15% fall inside our benchmark and estimate bands, so the bands are consistent with the published practice while letting strongly backed inputs go lower.
 
+### 3.8 Input record and backing fields (added Nov 5, aligns with `plans/01a-input-structure.md`)
+
+The input team's form builds one record per input; the engine reads exactly these fields.
+
+- **Record:** `id, value (null = unknown), unit, period, low, high, tier, origin, basis (cost inputs only), backing (effect inputs only), note`.
+- **Roles:** `effect` (haircut and backing apply), `known` (validated, no haircut), `cost` (uplift from `basis`), `context` (never in a formula). Effect inputs are the change inputs: `minutes_per_task_before/after` (or `hours_saved_per_staff_week`), `realized_as_cash`, `error_rate_*` or `error_count_*`, `days_to_decide_before/after`, `aro_before/after`. **PROPOSED, pending Ryan:** also `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` (uncertain value-per-unit inputs; consistent with the guardrail that warns on `estimate`-tier cost of delay). If Ryan says no they become `known`.
+- **Backing fields the six checks need** (free text cannot be scored): `source_file_id` (check 1), `second_source_value` (check 2, within 20%), `observations` or `period_months` (check 3), `source_date` (check 4), `low`/`high` on the input (check 5), `verified` (check 6). `quote` and `quote_confirmed` are required with a file for a tier upgrade to `measured`.
+- **Cost basis:** each cost input carries `basis` (quoted / estimated / assumed); the engine derives the uplift (15 / 30 / 50%) per line. `cost_uplift_pct` stays as an optional override. **PROPOSED, pending Ryan.**
+- **Not haircut:** `adoption_by_year`, `recapture_pct`, `staff_affected`, `weeks_per_year`, `loaded_hourly_cost`, counts and settings.
+- **Measurement plan ids:** proposed `measurement_plan.<goal>.{metric, baseline, baseline_source, owner, frequency}`. Pending Ryan.
+
 ---
 
 ## 4. Driver modules (formulas for the engine)
@@ -238,8 +249,9 @@ project goals, and the input catalog from ROI.md section 3.
 
 STEP 1 DEFAULT CHECK. Call get_defaults. If default values are not filled, ask once:
 "Use industry defaults for the rest?" and list each default with its source and
-evidence tier. On yes, write them to form.json tagged tier=benchmark or
-team_assumption. On no, mark those inputs as required questions.
+evidence tier. On yes, write them to form.json with the default's own tier (from
+get_defaults) and origin=default (a default with no source is tier=assumption).
+On no, mark those inputs as required questions.
 
 STEP 2 MISSING CHECK. Call validate_inputs. Use file descriptions first; open a
 file only if its description cannot answer. PRE-FILL every value you can find in
@@ -251,11 +263,19 @@ ask one card, max 4 fields: label, unit, why it matters (info text), options:
 Confirm / Not sure / Use labeled proxy / Exclude. Ask only for inputs in the
 catalog for the chosen goals. Skip unrelated goals. Validate bounds (percent
 0-100, no negatives). In the SAME card as the value, capture its backing, because
-the engine's haircut and confidence depend on it:
-  - source: attach or point to a file (or say "my estimate"),
-  - period and sample: what time span / how many observations,
-  - range: low and high, not just one number,
-  - second source if one exists, and who verified it.
+the engine's haircut and confidence depend on it. Ask backing ONLY for effect
+inputs (ROI.md 3.8); known inputs and costs need only a value (costs also a basis).
+Write these exact fields (section 3.8), never free text in their place:
+  - source_file_id (attach or point to a file, or leave empty for "my estimate"),
+    plus quote and quote_confirmed when you pre-fill from a file,
+  - observations or period_months, and source_date (ISO),
+  - low and high, not just one number,
+  - second_source_value if one exists, and verified (+ verified_by).
+Map the user's plain answer to a tier (system report/file with confirmed quote =
+measured, written source about this org = documented, like-for-like industry figure
+= benchmark, own estimate = estimate); never set measured without a file and a
+confirmed quote, and never for a typed time saving. Write origin=assistant_accepted
+only after the user accepts. Use the ids in section 3 exactly. Unknown is value=null.
 Offer these as optional chips with defaults inferred from the files, so a user who
 has nothing to add taps Confirm and moves on. If a number looks like adoption above
 100, or duplicates another driver (same hours or events), ask to correct it now.
@@ -265,7 +285,8 @@ low-effect inputs that already have a labeled default.
 STEP 4 THE REST. Ask the open question: "Anything relevant we did not ask?"
 Store the answer in other_notes. Run propose_adjustment for any caveat; show it as
 a proposal. For each driver propose how it will be measured after launch
-(measurement plan inputs: metric, baseline, method, owner, how often).
+(measurement_plan.<goal>.{metric, baseline, baseline_source, owner, frequency};
+ids proposed in section 3.8, pending Ryan).
 
 STEP 5 PRE-FLIGHT (reduces surprises on the loading page). Call preflight_gate on
 the completed form. It runs validate_inputs and a dry run of the release gate

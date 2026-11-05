@@ -24,6 +24,18 @@ Hard rules: no arithmetic, no invented numbers, a suggestion is not used until t
 
 Loop: `validate_inputs`, then per driver `compute_haircut` per effect input and `compute_driver`, then `compute_project`, `sensitivity`, `get_confidence`, `release_gate`, then summary and measurement plan written **only from tool output with step refs**. Blockers: `ask_user` only if the value is not in the form, descriptions, files or defaults, **and** a proxy would change a headline number by more than 5% or push a driver below its floor, **and** it was not already asked; max 3 per run, batched; unanswered becomes Exclude. Confidence: call `get_confidence` after every tool call; publish only if `release_gate` passes; otherwise return the gap list. Never raise confidence by wording; only new evidence changes it. An integrity scan rejects any number in the narrative that is not in tool output or lacks a step ref.
 
+## Alignment with the parallel input build (read with `01a-input-structure.md`)
+
+The input team builds the form and the card UI while the assistant and engine are built here. These rules keep them compatible:
+
+- **One id list.** The assistant reads and writes only the ids in `ROI.md` section 3 (copied in `01a`). It never invents an id; an unknown id is a validation error.
+- **Roles decide what it asks.** Ask backing only for `effect` inputs (and `basis` for cost lines). `known` inputs need a value only. Never ask backing for adoption, staff, weeks or hourly cost.
+- **Write structured backing, not text.** `source_file_id`, `quote` + `quote_confirmed`, `second_source_value`, `observations` or `period_months`, `source_date`, `verified`, and `low`/`high`. These are what the engine's six checks read.
+- **Tier from the user's plain answer** (table in `01a` section 2). `measured` needs a file and a confirmed quote, and never applies to a typed time saving. A default keeps its own tier and `origin: default`; assistant suggestions get `origin: assistant_accepted` only after the user taps accept.
+- **Unknown is `value: null`**, never 0. "Not sure" leads to the labeled default or exclusion.
+- **Same card contract.** One card per gap, max 4 fields, options Confirm / Not sure / Use labeled default / Exclude, backing chips pre-filled from file passages. The form file shape and the `asked[]` log are the ones in `01a` section 8.
+- **Pending with Ryan:** whether `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are effect inputs; per-line cost `basis`; measurement plan ids (`ROI.md` 3.8). Until settled, the assistant asks backing for them and the engine treats them as effect inputs.
+
 ## Confidence (why this is deterministic)
 
 Integrity checks must all pass (bounds, reconciliation, traceability, no unresolved double count, no missing essential cost). Evidence confidence: input = 1 minus haircut; driver = min over its effect inputs; project = benefit-weighted mean of included drivers, capped by the weakest driver that is over 30% of benefit. Floors: drivers 0.80 / 0.80 / 0.85 / 0.85 (time, data quality, decision speed, risk); project 0.85. All thresholds are config values.

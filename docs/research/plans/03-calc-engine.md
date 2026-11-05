@@ -20,6 +20,18 @@ Per driver, in order: gross, adoption, recapture (capacity benefits only), evide
 - Always report hard-financial and capacity-inclusive results.
 - Bounds: percents 0-100, horizon 1-20, delay 0-240 months, counts integers, no negatives. Round half-up at presentation only. Unknown never becomes 0.
 
+## Engine input contract (aligned with `01a-input-structure.md`)
+
+The engine reads one form file of `Input` records (`ROI.md` section 3.8). Ids, units and bounds are `ROI.md` section 3; the input team builds against the same list.
+
+- **Roles:** `effect` inputs carry a tier and `backing` and get a haircut; `known` inputs are validated only; `cost` inputs get an uplift from their `basis`; `context` never enters a formula.
+- **Backing score:** the six checks read `source_file_id` (.25), `second_source_value` within 20% (.20), `observations` >= 30 or `period_months` >= 12 (.20), `source_date` under 12 months (.10), `low`/`high` within +/-20% (.15), `verified` (.10). A missing field is a failed check, never an error.
+- **Tier upgrade to `measured`:** only with `source_file_id` (same project) and `quote_confirmed`; otherwise the engine keeps the stated tier and records why.
+- **Unknown:** `value: null` or tier `user_unknown` never reaches a formula. An essential cost that is null blocks the headline; a null effect input drops its driver to `unquantified` and into the gap list.
+- **`validate_inputs` must reject:** unknown id, role/field mismatch (backing on a known input is ignored with a warning), out-of-bounds values, `after > before`, `source_file_id` from another project, bad adoption array length (must equal `horizon_years`).
+- **Defaults** come from one table used by both the form and `get_defaults`.
+- **Pending Ryan** (assumed until he decides): `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are effect inputs; cost `basis` per line with `cost_uplift_pct` as optional override; measurement plan ids.
+
 ## Driver modules
 
 - **Time savings (capacity value):** `hours = staff x (min_before - min_after) x tasks / 60`; `gross = hours x weeks x loaded rate`; `adjusted = gross x adoption_t x recapture x (1 - haircut)`. Hard savings only from a documented cash reduction.

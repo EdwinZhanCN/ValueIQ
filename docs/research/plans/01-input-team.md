@@ -1,6 +1,6 @@
 # Plan 01: Input team (Jonathan, Jeremiah)
 
-Read `README.md` first. Issues: #51 I1, #52 I2, #53 I3 (Ag1), #54 I4, #55 I5, #56 I6, #91 Q5, #93 Q7, #77 A6.
+Read `README.md` first, then **`01a-input-structure.md`: the field-by-field spec you build from** (ids, roles, bounds, defaults, backing fields). It is aligned with the engine and the assistant, which are built in parallel from the same ids (`ROI.md` section 3). Do not rename an id or change a unit without telling Ryan and Eli. Issues: #51 I1, #52 I2, #53 I3 (Ag1), #54 I4, #55 I5, #56 I6, #91 Q5, #93 Q7, #77 A6.
 
 ## Your goal
 
@@ -10,13 +10,13 @@ Define every question and every data and cost input per goal, build the intake f
 
 The ROI research changed what a good input is. Each input needs more than a value:
 
-| Per input field                                                                                               | Why                                                                                            |
-| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `value`, `unit`, `period`                                                                                     | basic                                                                                          |
-| `tier` (measured / documented / benchmark / estimate / assumption)                                            | sets the haircut band                                                                          |
-| `backing`: source file id, quoted passage, second source, period and sample size, low and high, verified flag | the engine slides the haircut with these; they decide whether a benefit can enter the headline |
-| `origin` (user, file, default, proxy accepted)                                                                | audit trail                                                                                    |
-| `low`, `high`                                                                                                 | a range, not just a point                                                                      |
+| Per input field                                                                                                                                                                                    | Why                                                                                                                                                               |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value`, `unit`, `period`                                                                                                                                                                          | basic                                                                                                                                                             |
+| `tier` (measured / documented / benchmark / estimate / assumption)                                                                                                                                 | sets the haircut band                                                                                                                                             |
+| `backing` (effect inputs only): `source_file_id`, `quote` + `quote_confirmed`, `second_source_value`, `observations` or `period_months`, `source_date`, `verified`; plus `low`/`high` on the input | the engine scores six yes/no checks from these exact fields and slides the haircut; free text cannot be scored. Full record in `01a-input-structure.md` section 2 |
+| `origin` (user, file, default, proxy accepted)                                                                                                                                                     | audit trail                                                                                                                                                       |
+| `low`, `high`                                                                                                                                                                                      | a range, not just a point                                                                                                                                         |
 
 So the answer to **Q5 is yes**: every input carries unit, source, period, and tier. Capture backing **in the same card** as the value (optional chips with defaults, so a user with nothing to add taps Confirm).
 

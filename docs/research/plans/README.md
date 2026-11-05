@@ -2,13 +2,14 @@
 
 Each file below is research context for one team. Read your file plus this one. Everything is proposed until your team agrees; change what does not fit, but record the change (Team Agreement: no undocumented assumptions).
 
-| File                 | Team               | Issues                 |
-| -------------------- | ------------------ | ---------------------- |
-| `01-input-team.md`   | Jonathan, Jeremiah | #51-#56, #91, #93, #77 |
-| `02-ai-assistant.md` | Eli                | #72-#77, #73, #92-#94  |
-| `03-calc-engine.md`  | Ryan, Eli          | #82-#87, #67, #96      |
-| `04-output.md`       | Ryan               | #65-#71, #62           |
-| `05-infra-db.md`     | Zihao              | #57-#64, #88-#90, #108 |
+| File                     | Team                                                                                | Issues                 |
+| ------------------------ | ----------------------------------------------------------------------------------- | ---------------------- |
+| `01-input-team.md`       | Jonathan, Jeremiah                                                                  | #51-#56, #91, #93, #77 |
+| `01a-input-structure.md` | Jonathan, Jeremiah (the field-by-field spec; aligned with the engine and assistant) | same as 01             |
+| `02-ai-assistant.md`     | Eli                                                                                 | #72-#77, #73, #92-#94  |
+| `03-calc-engine.md`      | Ryan, Eli                                                                           | #82-#87, #67, #96      |
+| `04-output.md`           | Ryan                                                                                | #65-#71, #62           |
+| `05-infra-db.md`         | Zihao                                                                               | #57-#64, #88-#90, #108 |
 
 Companion material (one folder up, `docs/research/`): `ROI.md` (formulas, inputs, tools, confidence gate, output shape), `SOURCES.md` (every source with status), `haircutResearch.md`, `reference/roi_prototype.py` (reference tests, run `python -I roi_prototype.py`). The integration contract is `.agents/exec-plans/active/integration-contract.md` (PR #109).
 
