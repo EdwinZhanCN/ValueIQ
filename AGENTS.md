@@ -6,6 +6,7 @@ Human setup and deployment commands live in [README.md](README.md).
 
 - Read [architecture](docs/architecture.md) before changing UI/server, agent, or storage boundaries.
 - Read [core beliefs](docs/core-beliefs.md) when changing assessment behavior or product scope.
+- Read the research plan for your own area in [docs/research/plans](docs/research/plans/README.md) (read the README, then only your file: input `01`, AI assistant `02`, calculation engine `03`, output `04`, infrastructure `05`). It is research context to review and build from, not a spec; `docs/research/ROI.md` and `SOURCES.md` back it.
 - Read only relevant unfinished plans in [.agents/exec-plans/active](.agents/exec-plans/active/README.md). Never read or cite `.agents/exec-plans/archive/`; it is human reference only.
 
 ## Repository map
