@@ -57,7 +57,7 @@ For an application regression, revert the offending change through a PR and rede
 
 D1 migration success is not undone by a later publish failure or Worker rollback. Introduce backward-compatible schema additions first, migrate usage/data, and remove obsolete fields in a later release. Keep applied SQL and Durable Object migration history unchanged. Test future schema changes locally before release; design a data recovery procedure when real stored data is introduced.
 
-Each Worker requires secret `BETTER_AUTH_SECRET` (`wrangler secret put BETTER_AUTH_SECRET --env development`, and again for `production`); set it before the first release that includes Better Auth. Accounts exist per environment, and no page uses them yet. Keep test data in development; there is no working assessment backend.
+Each Worker requires secret `BETTER_AUTH_SECRET` (`wrangler secret put BETTER_AUTH_SECRET --env development`, and again for `production`); set it before the first release that includes Better Auth. Accounts and teams exist per environment. Keep test data in development; there is no working assessment backend.
 
 ## References
 

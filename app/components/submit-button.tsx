@@ -12,17 +12,19 @@ import { Spinner } from "./ui/spinner";
 export function SubmitButton({
   children,
   className,
+  pendingLabel = "Saving…",
   ...props
 }: {
   children: string;
   className?: string;
+  pendingLabel?: string;
 } & Omit<ComponentProps<typeof Button>, "children" | "type">) {
   const busy = useNavigation().state !== "idle";
   return (
     <Button type="submit" disabled={busy} className={className} {...props}>
       {busy ? <Spinner className="size-4" /> : null}
       <ActionSwapText value={busy ? "busy" : "idle"}>
-        {busy ? "Saving…" : children}
+        {busy ? pendingLabel : children}
       </ActionSwapText>
     </Button>
   );
