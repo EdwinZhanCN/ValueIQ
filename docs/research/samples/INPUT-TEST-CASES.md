@@ -28,27 +28,30 @@ Goals: `time_savings`, `data_quality`, `risk_reduction`. Currency USD. `horizon_
 
 Backing checks use the six structured fields in `01a` section 2. "Checks" below means which of source / corroborated / coverage / recent / tight range / verified are true for that input.
 
-| Input id                       | Value            | Tier       | Checks true (backing)                           |
-| ------------------------------ | ---------------- | ---------- | ----------------------------------------------- |
-| `staff_affected`               | 10               | known      | none needed                                     |
-| `hours_saved_per_staff_week`   | 5                | documented | source, verified                                |
-| `weeks_per_year`               | 40               | known      | none needed                                     |
-| `loaded_hourly_cost`           | 50               | known      | none needed                                     |
-| `recapture_pct`                | 50               | default    | origin default, tier benchmark                  |
-| `records_or_events_per_year`   | 600              | known      | not used by the formula when counts given       |
-| `error_count_before`           | 72               | documented | source, coverage, recent                        |
-| `error_count_after`            | 24               | documented | source, coverage, recent                        |
-| `cost_per_error`               | 690              | documented | source, coverage, recent                        |
-| `cost_sources`                 | ["expedite"]     | context    | none                                            |
-| `event_type`                   | sustained outage | context    | none                                            |
-| `aro_before`                   | 3                | documented | source, verified                                |
-| `aro_after`                    | 1.5              | documented | source, verified                                |
-| `loss_per_event`               | 25000            | documented | source, coverage, recent, tight range, verified |
-| `cost_bearer`                  | organization     | context    | none                                            |
-| `cost_one_time_vendor_license` | 30000            | cost       | basis quoted                                    |
-| `cost_training_change`         | 5000             | cost       | basis estimated                                 |
-| `cost_annual_run`              | 12000            | cost       | basis quoted                                    |
-| `delay_months`                 | 0                | known      | none needed                                     |
+| Input id                       | Value            | Tier       | Checks true (backing)                                                           |
+| ------------------------------ | ---------------- | ---------- | ------------------------------------------------------------------------------- |
+| `staff_affected`               | 10               | known      | none needed                                                                     |
+| `hours_saved_per_staff_week`   | 5                | documented | source, verified                                                                |
+| `weeks_per_year`               | 40               | known      | none needed                                                                     |
+| `loaded_hourly_cost`           | 50               | known      | none needed                                                                     |
+| `recapture_pct`                | 50               | default    | origin default, tier benchmark                                                  |
+| `records_or_events_per_year`   | 600              | known      | not used by the formula when counts given                                       |
+| `error_count_before`           | 72               | documented | source, coverage, recent                                                        |
+| `error_count_after`            | 24               | documented | source, coverage, recent                                                        |
+| `cost_per_error`               | 690              | documented | source, coverage, recent                                                        |
+| `cost_sources`                 | ["expedite"]     | context    | none                                                                            |
+| `cost_nature`                  | cash             | context    | none (required for `sample-result`: it is what makes data quality hard savings) |
+| `event_type`                   | sustained outage | context    | none                                                                            |
+| `aro_before`                   | 3                | documented | source, verified                                                                |
+| `aro_after`                    | 1.5              | documented | source, verified                                                                |
+| `loss_per_event`               | 25000            | documented | source, coverage, recent, tight range, verified                                 |
+| `cost_bearer`                  | organization     | context    | none                                                                            |
+| `cost_one_time_vendor_license` | 30000            | cost       | basis quoted                                                                    |
+| `cost_training_change`         | 5000             | cost       | basis estimated                                                                 |
+| `cost_annual_run`              | 12000            | cost       | basis quoted                                                                    |
+| `delay_months`                 | 0                | known      | none needed                                                                     |
+
+**Added Nov 5 (engine build):** the engine needs `cost_nature` (cash or capacity). Without `cost_nature = cash` on the data quality inputs the benefit is classed as capacity value and the output will not match `sample-result.json`. Two optional guardrail inputs also exist: `vendor_supplied` (boolean on an input, true if the number came from the vendor) and `cost_sources` containing `rework` when the same hours are counted under time savings. See `plans/01a-input-structure.md`.
 
 Attach a file reference (any id from the same project) wherever "source" is true. Do not set `measured` anywhere. The measurement plan can be left empty.
 
