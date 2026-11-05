@@ -4,7 +4,7 @@ import type { Route } from "./+types/projects.files.download";
 
 /** Streams a project file through the Worker; the bucket is never public. */
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const access = await requireProjectAccess(request, params.id);
+  const access = await requireProjectAccess(request, params.projectId);
   const found = await readProjectFile(params.fileId, access.projectId);
   if (!found) throw new Response("Not found", { status: 404 });
 

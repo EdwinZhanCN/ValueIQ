@@ -14,13 +14,16 @@ import {
  *               the project/assessment backend on purpose.
  * - `/api/auth/*` Better Auth's endpoints (sign-up, sign-in, sessions, teams).
  * - `/projects`  signed-in project pages, in their own layout.
- * - `/projects/:id/files` upload action and `/projects/:id/files/:fileId`
+ * - `/projects/:projectId/files` upload action and `/projects/:projectId/files/:fileId`
  *               download: resource routes, no page.
  */
 export default [
   route("api/auth/*", "routes/api.auth.ts"),
-  route("projects/:id/files", "routes/projects.files.ts"),
-  route("projects/:id/files/:fileId", "routes/projects.files.download.ts"),
+  route("projects/:projectId/files", "routes/projects.files.ts"),
+  route(
+    "projects/:projectId/files/:fileId",
+    "routes/projects.files.download.ts",
+  ),
   layout("routes/site-layout.tsx", [index("routes/home.tsx")]),
   layout("routes/workspace-layout.tsx", [
     route("workspace", "routes/workspace.tsx"),

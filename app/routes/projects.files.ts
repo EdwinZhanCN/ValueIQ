@@ -22,7 +22,7 @@ function fail(error: UploadError) {
 
 /** Upload one described file into the project. Posted to by `FileUpload`. */
 export async function action({ request, params }: Route.ActionArgs) {
-  const access = await requireProjectAccess(request, params.id);
+  const access = await requireProjectAccess(request, params.projectId);
 
   if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
     return fail("too_large");
