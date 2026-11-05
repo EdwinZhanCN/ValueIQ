@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { existsSync } from "node:fs";
 import { createServer } from "node:net";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -30,6 +31,26 @@ function cli(packagePath, args, options = {}) {
       ...options,
     },
   );
+}
+
+// Sign-up needs the local tables and a session secret. Migrations are
+// idempotent, so apply them here rather than relying on earlier steps.
+async function prepare() {
+  if (!existsSync(".dev.vars")) {
+    throw new Error(
+      "Missing .dev.vars: copy .dev.vars.example and set BETTER_AUTH_SECRET.",
+    );
+  }
+  const migrate = cli(
+    "wrangler/bin/wrangler.js",
+    ["d1", "migrations", "apply", "valueiq", "--local"],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let output = "";
+  migrate.stdout.on("data", (chunk) => (output += chunk));
+  migrate.stderr.on("data", (chunk) => (output += chunk));
+  const [code] = await once(migrate, "exit");
+  if (code !== 0) throw new Error(`Local D1 migrations failed:\n${output}`);
 }
 
 async function start() {
@@ -92,6 +113,7 @@ async function get(path, expected = 200) {
 }
 
 try {
+  await prepare();
   await start();
 
   // Marketing surface: site chrome, plus a way into the workspace.
@@ -108,11 +130,35 @@ try {
     "Workspace still renders the site header",
   );
 
-  // The project and assessment UI routes are disconnected on purpose.
+  // Better Auth runs on local D1: sign-up returns a session the server reads
+  // back. Better Auth rejects a POST without a matching Origin.
+  const email = `smoke-${Date.now()}@example.test`;
+  const signUp = await fetch(origin + "/api/auth/sign-up/email", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin },
+    body: JSON.stringify({
+      email,
+      password: "smoke-password-1",
+      name: "Smoke",
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  assert.equal(signUp.status, 200, `sign-up: ${await signUp.text()}`);
+  const cookie = signUp.headers
+    .getSetCookie()
+    .map((value) => value.split(";")[0])
+    .join("; ");
+  const session = await fetch(origin + "/api/auth/get-session", {
+    headers: { cookie },
+    signal: AbortSignal.timeout(15000),
+  });
+  assert.equal((await session.json())?.user?.email, email, "No session");
+
+  // No project pages yet.
   await get("/projects", 404);
 
   console.log(
-    "Smoke passed: landing chrome, fullscreen workspace, disconnected backend routes.",
+    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, no project pages yet.",
   );
 } catch (error) {
   console.error(logs);
