@@ -25,6 +25,8 @@ ValueIQ is a technology-stack skeleton for a project value assessment product. W
 
 Neither surface has a loader or an action. `/workspace` provides a local intake preview: project name, multiple goals, an optional decision, a project description file, and described data-file groups. Review validates local entries only. Files remain in memory and are neither read nor uploaded; nothing is saved and no assessment runs. Temporary selection limits are 10 files total and 10 MB per file until #55 / Q7 settles upload limits. Persistence and the shared form contract remain dependent on #53 and #58.
 
+The intake preview keeps optional `other_notes` and a required description for any selected project document, alongside data-file group descriptions. Review preserves these values and explicitly identifies a missing decision and the financial/evidence collection still needed before assessment. These are local UI fields, not an adoption of the I3 contract proposal or a readiness/confidence gate.
+
 ## Empty shells
 
 The application layer is structure without behaviour, and nothing fabricates a result:

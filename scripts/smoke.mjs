@@ -103,6 +103,11 @@ try {
   // wrapped around it.
   const workspace = await get("/workspace");
   assert.match(workspace, /Project intake/, "Intake interface missing");
+  assert.match(
+    workspace,
+    /other_notes/,
+    "Intake lost its additional context field",
+  );
   assert(
     !workspace.includes('aria-label="Main"'),
     "Workspace still renders the site header",

@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import {
   ArrowLeft,
@@ -33,12 +33,25 @@ export function IntakeForm() {
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [decision, setDecision] = useState("");
+  const [otherNotes, setOtherNotes] = useState("");
   const [projectFile, setProjectFile] = useState<File | null>(null);
+  const [projectDescription, setProjectDescription] = useState("");
   const [groups, setGroups] = useState<FileGroup[]>([]);
   const [fileError, setFileError] = useState("");
   const [goalError, setGoalError] = useState(false);
   const [review, setReview] = useState(false);
   const goalRef = useRef<HTMLInputElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const reviewButtonRef = useRef<HTMLButtonElement>(null);
+  const hasReviewed = useRef(false);
+  useEffect(() => {
+    if (review) {
+      hasReviewed.current = true;
+      headingRef.current?.focus();
+    } else if (hasReviewed.current) {
+      reviewButtonRef.current?.focus();
+    }
+  }, [review]);
   const nextId = useRef(1);
   const count =
     groups.reduce((sum, group) => sum + group.files.length, 0) +
@@ -63,6 +76,16 @@ export function IntakeForm() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Recheck trimmed values after review/edit remounts the controls. Native
+    // required validation alone accepts whitespace-only descriptions.
+    for (const textarea of event.currentTarget.querySelectorAll<HTMLTextAreaElement>(
+      "textarea[required]",
+    )) {
+      textarea.setCustomValidity(
+        textarea.value.trim() ? "" : "Describe what these files contain.",
+      );
+    }
+    if (!event.currentTarget.reportValidity()) return;
     if (!selected.length) {
       setGoalError(true);
       goalRef.current?.focus();
@@ -100,7 +123,11 @@ export function IntakeForm() {
             </span>
           </div>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              className="text-2xl font-semibold tracking-tight outline-none"
+            >
               {review ? "Review intake" : "Intake"}
             </h1>
             <ol
@@ -150,6 +177,14 @@ export function IntakeForm() {
                     </dd>
                   </div>
                 )}
+                {!decision.trim() && (
+                  <div>
+                    <dt className="text-muted-foreground">Decision</dt>
+                    <dd>
+                      Not provided. Clarify the decision before calculation.
+                    </dd>
+                  </div>
+                )}
                 <div>
                   <dt className="text-muted-foreground">
                     Project description file
@@ -157,6 +192,11 @@ export function IntakeForm() {
                   <dd className="break-all">
                     {projectFile?.name ?? "None selected"}
                   </dd>
+                  {projectFile && (
+                    <dd className="mt-1 whitespace-pre-wrap break-words">
+                      {projectDescription.trim()}
+                    </dd>
+                  )}
                 </div>
                 {groups.map((group) => (
                   <div key={group.id}>
@@ -168,7 +208,24 @@ export function IntakeForm() {
                     </dd>
                   </div>
                 ))}
+                {otherNotes.trim() && (
+                  <div>
+                    <dt className="text-muted-foreground">Other notes</dt>
+                    <dd className="whitespace-pre-wrap break-words">
+                      {otherNotes.trim()}
+                    </dd>
+                  </div>
+                )}
               </dl>
+              <div className="mt-6 rounded-lg border p-4 text-sm">
+                <h3 className="font-medium">What still needs clarification</h3>
+                <p className="mt-1 text-muted-foreground">
+                  Financial settings, goal-specific values, costs and supporting
+                  evidence are collected in the next stage. Reviewing this draft
+                  does not mean it is ready for calculation. Notes and file
+                  descriptions do not become numeric inputs automatically.
+                </p>
+              </div>
               <p role="status" className="mt-6 rounded-lg bg-muted p-4 text-sm">
                 Intake checked locally. Nothing has been uploaded or saved.
                 Saving and continuing to the assistant will be available when
@@ -272,6 +329,31 @@ export function IntakeForm() {
                     className={field}
                     placeholder="Should we automate the weekly reporting process?"
                   />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    You can leave this blank for now; the assessment will need a
+                    clear decision before calculation.
+                  </p>
+                  <label
+                    htmlFor="other-notes"
+                    className="mb-2 mt-6 block text-sm font-medium"
+                  >
+                    Anything relevant we did not ask?{" "}
+                    <span className="text-muted-foreground">(optional)</span>
+                  </label>
+                  <textarea
+                    id="other-notes"
+                    name="other_notes"
+                    maxLength={2000}
+                    rows={3}
+                    value={otherNotes}
+                    onChange={(event) => setOtherNotes(event.target.value)}
+                    className={field}
+                    placeholder="Constraints, additional benefits, risks, or assumptions to discuss."
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    These notes provide context. Any proposed change to an
+                    assessment value needs your acceptance.
+                  </p>
                 </section>
                 <section className={panel} aria-labelledby="files-title">
                   <h2 id="files-title" className="text-sm font-semibold">
@@ -314,24 +396,60 @@ export function IntakeForm() {
                         );
                         return;
                       }
-                      if (validateFiles([file], count - (projectFile ? 1 : 0)))
+                      if (
+                        validateFiles([file], count - (projectFile ? 1 : 0))
+                      ) {
                         setProjectFile(file);
+                        setProjectDescription("");
+                      }
                     }}
                   />
                   {projectFile && (
-                    <div className="mt-3 flex items-center gap-2 rounded-lg bg-muted p-3 text-sm">
-                      <FileText className="size-4 shrink-0" />
-                      <span className="min-w-0 flex-1 break-all">
-                        {projectFile.name}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label={`Remove ${projectFile.name}`}
-                        onClick={() => setProjectFile(null)}
-                        className="rounded p-2 hover:bg-background"
+                    <div className="mt-3 rounded-lg bg-muted p-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <FileText className="size-4 shrink-0" />
+                        <span className="min-w-0 flex-1 break-all">
+                          {projectFile.name}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${projectFile.name}`}
+                          onClick={() => {
+                            setProjectFile(null);
+                            setProjectDescription("");
+                            setFileError("");
+                          }}
+                          className="rounded p-2 hover:bg-background"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                      <label
+                        htmlFor="project-file-description"
+                        className="mb-2 mt-3 block text-sm"
                       >
-                        <Trash2 className="size-4" />
-                      </button>
+                        Project file description (required)
+                      </label>
+                      <textarea
+                        id="project-file-description"
+                        name="project_file_description"
+                        required
+                        maxLength={2000}
+                        rows={3}
+                        value={projectDescription}
+                        onChange={(event) =>
+                          setProjectDescription(event.target.value)
+                        }
+                        onInput={(event) =>
+                          event.currentTarget.setCustomValidity(
+                            event.currentTarget.value.trim()
+                              ? ""
+                              : "Describe what this project document contains.",
+                          )
+                        }
+                        className={field}
+                        placeholder="What does this document explain about the project?"
+                      />
                     </div>
                   )}
                   <div className="mb-3 mt-6 border-t pt-5">
@@ -469,6 +587,7 @@ export function IntakeForm() {
                   Back
                 </Link>
                 <button
+                  ref={reviewButtonRef}
                   type="submit"
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
                 >
