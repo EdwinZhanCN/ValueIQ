@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "goals": ["time_savings"],
+  "currency": "USD",
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "inputs": [
+    {
+      "id": "project_name",
+      "value": "Engine handoff fixture",
+      "unit": "text",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "decision_statement",
+      "value": "Should we fund the proposed operations improvement?",
+      "unit": "text",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "discount_rate_pct",
+      "value": 10,
+      "unit": "percent",
+      "tier": "benchmark",
+      "origin": "default",
+      "note": "Default accepted for this test: Forrester TEI 10%, per case specification."
+    },
+    {
+      "id": "adoption_by_year",
+      "value": [50, 80, 90],
+      "unit": "percent",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "staff_affected",
+      "value": 2.5,
+      "unit": "count",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "weeks_per_year",
+      "value": 40,
+      "unit": "weeks",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "loaded_hourly_cost",
+      "value": 50,
+      "unit": "currency/h",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "recapture_pct",
+      "value": 50,
+      "unit": "percent",
+      "tier": "benchmark",
+      "origin": "default",
+      "note": "Default specified by INPUT-TEST-CASES.md; Nucleus productivity factor."
+    },
+    {
+      "id": "cost_one_time_vendor_license",
+      "value": 30000,
+      "unit": "currency",
+      "tier": "documented",
+      "origin": "user",
+      "period": "one_time",
+      "basis": "quoted"
+    },
+    {
+      "id": "cost_annual_run",
+      "value": 12000,
+      "unit": "currency/yr",
+      "tier": "documented",
+      "origin": "user",
+      "period": "per_year",
+      "basis": "quoted"
+    },
+    {
+      "id": "hours_saved_per_staff_week",
+      "value": 5,
+      "unit": "hours",
+      "tier": "estimate",
+      "origin": "user",
+      "period": "per_week",
+      "backing": {
+        "source_date": "2026-10-01"
+      }
+    }
+  ],
+  "file_descriptions": {},
+  "other_notes": "Synthetic pre-integration fixture; no real project or file was uploaded.",
+  "measurement_plan": {},
+  "asked": []
+}

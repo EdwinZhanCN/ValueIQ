@@ -1,0 +1,168 @@
+{
+  "reference_date": "2026-11-05T12:00:00.000Z",
+  "context": {
+    "projectId": "fixture-project",
+    "files": [
+      {
+        "id": "fixture-time",
+        "projectId": "fixture-project"
+      },
+      {
+        "id": "fixture-errors",
+        "projectId": "fixture-project"
+      },
+      {
+        "id": "fixture-risk",
+        "projectId": "fixture-project"
+      },
+      {
+        "id": "foreign-project-file",
+        "projectId": "another-project"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "sample-result",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "sample-gap-list",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "invalid-adoption-105",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "BOUNDS",
+          "field": "adoption_by_year",
+          "message": "Value is outside the permitted range."
+        }
+      ]
+    },
+    {
+      "id": "invalid-negative-cost",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "BOUNDS",
+          "field": "cost_one_time_vendor_license",
+          "message": "Value is outside the permitted range."
+        }
+      ]
+    },
+    {
+      "id": "invalid-noninteger-count",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "INTEGER",
+          "field": "staff_affected",
+          "message": "Expected a whole number."
+        }
+      ]
+    },
+    {
+      "id": "invalid-horizon-0",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "HORIZON",
+          "field": "horizon_years",
+          "message": "Use an integer from 1 to 20."
+        }
+      ]
+    },
+    {
+      "id": "invalid-horizon-21",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "HORIZON",
+          "field": "horizon_years",
+          "message": "Use an integer from 1 to 20."
+        }
+      ]
+    },
+    {
+      "id": "invalid-delay-241",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "BOUNDS",
+          "field": "delay_months",
+          "message": "Value is outside the permitted range."
+        }
+      ]
+    },
+    {
+      "id": "invalid-after-gt-before",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "AFTER_BEFORE",
+          "field": "minutes_per_task_after",
+          "message": "After must be less than before."
+        }
+      ]
+    },
+    {
+      "id": "invalid-adoption-length",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "ADOPTION_LENGTH",
+          "field": "adoption_by_year",
+          "message": "Provide one adoption value per horizon year."
+        }
+      ]
+    },
+    {
+      "id": "invalid-unknown-id",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "UNKNOWN_ID",
+          "field": "not_in_field_spec",
+          "message": "Unknown field ID."
+        }
+      ]
+    },
+    {
+      "id": "invalid-wrong-file",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "FOREIGN_FILE",
+          "field": "hours_saved_per_staff_week",
+          "message": "Source file must belong to this project and have a description."
+        }
+      ]
+    },
+    {
+      "id": "invalid-null-essential",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "ESSENTIAL_COST",
+          "field": "cost_one_time_vendor_license",
+          "message": "Essential cost is missing or unknown."
+        }
+      ]
+    },
+    {
+      "id": "invalid-measured-typed",
+      "expected": "rejected",
+      "issues": [
+        {
+          "code": "MEASURED_TYPED",
+          "field": "hours_saved_per_staff_week",
+          "message": "Measured values require file origin, a source file and a confirmed quote; typed time savings cannot be measured."
+        }
+      ]
+    }
+  ]
+}

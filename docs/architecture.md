@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ is a technology-stack skeleton for a project value assessment product. What exists is the chosen stack, wired end to end, plus two interface surfaces. Identity and the first tables are in place (Better Auth, teams, projects, form files, uploads, team settings); the account and project pages use them; there is still no agent state, no agent tools, and no shared domain types. Nothing in the repository pretends otherwise.
+ValueIQ is a technology-stack skeleton for a project value assessment product. What exists is the chosen stack, wired end to end, plus two interface surfaces. Identity and the first tables are in place (Better Auth, teams, projects, form files, uploads, team settings); the account and project pages use them. A shared form wire type and independent form serializer/validator support pre-integration engine fixtures; they are not connected to the intake UI or saved projects. There is still no agent state or agent tools. Nothing in the repository pretends otherwise.
 
 ## Stack
 
@@ -42,10 +42,12 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 
 ## Empty shells
 
+The Input team's pre-integration wire type is `shared/form.ts`. `app/lib/intake-form.ts` owns serialization, parsing, field/evidence validation and preserving accepted state on rejected edits; it imports no engine or storage code. `pnpm fixtures:forms` produces deterministic engine handoff files from typed form state, including explicit rejected candidates for negative tests. `pnpm test:forms` runs the boundary checks and detects stale generated fixtures. The existing project JSON placeholder and intake UI are not connected to this numerical form model yet. [Fixture handoff and compatibility notes](../engine/fixtures/forms/README.md) record differences from the old research skeleton and #127 proposal; these shared form types are the narrow exception to the remaining undecided domain contracts below.
+
 - `agents/valueiq-agent.ts` — an empty `ValueIQAgent` Durable Object: no state shape, no tools, no RPC methods.
 - `app/context.server.ts` — typed Worker bindings for loaders and actions.
 
-Undecided on purpose: agent state, agent tools, application skill conventions, and every shared domain type. Add them when the design is settled and reconnect a surface to them deliberately.
+Undecided on purpose: agent state, agent tools, application skill conventions, and additional shared domain types beyond the form handoff above. Add them when the design is settled and reconnect a surface to them deliberately.
 
 ## Runtime and generated artifacts
 
