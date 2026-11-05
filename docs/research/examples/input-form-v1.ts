@@ -1,0 +1,310 @@
+import type { FormFile, Input } from "../../../shared/types";
+
+// Synthetic fixture only. These file IDs describe hypothetical uploaded records;
+// they are not real storage IDs and must never be seeded as a saved project.
+const user = {
+  tier: "documented",
+  origin: "user",
+  source:
+    "Synthetic example: operations manager's written planning assumptions.",
+} as const;
+const source = {
+  tier: "measured",
+  origin: "file",
+  source:
+    "Synthetic example: operations time study, confirmed by process owner.",
+} as const;
+const known = (
+  id: Input["id"],
+  value: number,
+  unit: string,
+  period?: Input["period"],
+): Input => ({ id, value, unit, ...user, ...(period ? { period } : {}) });
+
+export const exampleForm = {
+  contract_version: 1,
+  project_name: "Weekly reporting automation (synthetic example)",
+  decision_statement:
+    "Should we fund reporting automation to free staff capacity and reduce outage-related loss?",
+  goals: ["time_savings", "risk_reduction"],
+  currency: "USD",
+  horizon_years: 3,
+  discount_rate_pct: 10,
+  adoption_by_year: [60, 85, 90],
+  setting_evidence: {
+    currency: {
+      ...user,
+      source: "Synthetic example: finance confirms all amounts in USD.",
+    },
+    horizon_years: {
+      tier: "assumption",
+      origin: "proxy_accepted",
+      source:
+        "Accepted team proxy: 3 years; Priya/Nucleus practice; team assumption.",
+    },
+    discount_rate_pct: {
+      tier: "benchmark",
+      origin: "proxy_accepted",
+      source:
+        "Accepted team proxy: Forrester TEI Salesloft 2022 Appendix A (ROI.md S11).",
+    },
+    adoption_by_year: {
+      ...user,
+      source: "Synthetic example: change owner's year-by-year rollout plan.",
+    },
+  },
+  inputs: [
+    {
+      id: "cost_one_time_vendor_license",
+      value: 40000,
+      unit: "currency",
+      period: "one_time",
+      basis: "quoted",
+      ...user,
+      source:
+        "Synthetic example: vendor quote, including integration and migration.",
+    },
+    {
+      id: "cost_one_time_internal_labor",
+      value: null,
+      unit: "FTE-months x loaded rate",
+      period: "one_time",
+      tier: "user_unknown",
+      origin: "user",
+      source: "Synthetic example: delivery estimate not yet available.",
+      unknown_reason:
+        "Delivery owner must supply FTE-months and compatible rate; do not assume zero.",
+    },
+    {
+      id: "cost_training_change",
+      value: 2000,
+      unit: "currency",
+      period: "one_time",
+      basis: "estimated",
+      tier: "estimate",
+      origin: "user",
+      source: "Synthetic example: training owner's estimate.",
+    },
+    {
+      id: "cost_annual_run",
+      value: 6000,
+      unit: "currency/yr",
+      period: "per_year",
+      basis: "quoted",
+      ...user,
+      source: "Synthetic example: recurring license and hosting quote.",
+    },
+    {
+      id: "cost_annual_internal_support",
+      value: null,
+      unit: "FTE x rate",
+      period: "per_year",
+      tier: "user_unknown",
+      origin: "user",
+      source: "Synthetic example: support estimate pending.",
+      unknown_reason:
+        "Service owner has not estimated support effort and rate.",
+    },
+    known("delay_months", 2, "months"),
+    {
+      id: "baseline_alternative",
+      value:
+        "Continue manual reporting and current outage controls; no separately quantified baseline cost.",
+      unit: "text + currency",
+      ...user,
+    },
+    known("staff_affected", 10, "count"),
+    {
+      id: "hours_saved_per_staff_week",
+      value: 5,
+      unit: "hours",
+      period: "per_week",
+      low: 4.5,
+      high: 5.5,
+      ...source,
+      backing: {
+        source_file_id: "example-time-study",
+        quote:
+          "The pilot saves five hours per person per week across ten staff.",
+        quote_confirmed: true,
+        observations: 50,
+        period_months: 12,
+        source_date: "2026-10-01",
+        verified: true,
+        verified_by: "Synthetic process owner",
+      },
+    },
+    {
+      id: "weeks_per_year",
+      value: 48,
+      unit: "weeks",
+      tier: "assumption",
+      origin: "proxy_accepted",
+      source:
+        "Accepted proxy: 48 working weeks, Priya / Sprint 1; team assumption.",
+    },
+    known("loaded_hourly_cost", 50, "currency/h"),
+    {
+      id: "recapture_pct",
+      value: 50,
+      unit: "percent",
+      tier: "benchmark",
+      origin: "proxy_accepted",
+      source:
+        "Accepted proxy: Nucleus C41 average/conservative productivity correction factor.",
+    },
+    {
+      id: "realized_as_cash",
+      value: null,
+      unit: "currency/yr",
+      period: "per_year",
+      tier: "user_unknown",
+      origin: "user",
+      source:
+        "Synthetic example: finance has no documented spending reduction.",
+      unknown_reason:
+        "Excluded: no payroll or overtime reduction documented; report freed time as capacity only.",
+    },
+    {
+      id: "event_type",
+      value: "Sustained reporting service outage",
+      unit: "text",
+      ...user,
+    },
+    {
+      id: "aro_before",
+      value: 0.5,
+      unit: "events/yr",
+      period: "per_year",
+      low: 0.4,
+      high: 0.6,
+      ...user,
+      source: "Synthetic example: service owner's written incident analysis.",
+      backing: {
+        source_file_id: "example-incident-analysis",
+        quote: "One comparable outage occurred over two years.",
+        quote_confirmed: true,
+        period_months: 24,
+        source_date: "2026-10-01",
+        verified: true,
+        verified_by: "Synthetic service owner",
+      },
+    },
+    {
+      id: "aro_after",
+      value: 0.25,
+      unit: "events/yr",
+      period: "per_year",
+      low: 0.2,
+      high: 0.3,
+      tier: "estimate",
+      origin: "user",
+      source:
+        "Synthetic example: risk owner's forecast, not measured incident data.",
+      backing: { verified: true, verified_by: "Synthetic risk owner" },
+    },
+    {
+      id: "loss_per_event",
+      value: 20000,
+      unit: "currency",
+      period: "per_event",
+      low: 16000,
+      high: 24000,
+      ...user,
+      source:
+        "Synthetic example: incident analysis of recovery spending; excludes reporting staff hours claimed as capacity.",
+      backing: {
+        source_file_id: "example-incident-analysis",
+        quote:
+          "Direct recovery spending was USD 20,000; reporting staff time is excluded.",
+        quote_confirmed: true,
+        source_date: "2026-10-01",
+        verified: true,
+        verified_by: "Synthetic finance owner",
+      },
+    },
+    { id: "cost_bearer", value: "organization", unit: "enum", ...user },
+  ],
+  files: [
+    { id: "example-project-brief", kind: "project_description" },
+    { id: "example-time-study", kind: "data" },
+    { id: "example-incident-analysis", kind: "data" },
+    { id: "example-vendor-quote", kind: "data" },
+  ],
+  file_groups: [
+    {
+      id: "brief",
+      file_ids: ["example-project-brief"],
+      description:
+        "Synthetic project brief describing reporting automation and outage controls.",
+    },
+    {
+      id: "operational-evidence",
+      file_ids: ["example-time-study", "example-incident-analysis"],
+      description:
+        "Synthetic pilot time study and incident analysis; capacity time and recovery spending are separate.",
+    },
+    {
+      id: "cost-evidence",
+      file_ids: ["example-vendor-quote"],
+      description:
+        "Synthetic vendor quote covering implementation, license and hosting.",
+    },
+  ],
+  file_descriptions: {
+    "example-project-brief":
+      "Synthetic project brief describing reporting automation and outage controls.",
+    "example-time-study":
+      "Synthetic pilot time study and incident analysis; capacity time and recovery spending are separate.",
+    "example-incident-analysis":
+      "Synthetic pilot time study and incident analysis; capacity time and recovery spending are separate.",
+    "example-vendor-quote":
+      "Synthetic vendor quote covering implementation, license and hosting.",
+  },
+  other_notes:
+    "Evidence-complete envelope, not a release-ready assessment. Internal effort is unknown. Risk forecast remains an estimate and needs stronger backing or exclusion. No numeric headline is asserted.",
+  measurement_plan: {
+    time_savings: {
+      metric: "system_report",
+      baseline: "Manual weekly reporting effort from the time study",
+      baseline_source: "example-time-study",
+      owner: "Operations manager",
+      frequency: "Monthly for the first quarter",
+    },
+    risk_reduction: {
+      metric: "audit",
+      baseline: "One comparable outage over two years",
+      baseline_source: "example-incident-analysis",
+      owner: "Service owner",
+      frequency: "Quarterly, with annual incident-rate review",
+    },
+  },
+  asked: [
+    "project_name",
+    "decision_statement",
+    "goals",
+    "currency",
+    "horizon_years",
+    "discount_rate_pct",
+    "adoption_by_year",
+    "cost_one_time_vendor_license",
+    "cost_one_time_internal_labor",
+    "cost_training_change",
+    "cost_annual_run",
+    "cost_annual_internal_support",
+    "delay_months",
+    "baseline_alternative",
+    "staff_affected",
+    "hours_saved_per_staff_week",
+    "weeks_per_year",
+    "loaded_hourly_cost",
+    "recapture_pct",
+    "realized_as_cash",
+    "event_type",
+    "aro_before",
+    "aro_after",
+    "loss_per_event",
+    "cost_bearer",
+    "other_notes",
+  ],
+} satisfies FormFile;

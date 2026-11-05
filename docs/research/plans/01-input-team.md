@@ -1,5 +1,7 @@
 # Plan 01: Input team (Jonathan, Jeremiah)
 
+I2/I3 follow-up (Nov 5): [input handoff v1](input-contract-v1.md) proposes the complete envelope, question/default catalog, conditional paths and a synthetic example. It reconciles the later `team_settings` decision with the original hardcoded-default wording. This is a review proposal, not an owner-approved runtime contract; I6 serialization and real save/upload integration remain pending.
+
 Read `README.md` first, then **`01a-input-structure.md`: the field-by-field spec you build from** (ids, roles, bounds, defaults, backing fields). It is aligned with the engine and the assistant, which are built in parallel from the same ids (`ROI.md` section 3). Do not rename an id or change a unit without telling Eli (sole owner of the engine and assistant). Issues: #51 I1, #52 I2, #53 I3 (Ag1), #54 I4, #55 I5, #56 I6, #91 Q5, #93 Q7, #77 A6.
 
 ## Your goal

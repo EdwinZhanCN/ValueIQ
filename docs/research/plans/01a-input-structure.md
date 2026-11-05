@@ -2,6 +2,8 @@
 
 Companion to `01-input-team.md`. Read `README.md` first.
 
+I2/I3 follow-up (Nov 5): the [v1 handoff proposal](input-contract-v1.md) supplements these field tables with a complete envelope, conditional requirement paths, source metadata, file-group projection and typed examples. Its `contract_version` and additional fields require Eli/Zihao review before adoption; the skeleton in section 8 remains historical research context. No engine IDs are replaced by this proposal.
+
 **Alignment rule (important).** The calculation engine is built in parallel from `ROI.md` section 3 (input ids) and section 4 (formulas). **The field ids, units and bounds below are copied from there. If this file and `ROI.md` ever disagree, `ROI.md` wins** and this file is wrong: open a PR on both. You (Jonathan, Jeremiah) own wording, order, grouping and defaults' presentation. Renaming an id, changing a unit, or adding a field the engine reads means telling Eli first (sole owner of the engine and assistant).
 
 ## 1. How the engine uses a field

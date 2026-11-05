@@ -35,6 +35,10 @@ The application layer is structure without behaviour, and nothing fabricates a r
 
 Undecided on purpose: the D1 data model, agent state, agent tools, application skill conventions, and every shared domain type. Add them when the design is settled, generate migrations from `db/schema.ts`, and reconnect a surface to them deliberately.
 
+## Input contract proposal
+
+`shared/types.ts` and `shared/input-catalog.ts` define the review-only I2/I3 input handoff and question/default candidates. They are not imported by application, server, assistant or engine runtime code. The [proposal](research/plans/input-contract-v1.md) records envelope choices, conditional goal requirements and owner review items; a synthetic TypeScript example and `node --test scripts/input-contract.test.mjs` check the catalog handoff. This narrowly permits reference domain types without introducing persistence, runtime JSON validation, a calculator or another server boundary. Runtime adoption still requires owner acknowledgement and untrusted-input validation.
+
 ## Runtime and generated artifacts
 
 `pnpm dev` uses the Cloudflare Vite plugin to execute SSR and bindings in local workerd. D1 and Durable Object data persist under ignored `.wrangler/state/`. `pnpm build` produces client assets and a server Worker with a generated Wrangler deployment configuration. `pnpm deploy:check` packages that build without publishing it.

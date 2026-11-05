@@ -22,6 +22,7 @@ Human setup and deployment commands live in [README.md](README.md).
 
 - Only `/` (landing) and `/workspace` (mock workspace) are routes, and neither has a loader or an action.
 - Keep the shells empty: do not add database tables, agent state, tools, skill conventions, or domain types until that design is actually decided.
+- Exception for review only: `shared/types.ts` and `shared/input-catalog.ts` are the I2/I3 input contract proposal, described in `docs/research/plans/input-contract-v1.md`. They are not imported by runtime code; owner acknowledgement and runtime parsing are required before adoption. Other domain contracts remain undecided.
 - Never present mock or scripted behaviour as a working assessment.
 - `worker-configuration.d.ts` and `.react-router/types/` are generated and ignored; use `pnpm typegen` rather than hand-editing them.
 - Generate migrations from `db/schema.ts` with `pnpm db:generate` once tables exist. Review generated SQL and retain applied migrations unchanged.

@@ -57,6 +57,8 @@ Per driver, in order: **gross -> adoption (x success factor if justified) -> rec
 
 ## 3. Input catalog (becomes the form file; hand to Jonathan and Jeremiah)
 
+I2/I3 review reference (Nov 5): [input handoff v1](plans/input-contract-v1.md) provides a typed question/default catalog and synthetic form example. It proposes envelope/source/group metadata and conditional question paths, without changing the calculation formulas or freezing an interface without owner acknowledgement. Section 3 remains the engine's canonical ID/meaning reference.
+
 Every input carries: `id, label, unit, type, min, max, required, default, default_source, evidence_tier, period, info_text, question_text`. Evidence tiers: `measured | documented | benchmark | estimate | assumption | user_unknown`.
 
 ### 3.1 Project (all goals)
