@@ -12,3 +12,5 @@ export {
 export { roundHalfUp, formatMoney, formatPct, assertJsonSafe } from "./present";
 export { checkRunOutput } from "./schema";
 export { scanNarrative, findUncitedNumbers, collectRefs } from "./narrative";
+export { DEFAULTS, getDefaults, defaultFor } from "./defaults";
+export { DRIVER_ORDER, DRIVER_LABELS, CATALOG } from "./catalog";
