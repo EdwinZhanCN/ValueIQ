@@ -7,7 +7,7 @@ Each file below is research context for one team. Read your file plus this one. 
 | `01-input-team.md`       | Jonathan, Jeremiah                                                                  | #51-#56, #91, #93, #77 |
 | `01a-input-structure.md` | Jonathan, Jeremiah (the field-by-field spec; aligned with the engine and assistant) | same as 01             |
 | `02-ai-assistant.md`     | Eli                                                                                 | #72-#77, #73, #92-#94  |
-| `03-calc-engine.md`      | Ryan, Eli                                                                           | #82-#87, #67, #96      |
+| `03-calc-engine.md`      | Eli (sole owner)                                                                    | #82-#87, #67, #96      |
 | `04-output.md`           | Ryan                                                                                | #65-#71, #62           |
 | `05-infra-db.md`         | Zihao                                                                               | #57-#64, #88-#90, #108 |
 

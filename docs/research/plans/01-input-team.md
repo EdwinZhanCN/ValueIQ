@@ -1,6 +1,6 @@
 # Plan 01: Input team (Jonathan, Jeremiah)
 
-Read `README.md` first, then **`01a-input-structure.md`: the field-by-field spec you build from** (ids, roles, bounds, defaults, backing fields). It is aligned with the engine and the assistant, which are built in parallel from the same ids (`ROI.md` section 3). Do not rename an id or change a unit without telling Ryan and Eli. Issues: #51 I1, #52 I2, #53 I3 (Ag1), #54 I4, #55 I5, #56 I6, #91 Q5, #93 Q7, #77 A6.
+Read `README.md` first, then **`01a-input-structure.md`: the field-by-field spec you build from** (ids, roles, bounds, defaults, backing fields). It is aligned with the engine and the assistant, which are built in parallel from the same ids (`ROI.md` section 3). Do not rename an id or change a unit without telling Eli (sole owner of the engine and assistant). Issues: #51 I1, #52 I2, #53 I3 (Ag1), #54 I4, #55 I5, #56 I6, #91 Q5, #93 Q7, #77 A6.
 
 ## Your goal
 
@@ -65,7 +65,7 @@ Files are read as they are; each file group has a required description. The assi
 ## Collaboration
 
 - **Eli (assistant):** agree the form file format and the card contract first (due Wed noon; late now).
-- **Ryan (engine):** your input list per goal is his ROI.md input list; keep them identical.
+- **Eli (engine and assistant):** your input list per goal is the `ROI.md` section 3 list; keep them identical.
 - **Zihao:** field list for tables (Ag6) and the file-to-input link (`Backing.source_file_id`).
 
 ## Tests and fixtures to design with

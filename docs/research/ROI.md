@@ -1,6 +1,6 @@
 # ROI.md (DRAFT v0.1, 2026-11-04). Issue #82 (M1 / Ag9)
 
-Owner: Eli, with Ryan. Status: first research pass done at search-result level. Every source marked **OPEN PRIMARY** still needs its original document opened before the demo writeup cites it.
+Owner: Eli (sole owner of the calculation engine and AI assistant, decided Nov 5). Status: first research pass done at search-result level. Every source marked **OPEN PRIMARY** still needs its original document opened before the demo writeup cites it.
 
 ## Purpose
 
@@ -174,11 +174,11 @@ Cross-check (S11): Salesloft's flat 25% and 15% fall inside our benchmark and es
 The input team's form builds one record per input; the engine reads exactly these fields.
 
 - **Record:** `id, value (null = unknown), unit, period, low, high, tier, origin, basis (cost inputs only), backing (effect inputs only), note`.
-- **Roles:** `effect` (haircut and backing apply), `known` (validated, no haircut), `cost` (uplift from `basis`), `context` (never in a formula). Effect inputs are the change inputs: `minutes_per_task_before/after` (or `hours_saved_per_staff_week`), `realized_as_cash`, `error_rate_*` or `error_count_*`, `days_to_decide_before/after`, `aro_before/after`. **PROPOSED, pending Ryan:** also `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` (uncertain value-per-unit inputs; consistent with the guardrail that warns on `estimate`-tier cost of delay). If Ryan says no they become `known`.
+- **Roles:** `effect` (haircut and backing apply), `known` (validated, no haircut), `cost` (uplift from `basis`), `context` (never in a formula). Effect inputs are the change inputs: `minutes_per_task_before/after` (or `hours_saved_per_staff_week`), `realized_as_cash`, `error_rate_*` or `error_count_*`, `days_to_decide_before/after`, `aro_before/after`. **DECIDED by Eli, Nov 5:** also `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` (uncertain value-per-unit inputs; consistent with the guardrail that warns on `estimate`-tier cost of delay). They stay effect inputs unless real cases show otherwise.
 - **Backing fields the six checks need** (free text cannot be scored): `source_file_id` (check 1), `second_source_value` (check 2, within 20%), `observations` or `period_months` (check 3), `source_date` (check 4), `low`/`high` on the input (check 5), `verified` (check 6). `quote` and `quote_confirmed` are required with a file for a tier upgrade to `measured`.
-- **Cost basis:** each cost input carries `basis` (quoted / estimated / assumed); the engine derives the uplift (15 / 30 / 50%) per line. `cost_uplift_pct` stays as an optional override. **PROPOSED, pending Ryan.**
+- **Cost basis:** each cost input carries `basis` (quoted / estimated / assumed); the engine derives the uplift (15 / 30 / 50%) per line. `cost_uplift_pct` stays as an optional override. **DECIDED by Eli, Nov 5.**
 - **Not haircut:** `adoption_by_year`, `recapture_pct`, `staff_affected`, `weeks_per_year`, `loaded_hourly_cost`, counts and settings.
-- **Measurement plan ids:** proposed `measurement_plan.<goal>.{metric, baseline, baseline_source, owner, frequency}`. Pending Ryan.
+- **Measurement plan ids:** proposed `measurement_plan.<goal>.{metric, baseline, baseline_source, owner, frequency}`. Decided by Eli, Nov 5.
 
 ---
 
@@ -286,7 +286,7 @@ STEP 4 THE REST. Ask the open question: "Anything relevant we did not ask?"
 Store the answer in other_notes. Run propose_adjustment for any caveat; show it as
 a proposal. For each driver propose how it will be measured after launch
 (measurement_plan.<goal>.{metric, baseline, baseline_source, owner, frequency};
-ids proposed in section 3.8, pending Ryan).
+ids decided in section 3.8).
 
 STEP 5 PRE-FLIGHT (reduces surprises on the loading page). Call preflight_gate on
 the completed form. It runs validate_inputs and a dry run of the release gate
@@ -313,6 +313,8 @@ excluded, unresolved.
 ---
 
 ## 7. Output contract (engine result, JSON shape for Ag2; Ryan's UI reads this)
+
+**Final typed shape (Nov 5):** the full TypeScript type, a stub sample and the screen-to-field mapping are in `plans/04-output.md` ("Data you read"). The block below is the original design sketch; where they differ, `04-output.md` wins. Eli owns the shape. The engine returns a `RunOutput`: either a result or a gap list, with `meta.mode` (real or stub), both ROIs labeled, precomputed chart data and the confidence ledger.
 
 ```
 result: {
@@ -360,7 +362,7 @@ Charts (fixed set, plan P9): waterfall (gross -> adopted -> recaptured -> haircu
 3. Reproduce F2 (Priya); find 2-3 published cases for P12.
 4. Find DecisionLink / Ecosystems / vendor ROI calculator inputs for the SaaS-branch note (kept out of the demo path, see `SaaS-branch.md` when created).
 5. Send section 3 to Jonathan and Jeremiah, section 7 to Ryan, section 6 to myself for A1. These handoffs were due Nov 4 noon.
-6. Q1 sign-off from Ryan (code does the math).
+6. Q1 decided (code does the math); Eli owns the engine and assistant.
 7. Q5: confirm every input carries unit, source, period, tier (this draft assumes yes).
 8. Before closing #82: update diagrams and CRC cards.
 
@@ -497,7 +499,7 @@ Decided by Eli, Nov 4:
 2. **Weakest link** for combining inputs, for both haircut and confidence.
 3. **`ask_user` design approved** as written in 11.1.
    Still open:
-4. Floors (0.80 / 0.85) and the 5% question trigger: set with Ryan, test against F2 (Priya) and F5.
+4. Floors (0.80 / 0.85) and the 5% question trigger: set by Eli, test against F2 (Priya) and F5.
 5. Do thresholds depend on goal? Risk reduction may need a higher floor than time savings.
 6. Haircut band changes suggested by `haircutResearch.md` (wider benchmark top for vendor/trial figures, tiered cost uplift, tighter "measured" definition): not applied until approved.
 
@@ -512,7 +514,7 @@ Decided by Eli, Nov 4:
 - **Pass, published:** F1 Sprint 4 fixture ($20,000 adjusted; NPV $8,181.82 at 10%, $9,417.48 at 3%); F3 ALE; F4 Rule of Ten; **F5 Forrester TEI benefit line (risk-adjusted flows and PV $3,360,261 exact)**; TEI ROI is PV-based (394% vs 396% from published millions).
 - **Pass, model:** measured = 0% always; every tier at band min with all checks and band max with none; bands never overlap (weaker tier never gets less); adding a check never raises a haircut; weakest link = max haircut; the gate drops weakly backed drivers and keeps strong ones; fully measured inputs get 0% (versus a flat 25% TEI-style cut), so strongly backed gains are not understated.
 - **Fail (known, recorded):** Priya headline NPV ($42,919 computed vs about $33,000 published) and ROI (20.5% PV-based vs about 16%). Her components reproduce exactly, so the Sprint 1 headline figures were not derived consistently. Do not use Priya for P12.
-- **Finding for Ryan, ROI definition:** Sprint 4 section 3.7 defines ROI on undiscounted totals; Forrester TEI (and Priya's "16%") define ROI as NPV / PV of costs. For P12 against published TEI cases, compare like with like. **Recommendation:** engine returns both, labeled `roi_undiscounted` (spec) and `roi_pv` (TEI-style), and the report states which is the headline. Needs your/Ryan's sign-off.
+- **Finding for Ryan, ROI definition:** Sprint 4 section 3.7 defines ROI on undiscounted totals; Forrester TEI (and Priya's "16%") define ROI as NPV / PV of costs. For P12 against published TEI cases, compare like with like. **Recommendation:** engine returns both, labeled `roi_undiscounted` (spec) and `roi_pv` (TEI-style), and the report states which is the headline. **DECIDED Nov 5 (Eli, sole owner): the engine returns both, labeled.**
 - **Implication of the bands plus floors (important for the demo):** confidence per input is 1 - haircut. An `estimate`-tier input can reach at most c = 0.75, which is below every proposed floor. So **a benefit that rests on a user's bare estimate can never appear in the headline**; it goes to `unquantified` with the evidence that would upgrade it (attach a log, a second source, a benchmark). A like-for-like benchmark needs backing score b >= 1/3 to pass 0.80 and b >= 2/3 to pass 0.85. This is consistent with Priya's "Validated" (5% haircut) vs "Review" (25% haircut) statuses. It also means intake must collect backing early (section 6 step 3 and the pre-flight gate).
 
 ### 12.2 Per-goal floors: research and recommendation
@@ -538,7 +540,7 @@ Finding first: **no published source sets confidence thresholds by value-driver 
 
 ### 12.4 Remaining open items
 
-- Ryan: sign off on the two-ROI output (undiscounted and PV-based).
+- Two-ROI output (undiscounted and PV-based): decided Nov 5, engine returns both.
 - Verify the secondary sources named in 12.2 before they appear in the writeup.
 - Find 2-3 published cases beyond F5 (a whole Forrester study with all benefit and cost lines would let us test NPV and ROI end to end).
 - Update the repo issues (#72, #74, #76, #79, #83, #84) with: preflight_gate, ask_user, confidence ledger, weakest link, two-ROI output.

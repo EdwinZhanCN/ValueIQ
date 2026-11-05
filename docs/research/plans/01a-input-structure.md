@@ -2,7 +2,7 @@
 
 Companion to `01-input-team.md`. Read `README.md` first.
 
-**Alignment rule (important).** The calculation engine is built in parallel from `ROI.md` section 3 (input ids) and section 4 (formulas). **The field ids, units and bounds below are copied from there. If this file and `ROI.md` ever disagree, `ROI.md` wins** and this file is wrong: open a PR on both. You (Jonathan, Jeremiah) own wording, order, grouping and defaults' presentation. Renaming an id, changing a unit, or adding a field the engine reads means telling Ryan and Eli first.
+**Alignment rule (important).** The calculation engine is built in parallel from `ROI.md` section 3 (input ids) and section 4 (formulas). **The field ids, units and bounds below are copied from there. If this file and `ROI.md` ever disagree, `ROI.md` wins** and this file is wrong: open a PR on both. You (Jonathan, Jeremiah) own wording, order, grouping and defaults' presentation. Renaming an id, changing a unit, or adding a field the engine reads means telling Eli first (sole owner of the engine and assistant).
 
 ## 1. How the engine uses a field
 
@@ -172,7 +172,7 @@ Each cost line is an `Input` with `role: cost` and its own `basis`. The engine m
 
 ## 5. Measurement plan (per selected goal; the report prints it)
 
-Engine ids are not defined yet in `ROI.md` section 3. **Proposed, pending Ryan:** `measurement_plan.<goal>.{metric, baseline, baseline_source, owner, frequency}` where `metric` is before/after, survey, audit or system report. Not on the demo critical path for the engine, but the assistant proposes it and the report prints it.
+Engine ids are not defined yet in `ROI.md` section 3. **Decided by Eli (Nov 5):** `measurement_plan.<goal>.{metric, baseline, baseline_source, owner, frequency}` where `metric` is before/after, survey, audit or system report. Not on the demo critical path for the engine, but the assistant proposes it and the report prints it.
 
 ## 6. Card layout
 
@@ -239,9 +239,9 @@ Stored opaquely by Zihao (`project_forms.form_json`). The assistant edits this f
 - Rule of Ten: 62 x $1 + 38 x $10 = $442. ALE: 3 x ($100,000 x 25%) = $75,000.
 - Priya (Sprint 1): realistic form values. Her published headline does not match her own components, so use it for form examples only.
 
-## 10. Decisions still open (shared with Ryan and Eli)
+## 10. Decisions (engine side decided by Eli, Nov 5; input side yours)
 
-1. **Value-per-unit inputs as effect inputs:** `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are marked `effect` here (uncertain, so they carry a haircut and backing). ROI.md names only the change inputs (hours, errors, days, ARO). Ryan decides; if he says no, they become `known`.
+1. **Value-per-unit inputs as effect inputs:** `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are marked `effect` here (uncertain, so they carry a haircut and backing). ROI.md names only the change inputs (hours, errors, days, ARO). Decided: they stay `effect`.
 2. **Cost basis per line:** proposed `basis` on each cost input (engine derives the uplift). ROI.md currently has one `cost_uplift_pct`.
 3. **Structured backing fields** in section 2 (second source value, observations, period months, source date, verified) are needed for the six checks; ROI.md 3.7 names the checks but not the fields.
 4. **Defaults:** one table, shared by the form and the engine's `get_defaults`. Zihao decides where it lives (team goals vs hardcoded).

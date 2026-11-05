@@ -34,7 +34,7 @@ The input team builds the form and the card UI while the assistant and engine ar
 - **Tier from the user's plain answer** (table in `01a` section 2). `measured` needs a file and a confirmed quote, and never applies to a typed time saving. A default keeps its own tier and `origin: default`; assistant suggestions get `origin: assistant_accepted` only after the user taps accept.
 - **Unknown is `value: null`**, never 0. "Not sure" leads to the labeled default or exclusion.
 - **Same card contract.** One card per gap, max 4 fields, options Confirm / Not sure / Use labeled default / Exclude, backing chips pre-filled from file passages. The form file shape and the `asked[]` log are the ones in `01a` section 8.
-- **Pending with Ryan:** whether `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are effect inputs; per-line cost `basis`; measurement plan ids (`ROI.md` 3.8). Until settled, the assistant asks backing for them and the engine treats them as effect inputs.
+- **Decided by Eli (Nov 5):** `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are effect inputs; per-line cost `basis`; measurement plan ids (`ROI.md` 3.8). The assistant asks backing for the three value-per-unit inputs and the engine treats them as effect inputs.
 
 ## Confidence (why this is deterministic)
 
@@ -63,9 +63,9 @@ Self-reported time savings are unreliable (METR RCT: predicted 24% faster, measu
 ## Collaboration
 
 - Input team: form file format and card contract; backing fields on every card.
-- Ryan: engine tool contracts and result shape; thresholds.
+- Ryan: reads the result and gap-list shapes (`04-output.md`); Eli owns tool contracts and thresholds.
 - Zihao: agent routing and access, pause/resume for `ask_user`, file read for Gemini, secrets.
 
 ## Open questions
 
-Q6 (screen scope), Q7 (file limits), Q8 (models), thresholds with Ryan, which pause API fits a free-form answer.
+Q6 (screen scope), Q7 (file limits), Q8 (models), thresholds (test on real cases). The pause API is settled: `step.waitForEvent` (contract).

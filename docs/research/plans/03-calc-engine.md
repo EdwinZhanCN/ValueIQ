@@ -1,4 +1,4 @@
-# Plan 03: Calculation engine and ROI.md (Ryan, Eli)
+# Plan 03: Calculation engine and ROI.md (Eli, sole owner; Ryan's output reads the result)
 
 Read `README.md` first. Issues: #82 M1 (ROI.md, Ag9), #83 M2 (engine output, Ag2), #84 M3, #85 M4, #86 M5, #87 Q1, #67 O3 (Ag7), #96 Q10. Reference: `ROI.md`, `roi_prototype.py`.
 
@@ -30,7 +30,7 @@ The engine reads one form file of `Input` records (`ROI.md` section 3.8). Ids, u
 - **Unknown:** `value: null` or tier `user_unknown` never reaches a formula. An essential cost that is null blocks the headline; a null effect input drops its driver to `unquantified` and into the gap list.
 - **`validate_inputs` must reject:** unknown id, role/field mismatch (backing on a known input is ignored with a warning), out-of-bounds values, `after > before`, `source_file_id` from another project, bad adoption array length (must equal `horizon_years`).
 - **Defaults** come from one table used by both the form and `get_defaults`.
-- **Pending Ryan** (assumed until he decides): `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are effect inputs; cost `basis` per line with `cost_uplift_pct` as optional override; measurement plan ids.
+- **Decided by Eli (Nov 5):** `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are effect inputs; cost `basis` per line with `cost_uplift_pct` as optional override; measurement plan ids.
 
 ## Driver modules
 
@@ -46,7 +46,7 @@ Band by tier (non-overlapping): measured 0, documented 0-10, benchmark 10-25 (li
 Scenarios: conservative / expected / optimistic by moving adoption, recapture, haircuts to band ends. Sensitivity: discount rate, adoption, haircut.
 Sources behind the numbers: Forrester TEI (benefits cut 15-25%, costs up 10-15%), Green Book optimism bias (start at an upper bound and reduce by mitigation: the precedent for sliding), Flyvbjerg and Budzier (mean IT cost overrun 27%), Nucleus (recapture factor). Band edges and weights are team judgment; `haircutResearch.md` has the calibration table.
 
-## Result shape (Ag2, proposed; Ryan owns)
+## Result shape (Ag2, owner Eli; the full type and a sample are in `04-output.md`)
 
 `meta` (mode real or stub, formula and settings and contract versions), `headline` (npv hard and capacity-inclusive, both ROIs, payback, benefits PV, costs PV, or null with reason), `drivers[]` (label class, `steps[]` with ref id, formula, inputs, source type, value, tier; annual values; risk adjustment; total, PV, share; how measured; risk factors), `costs`, `cash_flows`, `scenarios`, `sensitivity`, `warnings`, `unquantified`, `proxies_used`, `overrides`, `flexibility`, `doing_nothing_risks`, `proceeding_risks`, `confidence` ledger. Overrides keep the computed value, reason, author, time.
 
@@ -75,4 +75,4 @@ Tools in `ROI.md` sections 5 and 11.4 are thin wrappers over pure functions. Eac
 
 ## Open decisions
 
-Floors and the 5% question trigger (test on real cases); goal-specific floors; Ryan's sign-off on two ROI outputs; how to load team-goal defaults; Q10 (how to compare when a model is in the loop: it should not be, for numbers).
+Floors and the 5% question trigger (test on real cases); goal-specific floors; how to load team-goal defaults; Q10 (how to compare when a model is in the loop: it should not be, for numbers).
