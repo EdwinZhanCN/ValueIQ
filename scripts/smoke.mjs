@@ -154,6 +154,90 @@ try {
   });
   assert.equal((await session.json())?.user?.email, email, "No session");
 
+  // Z1: accounts and teams through the pages' own forms. Better Auth and
+  // React Router both expect a same-origin POST.
+  const form = async (path, fields, jar = "") => {
+    const response = await fetch(origin + path, {
+      method: "POST",
+      redirect: "manual",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        origin,
+        cookie: jar,
+      },
+      body: new URLSearchParams(fields),
+      signal: AbortSignal.timeout(15000),
+    });
+    const set = response.headers
+      .getSetCookie()
+      .map((value) => value.split(";")[0]);
+    return { response, jar: set.length ? set.join("; ") : jar };
+  };
+  const page = async (path, jar) => {
+    const response = await fetch(origin + path, {
+      redirect: "manual",
+      headers: { cookie: jar },
+      signal: AbortSignal.timeout(15000),
+    });
+    return { response, html: await response.text() };
+  };
+  const password = "smoke-password-1";
+  const signUpPage = async (name) => {
+    const address = `smoke-${name.toLowerCase()}-${Date.now()}@example.test`;
+    const { response, jar } = await form("/sign-up", {
+      name,
+      email: address,
+      password,
+    });
+    assert.equal(response.status, 302, `/sign-up ${name}`);
+    assert.equal(response.headers.get("location"), "/teams/new");
+    return { email: address, jar };
+  };
+  const owner = await signUpPage("Owner");
+  const teammate = await signUpPage("Teammate");
+  const outsider = await signUpPage("Outsider");
+
+  const created = await form("/teams/new", { name: "Smoke team" }, owner.jar);
+  assert.equal(created.response.status, 302, "/teams/new");
+  assert.equal(created.response.headers.get("location"), "/team");
+  const other = await form("/teams/new", { name: "Other" }, outsider.jar);
+  assert.equal(other.response.status, 302, "second team");
+
+  // The owner adds an existing account by email; /team lists it.
+  const add = await form("/team", { email: teammate.email }, owner.jar);
+  assert.equal(add.response.status, 200, "owner add by email");
+  const team = await page("/team", owner.jar);
+  assert.match(team.html, /Smoke team/, "/team lost the team name");
+  assert(team.html.includes(teammate.email), "/team lacks the new member");
+  assert(!team.html.includes(outsider.email), "/team shows another team");
+
+  // A member cannot add people.
+  const denied = await form("/team", { email: outsider.email }, teammate.jar);
+  assert.equal(denied.response.status, 403, "member add must be refused");
+  const after = await page("/team", owner.jar);
+  assert(!after.html.includes(outsider.email), "member add went through");
+
+  // Signed out: /team asks to sign in; sign-in honours only same-site paths.
+  const out = await form("/sign-out", {}, owner.jar);
+  assert.equal(out.response.status, 302, "/sign-out");
+  const gated = await page("/team", "");
+  assert.equal(
+    gated.response.headers.get("location"),
+    "/sign-in?redirectTo=%2Fteam",
+  );
+  const back = await form("/sign-in", {
+    email: owner.email,
+    password,
+    redirectTo: "/team",
+  });
+  assert.equal(back.response.headers.get("location"), "/team");
+  const offsite = await form("/sign-in", {
+    email: owner.email,
+    password,
+    redirectTo: "//example.test/x",
+  });
+  assert.equal(offsite.response.headers.get("location"), "/projects");
+
   // No project pages yet.
   await get("/projects", 404);
 
