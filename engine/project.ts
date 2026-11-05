@@ -33,7 +33,7 @@ import {
   sum,
   upliftedCost,
 } from "./finance";
-import { assertJsonSafe, formatMoney, formatPct } from "./present";
+import { assertJsonSafe, formatMoney, formatPct, round4 } from "./present";
 import { BLOCKING_CODES, isUnknown, validateInputs } from "./validate";
 import type {
   CashFlowRow,
@@ -474,8 +474,9 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
       steps,
       annual: post.map((b, t) => ({ year: t + 1, benefit: b })),
       haircut_pct: calc.haircut * 100,
-      confidence:
+      confidence: round4(
         gateDrivers.find((g) => g.id === p.id)?.confidence ?? 1 - calc.haircut,
+      ),
       tier_counts: tc,
       total,
       pv: pv(post, rate),
@@ -756,7 +757,7 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
   // ---- confidence ledger ----
   const ledgerDrivers = quantified.map((p) => ({
     id: p.id,
-    confidence: gateDrivers.find((g) => g.id === p.id)?.confidence ?? 0,
+    confidence: round4(gateDrivers.find((g) => g.id === p.id)?.confidence ?? 0),
     floor: cfg.driver_floors[p.id],
     included: included.includes(p),
   }));
@@ -898,7 +899,7 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
       integrity: { passed: true, checks },
       drivers: ledgerDrivers,
       project: {
-        confidence: gate.project_confidence,
+        confidence: round4(gate.project_confidence),
         floor: cfg.project_floor,
         ...(gate.capped_by ? { capped_by: gate.capped_by } : {}),
       },
@@ -966,8 +967,8 @@ function gapFor(p: PreparedDriver, cfg: EngineConfig): GapItem[] {
           target: e.id,
           label: CATALOG[e.id]?.label ?? e.id,
           what_to_add: o.what_to_add,
-          confidence_now: now,
-          confidence_if_added: after,
+          confidence_now: round4(now),
+          confidence_if_added: round4(after),
           return_to: { screen: "intake", input_id: e.id },
         });
       }
@@ -984,8 +985,8 @@ function gapFor(p: PreparedDriver, cfg: EngineConfig): GapItem[] {
           target: w.id,
           label: CATALOG[w.id]?.label ?? w.id,
           what_to_add: `${o.what_to_add} (together with the other inputs at the same level)`,
-          confidence_now: now,
-          confidence_if_added: o.new_c,
+          confidence_now: round4(now),
+          confidence_if_added: round4(o.new_c),
           return_to: { screen: "intake", input_id: w.id },
         });
     }
@@ -1058,9 +1059,12 @@ function buildGapList(
     project_confidence:
       costs.missingEssential.length > 0 && quantified.length === 0
         ? 0
-        : gate.project_confidence,
+        : round4(gate.project_confidence),
     project_floor: cfg.project_floor,
     items: ranked,
-    dropped_drivers: gate.dropped,
+    dropped_drivers: gate.dropped.map((d) => ({
+      ...d,
+      confidence: round4(d.confidence),
+    })),
   };
 }

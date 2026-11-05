@@ -7,12 +7,25 @@ export function roundHalfUp(x: number, dp: number): number {
   return (s * Math.floor(Math.abs(x) * f + 0.5 + 1e-9)) / f;
 }
 
-/** Money with thousands separators, 2 decimals, half-up. */
+const SYMBOLS: Record<string, string> = { USD: "$", EUR: "€", GBP: "£" };
+
+/** Round half-up to 4 decimals (used for confidence values in the output). */
+export function round4(x: number): number {
+  return roundHalfUp(x, 4);
+}
+
+/**
+ * Money with thousands separators, 2 decimals, half-up. USD/EUR/GBP use the symbol before the
+ * number ("$127,956.73", "-$18,641.93"); other currencies put the ISO code after it.
+ */
 export function formatMoney(x: number, currency = ""): string {
   const r = roundHalfUp(x, 2);
   const [int = "0", frac = "00"] = Math.abs(r).toFixed(2).split(".");
-  const withCommas = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${r < 0 ? "-" : ""}${currency ? currency + " " : ""}${withCommas}.${frac}`;
+  const num = `${int.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${frac}`;
+  const sign = r < 0 ? "-" : "";
+  const sym = SYMBOLS[currency];
+  if (sym) return `${sign}${sym}${num}`;
+  return currency ? `${sign}${num} ${currency}` : `${sign}${num}`;
 }
 
 /** Percent with one decimal, half-up. */

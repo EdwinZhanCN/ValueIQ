@@ -68,6 +68,14 @@ export function roiPv(
   return (100 * npv(c0, benefits, costs, ratePct)) / c;
 }
 
+/** Under 24 months show months, otherwise years with one decimal. `years` itself stays numeric. */
+export function paybackText(years: number): string {
+  const months = Math.round(years * 12);
+  return months < 24
+    ? `about ${months} months (uniform-flow assumption)`
+    : `${years.toFixed(1)} years (uniform-flow assumption)`;
+}
+
 /**
  * Payback: first period where cumulative undiscounted net cash covers C0.
  * Within that period the crossing is interpolated under a uniform-flow assumption.
@@ -79,16 +87,12 @@ export function payback(
 ): Payback {
   let cum = -c0;
   const n = Math.max(benefits.length, costs.length);
-  if (cum >= 0)
-    return { years: 0, text: "0.0 years (uniform-flow assumption)" };
+  if (cum >= 0) return { years: 0, text: paybackText(0) };
   for (let i = 0; i < n; i++) {
     const net = (benefits[i] ?? 0) - (costs[i] ?? 0);
     if (cum + net >= 0) {
       const years = i + -cum / net;
-      return {
-        years,
-        text: `${years.toFixed(1)} years (uniform-flow assumption)`,
-      };
+      return { years, text: paybackText(years) };
     }
     cum += net;
   }
