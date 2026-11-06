@@ -10,3 +10,4 @@ worker-configuration.d.ts
 !.env.example
 *.log
 .DS_Store
+.strata/

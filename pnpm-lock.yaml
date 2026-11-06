@@ -87,6 +87,9 @@ importers:
       '@cloudflare/vite-plugin':
         specifier: ^1.54.8
         version: 1.54.8(@types/node@24.13.4)(vite@8.3.0(@types/node@24.13.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))(wrangler@4.131.1(@types/node@24.13.4))
+      '@edwinzhancn/strata':
+        specifier: 0.1.0
+        version: 0.1.0
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.10.0(jiti@2.7.0))
@@ -575,6 +578,11 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@edwinzhancn/strata@0.1.0':
+    resolution: {integrity: sha512-SS2vg0OO2HOdyGDHhW2hMLSfXw2e07QQe7EObKOvszSvHAI1mmDh8J2+5hAn9mmDrp5yKll9MZE1TL3Gq0iq/g==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@emnapi/runtime@1.11.3':
     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
@@ -3668,6 +3676,11 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
@@ -4406,6 +4419,11 @@ snapshots:
   '@dotenvx/primitives@0.8.0': {}
 
   '@drizzle-team/brocli@0.10.2': {}
+
+  '@edwinzhancn/strata@0.1.0':
+    dependencies:
+      picomatch: 4.0.7
+      typescript: 6.0.3
 
   '@emnapi/runtime@1.11.3':
     dependencies:
@@ -7020,6 +7038,8 @@ snapshots:
       - supports-color
 
   typescript@5.9.3: {}
+
+  typescript@6.0.3: {}
 
   undici-types@7.18.2: {}
 
