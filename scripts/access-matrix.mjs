@@ -227,6 +227,53 @@ try {
   )[0].results.map((row) => row.uploaded_by);
   assert.deepEqual(uploaders.sort(), [users.member, users.owner].sort());
 
+  // Agent routes (integration contract section 7): the gate answers 401 and
+  // 404 itself; team members get through to the agent, over HTTP and as a
+  // WebSocket.
+  const agentPath = `/agents/value-i-q-agent/${projectId}`;
+  const agentExpect = { signedOut: 401, outsider: 404 };
+  for (const actor of ACTORS) {
+    const http = await call(actor, { path: agentPath });
+    if (actor in agentExpect) {
+      assert.match(
+        http.body,
+        /^(Unauthorized|Not found)$/,
+        `${actor}: not the gate`,
+      );
+    }
+    const opened = await openSocket(origin, agentPath, cookies[actor], origin);
+    const label = `agent as ${actor}`;
+    if (actor in agentExpect) {
+      assert.equal(http.status, agentExpect[actor], `${label} (HTTP)`);
+      assert.equal(opened, false, `${label}: WebSocket opened`);
+    } else {
+      // Past the gate. The empty agent's own HTTP answer is still 404
+      // "Not implemented" until it handles requests; the gate's is "Not found".
+      assert(![401, 403].includes(http.status), `${label}: ${http.status}`);
+      assert.notEqual(http.body, "Not found", `${label}: stopped at the gate`);
+      assert.equal(opened, true, `${label}: WebSocket refused`);
+    }
+    rows.push(
+      `${label}: ${http.status}, socket ${opened ? "open" : "refused"}`,
+    );
+  }
+  // Another site's page cannot use the owner's cookie.
+  const foreign = await fetch(origin + agentPath, {
+    headers: { origin: "https://evil.example", cookie: cookies.owner },
+    signal: AbortSignal.timeout(15000),
+  });
+  assert.equal(foreign.status, 403, "cross-site agent request");
+  assert.equal(
+    await openSocket(origin, agentPath, cookies.owner, "https://evil.example"),
+    false,
+    "cross-site WebSocket opened",
+  );
+  // Only ValueIQAgent is routable, and a missing project looks like another team's.
+  const missingAgent = await call("owner", {
+    path: "/agents/value-i-q-agent/no-such-project",
+  });
+  assert.equal(missingAgent.status, 404, "missing project agent");
+
   console.log(rows.join("\n"));
   console.log(
     `Access matrix passed: ${TARGETS.length} targets × ${ACTORS.length} actors.`,
@@ -236,6 +283,29 @@ try {
   throw error;
 } finally {
   await stopDevServer(server);
+}
+
+/** True when the WebSocket handshake succeeds, false when it is refused. */
+function openSocket(origin, path, cookie, fromOrigin) {
+  const url = origin.replace(/^http/, "ws") + path;
+  return new Promise((resolve) => {
+    const socket = new WebSocket(url, {
+      headers: { origin: fromOrigin, ...(cookie && { cookie }) },
+    });
+    const timer = setTimeout(() => {
+      socket.close();
+      resolve(false);
+    }, 10000);
+    socket.addEventListener("open", () => {
+      clearTimeout(timer);
+      socket.close();
+      resolve(true);
+    });
+    socket.addEventListener("error", () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
+  });
 }
 
 function assertSignInRedirect(result, path) {
