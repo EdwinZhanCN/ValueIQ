@@ -71,6 +71,7 @@ export function roiPv(
 /** Under 24 months show months, otherwise years with one decimal. `years` itself stays numeric. */
 export function paybackText(years: number): string {
   const months = Math.round(years * 12);
+  if (months < 1) return "less than 1 month (uniform-flow assumption)";
   return months < 24
     ? `about ${months} months (uniform-flow assumption)`
     : `${years.toFixed(1)} years (uniform-flow assumption)`;
