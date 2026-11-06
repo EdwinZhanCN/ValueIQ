@@ -1,3 +1,5 @@
-# No secrets are needed for the scripted scaffold.
-# When a model provider is selected, document its required secret here.
-# Keep real values in .dev.vars locally and use wrangler secret put for deployment.
+# Copy to .dev.vars for local development. Keep real values out of git and set
+# them per environment with `wrangler secret put <NAME> --env <environment>`.
+
+# Signs Better Auth sessions. Generate with: openssl rand -base64 32
+BETTER_AUTH_SECRET=replace-with-a-random-32-byte-secret

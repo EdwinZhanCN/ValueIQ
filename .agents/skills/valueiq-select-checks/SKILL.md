@@ -15,6 +15,7 @@ description: Use before claiming verification or preparing ValueIQ changes for r
 | `db/schema.ts`                                      | `pnpm db:generate`; review SQL, then `pnpm db:migrate:local` and `pnpm test:smoke`                                                                          |
 | `drizzle/`                                          | Apply to local D1 with `pnpm db:migrate:local`; run `pnpm test:smoke`; for upgrades also apply to a copy of the previous schema with representative records |
 | `app/`, `agents/`, `workers/`                       | `pnpm build` and `pnpm test:smoke`; inspect changed pages in a browser if visible behavior changes                                                          |
+| Project routes, `app/server/*.server.ts` access     | `pnpm test:access`; add a `TARGETS` row in `scripts/access-matrix.mjs` for each new project route                                                           |
 | `wrangler.jsonc`, Vite config, runtime dependencies | `pnpm typecheck`, `pnpm build`, `pnpm deploy:check`, and `pnpm test:smoke`                                                                                  |
 | `pnpm-lock.yaml` or package manifest                | `pnpm install --frozen-lockfile` and `pnpm peers check`, followed by relevant runtime checks                                                                |
 | Any authored files                                  | `pnpm format:check`                                                                                                                                         |
@@ -22,7 +23,9 @@ description: Use before claiming verification or preparing ValueIQ changes for r
 
 The repository currently holds no calculation contracts, so `pnpm check` has no unit-test step; add tests back with the first contract.
 
-`pnpm test:smoke` starts and stops its own local development server and checks that both surfaces render. It never accesses remote D1. Its default port is 5179; set `VALUEIQ_SMOKE_PORT` if needed. Do not run two smoke tests concurrently.
+`pnpm test:smoke` applies local D1 migrations, starts and stops its own local development server, checks that both surfaces render, and signs up a throwaway account. It needs `.dev.vars` with `BETTER_AUTH_SECRET` (copy `.dev.vars.example`). It never accesses remote D1. Its default port is 5179; set `VALUEIQ_SMOKE_PORT` if needed. Do not run two smoke tests concurrently.
+
+`pnpm test:access` starts its own server the same way (same `VALUEIQ_SMOKE_PORT`, so not alongside the smoke test), signs up an owner, a member, and an outsider, and checks every project route signed out (redirect to `/sign-in`), as the other team (404), as a member, and as the owner.
 
 For a schema change, run `pnpm db:generate` again after generation; it should report no changes. Never rewrite already-applied SQL just to pass a check. Worker and route types are generated and ignored; regenerate them using `pnpm typegen`.
 

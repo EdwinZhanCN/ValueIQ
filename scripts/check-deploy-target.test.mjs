@@ -62,6 +62,11 @@ for (const [name, mutate, message] of [
     /different D1 databases/,
   ],
   [
+    "another environment's bucket",
+    (_, built) => (built.r2_buckets[0].bucket_name = "valueiq-dev-files"),
+    /wrong R2 bucket/,
+  ],
+  [
     "cross-Worker Durable Object",
     (_, built) =>
       (built.durable_objects.bindings[0].script_name = "valueiq-dev"),
