@@ -1,0 +1,40 @@
+{
+  "id": "tealium-whole-study",
+  "case_ref": "T19",
+  "kind": "finance",
+  "tests": "finance layer on a whole published business case: PV, NPV, ROI, payback (published flat risk adjustments already applied)",
+  "source": {
+    "title": "The Total Economic Impact of Tealium CDP",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "January 2022",
+    "url": "https://resources.martechseries.com/whitepapers/MTH-tealiumCDP.pdf",
+    "status": "READ",
+    "how_opened": "PDF downloaded and text-extracted; 'Financial Summary' cash flow analysis, p.26",
+    "table": "Cash Flow Analysis (Risk-Adjusted Estimates)",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Benefits and costs are the published risk-adjusted rows; Forrester discounts the Initial column at time 0 and Years 1-3 at year end, the same convention as engine/finance.ts.",
+    "All benefit lines are taken as printed; this case tests the finance layer, not the driver formulas."
+  ],
+  "discount_rate_pct": 10,
+  "c0": 106122,
+  "benefits": [2289978, 2983194, 3180330],
+  "costs": [501239, 564949, 625784],
+  "expected": {
+    "pv_benefits": 6936676,
+    "pv_costs": 1498855,
+    "npv": 5437821,
+    "total_benefits": 8453502,
+    "total_costs": 1798094,
+    "roi_published_pct": null,
+    "payback_published": "<6 months",
+    "payback_years_below": 0.5
+  },
+  "tolerance": {
+    "pv_abs": 1.5,
+    "npv_abs": 1.5,
+    "roi_points": 0.5,
+    "why": "Forrester prints rounded whole dollars and computes PV from unrounded values"
+  }
+}

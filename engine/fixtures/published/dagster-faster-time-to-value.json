@@ -1,0 +1,127 @@
+{
+  "id": "dagster-faster-time-to-value",
+  "case_ref": "T15",
+  "kind": "driver",
+  "driver": "decision_speed",
+  "tests": "driver formulas (decision speed / cost of delay: decisions x days saved x cost of delay per day)",
+  "source": {
+    "title": "The Total Economic Impact of Dagster+ Pro",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "October 2024",
+    "url": "https://tei.forrester.com/go/dagster/dagsterpluspro",
+    "status": "READ",
+    "how_opened": "page HTML fetched with curl and text-extracted; table 'Faster Time To Value' (Ref A1-A10, At, Atr)",
+    "table": "Faster Time To Value",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "A cost-of-delay case in Reinertsen's sense: each initiative starts delivering value (cost savings or margin) sooner, worth a stated amount per week when live. Our 'decision' is one initiative and 'days to decide' is its elapsed development time; this is cycle time, not an approval decision, so the label is looser than the catalog's.",
+    "Two engine runs, summed: 16 cost-savings initiatives at $10,000 per week, and 8 revenue initiatives at $40,000 per week x 8.5% operating margin = $3,400 per week. Weekly values are divided by 7 for the per-day input and 16 weeks is expressed as 112 days.",
+    "The reduction ramp 25% / 30% / 30% is carried by adoption_by_year = 83.33 / 100 / 100 with days saved set at the Year 3 level (33.6 days = 4.8 weeks)."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.2,
+    "published_risk_adjustment": "20% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "cost-savings initiatives",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [83.33333333333334, 100, 100],
+          "tier": "estimate",
+          "published_as": "A2 elapsed-time reduction 25% / 30% / 30% divided by 30%"
+        },
+        {
+          "id": "decisions_per_year",
+          "value": 16,
+          "tier": "estimate",
+          "published_as": "A4 initiatives to reduce business costs per year"
+        },
+        {
+          "id": "days_to_decide_before",
+          "value": 112,
+          "tier": "estimate",
+          "published_as": "A1 16 weeks of elapsed development time x 7 days"
+        },
+        {
+          "id": "days_to_decide_after",
+          "value": 78.39999999999999,
+          "tier": "estimate",
+          "published_as": "A1 x (1 - 30%) at the Year 3 level"
+        },
+        {
+          "id": "cost_of_delay_per_day",
+          "value": 1428.5714285714287,
+          "tier": "estimate",
+          "published_as": "weekly value of an initiative when live, divided by 7"
+        },
+        {
+          "id": "cost_of_delay_basis",
+          "value": "cost_continuing",
+          "tier": "estimate",
+          "published_as": "what the delayed value is"
+        }
+      ]
+    },
+    {
+      "name": "revenue initiatives",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [83.33333333333334, 100, 100],
+          "tier": "estimate",
+          "published_as": "A2 elapsed-time reduction 25% / 30% / 30% divided by 30%"
+        },
+        {
+          "id": "decisions_per_year",
+          "value": 8,
+          "tier": "estimate",
+          "published_as": "A7 initiatives to increase revenue per year"
+        },
+        {
+          "id": "days_to_decide_before",
+          "value": 112,
+          "tier": "estimate",
+          "published_as": "A1 16 weeks of elapsed development time x 7 days"
+        },
+        {
+          "id": "days_to_decide_after",
+          "value": 78.39999999999999,
+          "tier": "estimate",
+          "published_as": "A1 x (1 - 30%) at the Year 3 level"
+        },
+        {
+          "id": "cost_of_delay_per_day",
+          "value": 485.7142857142858,
+          "tier": "estimate",
+          "published_as": "weekly value of an initiative when live, divided by 7"
+        },
+        {
+          "id": "cost_of_delay_basis",
+          "value": "revenue_deferred",
+          "tier": "estimate",
+          "published_as": "what the delayed value is"
+        }
+      ]
+    }
+  ],
+  "combine": "sum",
+  "outside_engine_by_year": null,
+  "expected": {
+    "annual_benefit": [599040, 718848, 718848],
+    "pv": 1678752,
+    "published_total": 2036736,
+    "rounding": "whole dollars"
+  },
+  "tolerance": {
+    "annual_abs": 0.5,
+    "pv_abs": 1.5,
+    "why": "whole-dollar rounding; arithmetic exact"
+  }
+}

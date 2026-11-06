@@ -1,0 +1,79 @@
+{
+  "id": "monte-carlo-data-downtime-loss",
+  "case_ref": "T12",
+  "kind": "driver",
+  "driver": "data_quality",
+  "tests": "driver formulas (data quality, rate path: records x (rate before - rate after) x cost per error)",
+  "source": {
+    "title": "The Total Economic Impact of Monte Carlo's Data + AI Observability Platform",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "April 2025",
+    "url": "https://tei.forrester.com/go/montecarlo/dataaiobservabilityplatform",
+    "status": "READ",
+    "how_opened": "page HTML fetched with curl and text-extracted; table 'Avoided Losses Due To Data And AI Downtime' (Ref B1-B7, Bt, Btr)",
+    "table": "Avoided Losses Due To Data And AI Downtime",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "An 'error' here is a data-quality issue that causes customer-facing downtime. 72 issues per year, 15% of them customer-facing, so error_rate_before = 15% of 72 records-or-events.",
+    "Cost of one such issue = 2 hours x ($6 billion / 8,760 hours x 5% affected) = $68,493.15 (we do not round it; Forrester rounds the hourly figure).",
+    "Forrester applies the resolution-speed gain (80% / 85% / 90%) to the downtime hours. In our formula that is the same as lowering the share of costly issues, so error_rate_after = 15% x (1 - 90%) = 1.5% at the Year 3 level, and adoption_by_year = 80/90, 85/90, 100 reproduces the ramp. This is a reinterpretation of resolution speed as avoided issues; the product of terms is identical."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.2,
+    "published_risk_adjustment": "20% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "customer-facing data downtime",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [88.88888888888889, 94.44444444444444, 100],
+          "tier": "estimate",
+          "published_as": "B7 resolution speed 80% / 85% / 90% divided by 90%"
+        },
+        {
+          "id": "records_or_events_per_year",
+          "value": 72,
+          "tier": "estimate",
+          "published_as": "A1 data quality issues requiring intervention, 6 per month"
+        },
+        {
+          "id": "error_rate_before",
+          "value": 15,
+          "tier": "estimate",
+          "published_as": "B1 share of issues that cause customer-facing downtime"
+        },
+        {
+          "id": "error_rate_after",
+          "value": 1.5,
+          "tier": "estimate",
+          "published_as": "B1 x (1 - B7 at 90%)"
+        },
+        {
+          "id": "cost_per_error",
+          "value": 68493.1506849315,
+          "tier": "estimate",
+          "published_as": "B2 x B4 x B5: 2 hours x $684,931.51 x 5%"
+        }
+      ]
+    }
+  ],
+  "combine": "concat",
+  "outside_engine_by_year": null,
+  "expected": {
+    "annual_benefit": [473425, 503014, 532603],
+    "pv": 1246252,
+    "published_total": 1509041,
+    "rounding": "whole dollars; hourly revenue printed rounded"
+  },
+  "tolerance": {
+    "annual_abs": 1,
+    "pv_abs": 1.5,
+    "why": "Forrester multiplies by printed rounded hourly figures ($34,246.59); we keep full precision, difference under $1"
+  }
+}
