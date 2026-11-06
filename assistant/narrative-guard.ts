@@ -19,9 +19,18 @@ export class NarrativeRejectedError extends Error {
   }
 }
 
+const STRING_NUMBER = /(?<![A-Za-z])\d[\d,]*(?:\.\d+)?/g;
+
 function leaves(x: unknown, out: number[]): void {
   if (typeof x === "number" && Number.isFinite(x)) out.push(x);
-  else if (Array.isArray(x)) for (const v of x) leaves(v, out);
+  else if (typeof x === "string") {
+    // numbers written inside tool-output strings (payback text, labels, null reasons)
+    if (/^\d{4}-\d{2}-\d{2}T/.test(x)) return;
+    for (const m of x.matchAll(STRING_NUMBER)) {
+      const v = Number(m[0].replace(/,/g, ""));
+      if (Number.isFinite(v)) out.push(v);
+    }
+  } else if (Array.isArray(x)) for (const v of x) leaves(v, out);
   else if (typeof x === "object" && x !== null)
     for (const v of Object.values(x)) leaves(v, out);
 }
@@ -39,6 +48,23 @@ function fromToolOutput(v: number, nums: number[]): boolean {
 }
 
 /**
+ * Remove markdown structure so list numerals, headings, bold markers, table pipes and rules are
+ * not mistaken for numbers: "### Title", "1. item", "**bold**", "| a | b |", "---".
+ */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$/gm, " ")
+    .replace(/^[ \t]*\|?[ \t:|-]*-{3,}[ \t:|-]*\|?[ \t]*$/gm, " ")
+    .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, "")
+    .replace(/^[ \t]*(?:\d+[.)]|[-*+\u2022])(?:[ \t]+|$)/gm, "")
+    .replace(/\*+|_{2,}|`+/g, "")
+    .replace(/\|/g, " ")
+    .replace(/[ \t]*\n[ \t]*/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/**
  * Offending sentences with the reason. `extra` are further tool outputs of the run whose numbers
  * the model may quote (for example preflight output before any compute).
  */
@@ -47,6 +73,7 @@ export function diagnoseModelText(
   out: RunOutput | null,
   extra: readonly unknown[] = [],
 ): Diagnosis[] {
+  text = stripMarkdown(text);
   const sentences = text
     .split(/(?<=[.!?])\s+/)
     .filter((s) => s.trim().length > 0);
