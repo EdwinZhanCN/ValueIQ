@@ -364,7 +364,7 @@ The stub values are illustrative. The real engine's numbers come from the same f
 
 ## Screens you own
 
-- **Results (O4):** numbers tab, show-the-math view, charts tab. Mockup screens 06, 06a, 06b, 07 are ground truth; skip cut features.
+- **Results (O4):** numbers tab, show-the-math view, charts tab. [Mock UI](../../mock-ui/README.md) screens 06, 06a, 06b, 07 are ground truth; skip cut features.
 - **Gap-list screen (new):** when the confidence gate fails there is no headline. Show the ranked list "what to add to get a result" with the confidence each item would reach, and a button back to intake with answers preserved (back and progress bar, O6). This is not an error state.
 - **Report builder (O5):** choose charts from the fixed set (waterfall, driver contribution, sensitivity) and structure; download PDF. Charts are generated inside the PDF; agree the approach with Zihao (O2).
 - **Edits (O7, stretch):** sliders on conservative / aggressive values only after O4-O6.
