@@ -338,13 +338,42 @@ try {
   );
   const fileId = (await uploaded.json()).file.id;
 
-  // The project page holds the intake form, and offers the uploaded file as
-  // a source with its upload description.
+  // The project page is the light Intake step: goal cards, no numbers, and
+  // the uploaded file grouped under its upload description.
   const intake = await page(`/projects/${alpha.projectId}`, alpha.cookie);
   assert.equal(intake.response.status, 200, "project page");
   assert.match(intake.html, /aria-label="Project intake"/, "intake form");
   assert.match(intake.html, /Save draft/, "intake save");
+  assert.match(intake.html, /Continue to Clarify/, "intake continue");
+  for (const goal of [
+    "Time savings",
+    "Data quality",
+    "Decision speed",
+    "Risk reduction",
+  ])
+    assert.match(
+      intake.html,
+      new RegExp(`aria-pressed="false"[^>]*>.*?${goal}`),
+    );
+  assert.doesNotMatch(intake.html, />(Revenue|Software)</, "removed goals");
+  assert.doesNotMatch(intake.html, /inputMode="decimal"|inputmode="decimal"/);
   assert.match(intake.html, /Q3 é\.csv/, "intake lists the uploaded file");
+  assert.match(intake.html, /Quarterly costs/, "file group description");
+  // Number fields live on Clarify; links to them are sent there.
+  const moved = await page(
+    `/projects/${alpha.projectId}?input=staff_affected`,
+    alpha.cookie,
+  );
+  assert.equal(moved.response.status, 302, "clarify input redirect");
+  assert.equal(
+    moved.response.headers.get("location"),
+    `/projects/${alpha.projectId}/clarify?input=staff_affected`,
+  );
+  const kept = await page(
+    `/projects/${alpha.projectId}?input=decision_statement`,
+    alpha.cookie,
+  );
+  assert.equal(kept.response.status, 200, "intake input stays on intake");
 
   const fetched = await download(alpha.projectId, fileId, alpha.cookie);
   assert.equal(fetched.status, 200, "own download");
