@@ -35,8 +35,7 @@ export const MAX_XML_CARRY = 1024 * 1024;
 // ---- what the model sees ----
 /** read_project_file: characters returned per call. */
 export const READ_EXCERPT_CHARS = 8_000;
-/** find_evidence: characters of one file sent to the cheap model per call. */
-export const EXTRACTOR_WINDOW_CHARS = 24_000;
-export const EXTRACTOR_MAX_WINDOWS = 3;
+/** find_evidence: characters of one file sent to the cheap model in its single call. */
+export const EXTRACTOR_CONTEXT_CHARS = 40_000;
 export const EXTRACTOR_MAX_CANDIDATES = 5;
 export const MAX_QUOTE_CHARS = 500;
