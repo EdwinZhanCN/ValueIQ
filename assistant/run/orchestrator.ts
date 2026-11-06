@@ -136,6 +136,11 @@ export function mapError(e: unknown): RunError {
   };
 }
 
+/** The idempotency key: the project's form (inputs sorted) plus the engine versions. */
+export function computeFormHash(form: FormFile): string {
+  return hashOf({ form: canonicalForm(form), v: DEFAULT_CONFIG.versions });
+}
+
 export class RunOrchestrator {
   private view_: RunView;
   private seq = 0;
@@ -264,7 +269,7 @@ export class RunOrchestrator {
     const { store } = this.d;
     const form = await this.d.getForm();
     const v = DEFAULT_CONFIG.versions;
-    const form_hash = hashOf({ form: canonicalForm(form), v });
+    const form_hash = computeFormHash(form);
 
     // idempotent: the same project, form and versions give back the existing run
     const existing = await store.findRunByFormHash(
@@ -294,11 +299,32 @@ export class RunOrchestrator {
       started_by: this.d.user_id,
       started_at: this.d.now(),
     });
+    return this.executeRun(run_id, form);
+  }
+
+  /**
+   * Runs the calculation for a run row that already exists (created by the agent or by startRun).
+   * Safe to call again after a failed attempt: the event sequence continues where it stopped, and
+   * a result is only saved once.
+   */
+  async executeRun(run_id: string, form?: FormFile): Promise<RunOutcome> {
+    await this.guardAccess();
+    const { store } = this.d;
+    const f = form ?? (await this.d.getForm());
+    const rec = await store.getRun(run_id);
+    if (!rec) throw new OrchestratorError("BAD_INPUT", "Unknown run", false);
+    if (rec.status === "cancelled") return this.cancelledOutcome(run_id);
+    // a retry after a failed attempt starts the same run again
+    if (rec.status === "failed")
+      await store.updateRun(run_id, { status: "running", finished_at: null });
+    const prior = await store.listRunEvents(run_id);
+    this.seq = prior.reduce((m, e) => Math.max(m, e.seq), 0);
+    this.cancelled = false;
     await this.event(run_id, null, "status", { status: "running" });
     this.emitView({ ...this.blank("running", run_id), step: "Files read" });
     this.advance("Files read");
 
-    const ctx: ToolContext = createContext(form, {
+    const ctx: ToolContext = createContext(f, {
       run_id,
       now: this.d.now(),
       mode: this.d.mode ?? "real",
@@ -320,7 +346,7 @@ export class RunOrchestrator {
         system: CALC_SYSTEM,
         tools: TOOLS.filter((t) => CALC_TOOLS.includes(t.name)),
         ctx,
-        userText: `Run the full calculation loop now. ${intro(form)}`,
+        userText: `Run the full calculation loop now. ${intro(f)}`,
         role: "calc",
         maxSteps: this.d.maxSteps ?? 24,
         ...(this.d.fetch ? { fetch: this.d.fetch } : {}),
@@ -348,7 +374,8 @@ export class RunOrchestrator {
       const current = await store.getRun(run_id);
       if (current?.status === "cancelled") return this.cancelledOutcome(run_id);
       this.advance("Narrative");
-      await store.saveResult(run_id, output, this.d.now());
+      if (!(await store.getResult(run_id)))
+        await store.saveResult(run_id, output, this.d.now());
       const status: RunStatus =
         output.kind === "result" ? "released" : "gap_list";
       await store.updateRun(run_id, { status, finished_at: this.d.now() });
@@ -373,6 +400,7 @@ export class RunOrchestrator {
       });
       await this.event(run_id, this.view_.step, "error", {
         code: error.code,
+        message: error.message,
         retryable: error.retryable,
       }).catch(() => undefined);
       const checklist = this.view_.checklist.map((c) =>
