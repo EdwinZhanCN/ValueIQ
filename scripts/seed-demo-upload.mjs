@@ -6,6 +6,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
+import {
+  assertDemoTarget,
+  createDemoStore,
+  seedDemoOutput,
+} from "./seed-demo-output.mjs";
 
 export const filename = "MOCK-operations-evidence.csv";
 export const description =
@@ -23,29 +28,7 @@ export async function seedDemoUpload({
   objects,
   newId = randomUUID,
 }) {
-  assert(
-    /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(projectId),
-    "Expected a project UUID",
-  );
-  const dev = config.env?.development;
-  assert.equal(dev?.name, "valueiq-dev", "Development Worker required");
-  assert.equal(dev.d1_databases?.[0]?.binding, "DB");
-  assert.equal(
-    dev.d1_databases?.[0]?.database_name,
-    "valueiq-dev",
-    "Development database required",
-  );
-  assert(
-    dev.d1_databases[0].database_id &&
-      dev.d1_databases[0].database_id !==
-        config.env?.production?.d1_databases?.[0]?.database_id,
-    "Shared/missing database target",
-  );
-  assert.deepEqual(
-    dev.r2_buckets,
-    [{ binding: "FILES", bucket_name: "valueiq-dev-files" }],
-    "Development bucket required",
-  );
+  assertDemoTarget(projectId, config);
   assert(contents.length > 0 && contents.length <= 10 * 1024 * 1024);
   assert(
     contents.toString("utf8").includes("SYNTHETIC_DEMO_ONLY"),
@@ -152,6 +135,7 @@ if (
     return results[0].results;
   };
   const store = {
+    ...createDemoStore(query),
     findProject: async (id) =>
       query(
         `SELECT id,team_id,created_by FROM projects WHERE id=${q(id)}`,
@@ -169,8 +153,11 @@ if (
   const directory = await mkdtemp(join(tmpdir(), "valueiq-mock-upload-"));
   try {
     const objects = {
-      put: async (key, bytes) => {
-        const file = join(directory, filename);
+      put: async (key, bytes, mime = "text/csv") => {
+        const file = join(
+          directory,
+          mime === "application/pdf" ? "MOCK-report.pdf" : filename,
+        );
         await writeFile(file, bytes);
         cli([
           "r2",
@@ -181,7 +168,7 @@ if (
           "--file",
           file,
           "--content-type",
-          "text/csv",
+          mime,
         ]);
       },
       get: async (key) =>
@@ -207,12 +194,22 @@ if (
       store,
       objects,
     });
-    console.log(JSON.stringify(result));
+    const demo = await seedDemoOutput({
+      projectId: process.argv[2],
+      config: parsed.config,
+      template: JSON.parse(
+        await readFile("engine/fixtures/round1/r1-result.json", "utf8"),
+      ),
+      file: result,
+      store,
+      objects,
+    });
+    console.log(JSON.stringify({ upload: result, output: demo }));
     if (process.env.GITHUB_STEP_SUMMARY) {
       const { appendFile } = await import("node:fs/promises");
       await appendFile(
         process.env.GITHUB_STEP_SUMMARY,
-        `Synthetic demo upload ${result.created ? "created" : "already present"}: [open project](${result.projectUrl}) · [private download](${result.downloadUrl}). File bytes verified against SHA-256. Existing intake/results unchanged.\n`,
+        `Synthetic demo upload ${result.created ? "created" : "already present"}: [open project](${result.projectUrl}) · [mock file](${result.downloadUrl}). STUB output: [Numbers/Math/Charts](${demo.resultsUrl}) · [Report](${demo.reportUrl}) · [private PDF](${demo.downloadUrl}). File and PDF bytes verified. Existing intake and previous runs unchanged.\n`,
       );
     }
   } finally {
