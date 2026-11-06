@@ -1,11 +1,22 @@
 // Manual live check (Eli runs this). One function-calling round trip per model.
 // Usage: GEMINI_API_KEY=... node assistant/scripts/live-smoke.mjs   (Node 24)
+// or put GEMINI_API_KEY=... in the repo-root .dev.vars (gitignored); it is never printed.
 // The key is read from the environment, sent only in the x-goog-api-key header, never printed.
 
-const key = process.env.GEMINI_API_KEY;
+import { readFileSync } from "node:fs";
+import { loadGeminiKey } from "../dev-vars.ts";
+
+// key: environment first, else GEMINI_API_KEY from the gitignored .dev.vars in the repo root
+const key = loadGeminiKey(process.env, () => {
+  try {
+    return readFileSync(new URL("../../.dev.vars", import.meta.url), "utf8");
+  } catch {
+    return undefined;
+  }
+});
 if (!key) {
   console.log(
-    "GEMINI_API_KEY is not set. Nothing was called. Set it in your shell and rerun.",
+    "GEMINI_API_KEY is not set (environment or .dev.vars). Nothing was called.",
   );
   process.exit(0);
 }

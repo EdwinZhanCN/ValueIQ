@@ -2,9 +2,10 @@
 //   GEMINI_API_KEY=... node assistant/scripts/live-run.mjs        (real models)
 //   node assistant/scripts/live-run.mjs --dry                     (scripted fake model, no key, no network)
 // Optional: GEMINI_THINKING_BUDGET_CALC=<int>, GEMINI_MODEL_ASSISTANT / GEMINI_MODEL_CALC.
-// The key is read from the environment only and never printed.
+// The key comes from the environment or the gitignored .dev.vars and is never printed.
 // The TypeScript sources are loaded through Vite's SSR loader (already a dev dependency).
 
+import { readFileSync } from "node:fs";
 import { createServer } from "vite";
 
 const server = await createServer({
@@ -17,7 +18,19 @@ const server = await createServer({
 let code = 1;
 try {
   const mod = await server.ssrLoadModule("/assistant/live-run.ts");
-  code = await mod.main(process.argv.slice(2), process.env);
+  // key: environment first, else GEMINI_API_KEY from the gitignored .dev.vars in the repo root
+  const { loadGeminiKey } = await server.ssrLoadModule(
+    "/assistant/dev-vars.ts",
+  );
+  const key = loadGeminiKey(process.env, () => {
+    try {
+      return readFileSync(new URL("../../.dev.vars", import.meta.url), "utf8");
+    } catch {
+      return undefined;
+    }
+  });
+  const env = { ...process.env, ...(key ? { GEMINI_API_KEY: key } : {}) };
+  code = await mod.main(process.argv.slice(2), env);
 } catch (e) {
   const key = process.env.GEMINI_API_KEY;
   let msg = e instanceof Error ? e.message : String(e);

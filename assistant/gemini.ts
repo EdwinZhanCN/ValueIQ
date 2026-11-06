@@ -32,6 +32,12 @@ export class GeminiHttpError extends Error {
     this.name = "GeminiHttpError";
   }
 }
+export class RunCancelledError extends Error {
+  constructor() {
+    super("Run cancelled");
+    this.name = "RunCancelledError";
+  }
+}
 export class MaxStepsError extends Error {
   constructor(public readonly steps: number) {
     super(`Tool loop exceeded ${steps} steps`);
@@ -100,6 +106,8 @@ export interface LoopOptions {
   baseUrl?: string;
   /** Thinking for this call: a level (Gemini 3) or a token budget; unset = model default. */
   thinking?: ThinkingSetting;
+  /** Checked before every model request; true ends the loop with RunCancelledError. */
+  shouldStop?: () => boolean | Promise<boolean>;
 }
 
 export interface LoopResult {
@@ -208,6 +216,7 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
   const contents: Content[] = structuredClone(o.contents);
 
   for (let step = 1; step <= maxSteps; step++) {
+    if (o.shouldStop && (await o.shouldStop())) throw new RunCancelledError();
     const body = JSON.stringify(
       buildRequest(o.system, contents, o.tools, o.thinking),
     );
@@ -290,6 +299,8 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
       let response: Record<string, unknown>;
       let code: string | undefined;
       try {
+        if (!o.tools.some((t) => t.name === fc.name))
+          throw new UnknownToolError(fc.name);
         const out = callTool(fc.name, fc.args ?? {}, o.ctx);
         response = { output: out };
         const po = out as { pause?: boolean; questions?: unknown[] };

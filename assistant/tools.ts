@@ -917,6 +917,13 @@ export const TOOLS: readonly ToolDef[] = [
   apply_override,
 ];
 
+/** ask_user is tabled until after the demo: the tool and its tests stay, the model is not offered it. */
+export const ASK_USER_ENABLED = false;
+/** The tools offered to the model in the live loop. */
+export const MODEL_TOOLS: readonly ToolDef[] = TOOLS.filter(
+  (t) => ASK_USER_ENABLED || t.name !== "ask_user",
+);
+
 const BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
 /** Validate the arguments (never coerced), run the tool, return a deep-frozen copy. */
