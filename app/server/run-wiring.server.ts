@@ -118,6 +118,7 @@ export async function startRunRecord(
     settings_version: v.settings,
     started_by: caller.userId,
     started_at: new Date().toISOString(),
+    form,
   });
   return { run, created: true };
 }

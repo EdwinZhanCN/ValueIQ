@@ -152,6 +152,10 @@ export const runs = sqliteTable(
     contractVersion: text("contract_version").notNull(),
     formulaVersion: text("formula_version").notNull(),
     settingsVersion: text("settings_version").notNull(),
+    // The form the run calculates, copied when it starts. Later saves to
+    // project_forms never reach a started run. Null only on rows from before
+    // this column existed.
+    formJson: text("form_json", { mode: "json" }).$type<unknown>(),
     startedBy: text("started_by")
       .notNull()
       .references(() => user.id),
