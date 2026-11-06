@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; the Process step supplies the user-facing Start Run control. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work. The Input team's form wire type and serializer/validator (`shared/form.ts`, `app/lib/intake-form.ts`) produce engine fixtures; they are not connected to the intake UI or saved projects yet.
+ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; the Process step supplies the user-facing Start Run control. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work. The Input team's form wire type and serializer/validator (`shared/form.ts`, `app/lib/intake-form.ts`) back the Intake and Clarify steps, which save the project form; `startRun` refuses a form that does not validate.
 
 ## Stack
 
@@ -17,17 +17,20 @@ ValueIQ has account/team/project pages, private file storage, a deterministic en
 
 ## Surfaces
 
-| Route                  | Layout                            | Contents                                                                                    |
-| ---------------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
-| `/`                    | `app/routes/site-layout.tsx`      | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
-| `/workspace`           | `app/routes/workspace-layout.tsx` | Labeled STUB output preview; chat example at `?view=chat`                                   |
-| `/sign-up`, `/sign-in` | `app/routes/auth-layout.tsx`      | One centred form; `redirectTo` is honoured only for same-site paths                         |
-| `/teams/new`, `/team`  | `app/routes/app-layout.tsx`       | The signed-in shell: header with the current team, nav, and sign-out                        |
-| `/projects/*`          | `app/routes/app-layout.tsx`       | The current team's projects, a new-project form, and a project page with its form file      |
+| Route                        | Layout                                                | Contents                                                                                    |
+| ---------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `/`                          | `app/routes/site-layout.tsx`                          | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
+| `/workspace`                 | `app/routes/workspace-layout.tsx`                     | Labeled STUB output preview; chat example at `?view=chat`                                   |
+| `/sign-up`, `/sign-in`       | `app/routes/auth-layout.tsx`                          | One centred form; `redirectTo` is honoured only for same-site paths                         |
+| `/teams/new`, `/team`        | `app/routes/app-layout.tsx`                           | The signed-in shell: sidebar with the current team, nav, and the account row                |
+| `/projects`, `/projects/new` | `app/routes/app-layout.tsx`                           | The current team's projects and the new-project form                                        |
+| `/projects/:projectId/*`     | `app/routes/project-layout.tsx` (inside `app-layout`) | The assessment steps: Intake, `clarify`, `process`, `results` (Review), `report`            |
+
+Signed-in screens follow the [Mock UI](mock-ui/README.md) (screens 01–10 with owner notes; 08 and 09 are cut for Beta).
 
 `app/root.tsx` renders the document only: html/body, theme provider, tooltip provider, and the grain overlay. Page chrome belongs to the surface layouts, and error pages bring their own frame.
 
-Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders supplied STUB outputs without server calls. `/projects/:projectId/results` uses the full-screen output layout and loads a pinned/latest stored outcome after project access checks. Private report resource routes generate/download a PDF from that immutable snapshot.
+Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders supplied STUB outputs without server calls. `/projects/:projectId/results` renders inside the project step layout and loads a pinned/latest stored outcome after project access checks. Private report resource routes generate/download a PDF from that immutable snapshot.
 
 ## Identity, data, and access
 
