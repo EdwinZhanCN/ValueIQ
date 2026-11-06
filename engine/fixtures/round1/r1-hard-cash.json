@@ -531,12 +531,6 @@
       }
     ],
     "overrides": [],
-    "warnings": [
-      {
-        "code": "DRIVER_CONCENTRATION",
-        "message": "Time savings is 100.0% of total benefit (guardrail: over 50%). Check it carefully.",
-        "refs": ["A1"]
-      }
-    ]
+    "warnings": []
   }
 }

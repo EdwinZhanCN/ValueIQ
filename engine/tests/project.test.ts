@@ -263,8 +263,19 @@ describe("K12 guardrail warnings", () => {
     ])
       expect(c).not.toContain(k);
   });
-  it("one driver over 50% of benefit", () => {
-    expect(codes(run(simpleForm()))).toContain("DRIVER_CONCENTRATION");
+  it("one driver over 50% of benefit (two drivers, one dominant)", () => {
+    const f = goldenResultForm();
+    f.goals = ["time_savings", "data_quality"];
+    f.inputs = f.inputs.filter(
+      (i) => !["aro_before", "aro_after", "loss_per_event"].includes(i.id),
+    );
+    f.inputs = f.inputs.map((i) =>
+      i.id === "cost_per_error" ? { ...i, value: 10 } : i,
+    );
+    expect(codes(run(f))).toContain("DRIVER_CONCENTRATION");
+  });
+  it("a single-driver project never warns about concentration", () => {
+    expect(codes(run(simpleForm()))).not.toContain("DRIVER_CONCENTRATION");
   });
   it("over 50% from vendor-supplied numbers", () => {
     const f = goldenResultForm();

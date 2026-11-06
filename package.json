@@ -27,11 +27,13 @@
     "test:engine": "vitest run --config engine/vitest.config.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.111",
     "@base-ui/react": "^1.8.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@shadcn/react": "^0.3.1",
     "agents": "^0.23.0",
+    "ai": "^7.0.162",
     "better-auth": "1.7.17",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

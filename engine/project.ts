@@ -652,8 +652,13 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
             .map((d) => d.total),
         ) / totalBenefit
       : 0;
+  // A single-driver project is 100% by definition, so concentration only means
+  // something when at least two benefit drivers are in the headline.
+  const benefitDrivers = drivers.filter(
+    (d) => d.label_class !== "customer_benefit",
+  );
   for (const d of drivers) {
-    if (d.share_of_benefit > gw.driver_share) {
+    if (benefitDrivers.length >= 2 && d.share_of_benefit > gw.driver_share) {
       warnings.push({
         code: "DRIVER_CONCENTRATION",
         message: `${d.label} is ${formatPct(d.share_of_benefit * 100)} of total benefit (guardrail: over ${gw.driver_share * 100}%). Check it carefully.`,

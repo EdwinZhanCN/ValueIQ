@@ -32,8 +32,17 @@ const cases: Record<string, () => RunOutput> = {
       ]),
       o("run_r1_cash"),
     ),
-  "r1-warning-concentration": () =>
-    computeProject(simpleForm({}, []), o("run_r1_warn")),
+  "r1-warning-concentration": () => {
+    // two drivers, time savings dominant: shows DRIVER_CONCENTRATION
+    const f = goldenResultForm();
+    f.goals = ["time_savings", "data_quality"];
+    f.inputs = f.inputs
+      .filter(
+        (i) => !["aro_before", "aro_after", "loss_per_event"].includes(i.id),
+      )
+      .map((i) => (i.id === "cost_per_error" ? { ...i, value: 10 } : i));
+    return computeProject(f, o("run_r1_warn"));
+  },
   "r1-customer-borne": () => {
     const f = goldenResultForm();
     f.inputs.push(inp("cost_bearer", "customer", "documented"));

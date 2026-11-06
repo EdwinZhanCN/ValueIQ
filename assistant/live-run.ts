@@ -110,6 +110,10 @@ export interface LiveOptions {
 }
 
 export async function runLive(o: LiveOptions): Promise<RunReport> {
+  // the scripted fake model has no thought signatures; the SDK warns about that in dry mode only
+  if (o.dry)
+    (globalThis as { AI_SDK_LOG_WARNINGS?: boolean }).AI_SDK_LOG_WARNINGS =
+      false;
   const lines: string[] = [];
   const say = (l: string) => {
     lines.push(l);
