@@ -4,7 +4,9 @@ import { Badge } from "../components/ui/badge";
 import { Field, FieldError, FieldLabel } from "../components/ui/field";
 import { Textarea } from "../components/ui/textarea";
 import { formText } from "~/lib/form";
+import { ProjectFiles } from "../components/files/project-files";
 import { requireProjectAccess } from "../server/access.server";
+import { listProjectFiles } from "../server/files.server";
 import {
   getProject,
   getProjectForm,
@@ -21,9 +23,10 @@ export const meta: Route.MetaFunction = ({ loaderData }) => [
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   await requireProjectAccess(request, params.projectId);
-  const [project, form] = await Promise.all([
+  const [project, form, files] = await Promise.all([
     getProject(params.projectId),
     getProjectForm(params.projectId),
+    listProjectFiles(params.projectId),
   ]);
   if (!project) throw new Response("Not found", { status: 404 });
   return {
@@ -34,6 +37,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           updatedAt: form.updatedAt.toISOString(),
         }
       : null,
+    files,
   };
 }
 
@@ -58,7 +62,7 @@ export default function Project({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { project, form } = loaderData;
+  const { project, form, files } = loaderData;
   const error = actionData?.error ?? null;
 
   return (
@@ -111,6 +115,10 @@ export default function Project({
             ) : null}
           </div>
         </Form>
+      </section>
+
+      <section aria-label="Files">
+        <ProjectFiles projectId={project.id} files={files} />
       </section>
     </div>
   );

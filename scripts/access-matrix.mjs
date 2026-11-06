@@ -54,6 +54,39 @@ const TARGETS = [
       assert(page.body.includes(`${fx.run}-${actor}`), "Saved form not loaded");
     },
   },
+  {
+    name: "file upload action",
+    request: (fx, actor) => {
+      const body = new FormData();
+      body.set("file", new Blob([`${fx.run}-${actor}`]), `${actor}.txt`);
+      body.set("description", `Uploaded by ${actor}`);
+      return { path: `/projects/${fx.projectId}/files`, method: "POST", body };
+    },
+    allowed: (result) => {
+      assert.equal(result.status, 201, result.body.slice(0, 400));
+    },
+  },
+  {
+    name: "file download",
+    // The owner uploads the file every actor then asks for.
+    setup: async (fx, call) => {
+      const body = new FormData();
+      body.set("file", new Blob([`${fx.run}-file`]), "matrix.txt");
+      body.set("description", "Matrix fixture");
+      const result = await call("owner", {
+        path: `/projects/${fx.projectId}/files`,
+        method: "POST",
+        body,
+      });
+      assert.equal(result.status, 201, `upload: ${result.body.slice(0, 400)}`);
+      fx.fileId = JSON.parse(result.body).file.id;
+    },
+    request: (fx) => ({ path: `/projects/${fx.projectId}/files/${fx.fileId}` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert.equal(result.body, `${fx.run}-file`, "Downloaded bytes differ");
+    },
+  },
 ];
 
 let server;
@@ -63,7 +96,7 @@ try {
   const { origin } = server;
   const cookies = { signedOut: "" };
 
-  async function call(actor, { path, method = "GET", form }) {
+  async function call(actor, { path, method = "GET", form, body }) {
     const response = await fetch(origin + path, {
       method,
       redirect: "manual",
@@ -72,7 +105,7 @@ try {
         cookie: cookies[actor],
         ...(form && { "content-type": "application/x-www-form-urlencoded" }),
       },
-      body: form && new URLSearchParams(form),
+      body: body ?? (form && new URLSearchParams(form)),
       signal: AbortSignal.timeout(15000),
     });
     return {
@@ -185,6 +218,14 @@ try {
   )[0].results[0];
   assert.deepEqual(JSON.parse(saved.form_json), { marker: `${run}-owner` });
   assert.equal(saved.updated_by, users.owner);
+
+  // Denied uploads left nothing behind either.
+  const uploaders = JSON.parse(
+    await localSql(
+      `SELECT DISTINCT uploaded_by FROM files WHERE project_id = '${projectId}'`,
+    ).then((output) => output.slice(output.indexOf("["))),
+  )[0].results.map((row) => row.uploaded_by);
+  assert.deepEqual(uploaders.sort(), [users.member, users.owner].sort());
 
   console.log(rows.join("\n"));
   console.log(

@@ -9,6 +9,9 @@ import { env } from "cloudflare:workers";
 import { createDb } from "../../db/client";
 import { projectForms, projects } from "../../db/schema";
 
+// Contract 6 lists the file reads here too; they live in files.server.ts.
+export { listProjectFiles, readProjectFile } from "./files.server";
+
 export type ProjectSummary = {
   id: string;
   name: string;
