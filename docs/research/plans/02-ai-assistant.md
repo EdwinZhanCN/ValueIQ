@@ -36,6 +36,16 @@ The input team builds the form and the card UI while the assistant and engine ar
 - **Same card contract.** One card per gap, max 4 fields, options Confirm / Not sure / Use labeled default / Exclude, backing chips pre-filled from file passages. The form file shape and the `asked[]` log are the ones in `01a` section 8.
 - **Decided by Eli (Nov 5):** `cost_per_error`, `cost_of_delay_per_day`, `loss_per_event` are effect inputs; per-line cost `basis`; measurement plan ids (`ROI.md` 3.8). The assistant asks backing for the three value-per-unit inputs and the engine treats them as effect inputs.
 
+## File evidence (read the uploaded files, propose backing, user confirms)
+
+Design and limits are in [`file-evidence-notes.md`](../file-evidence-notes.md). In short:
+
+- **Extraction is deterministic and model-free** (`assistant/evidence/extract/`): DOCX (paragraphs, heading path, table rows), XLSX (every sheet, one segment per row, cell addresses such as `Sheet1!B7`, formulas as stored results, dates and percentages as a person sees them), PDF (text per page through `unpdf`), markdown, text, CSV and TSV become one `ExtractedText` (segments with locations). It is cached in R2 under `teams/{teamId}/projects/{projectId}/extracted/{fileId}.json`.
+- **Two tools** (`assistant/tools.ts`): `read_project_file` returns a bounded, located, untrusted excerpt the model can page through; `find_evidence(file_id, input_id)` runs a small cheap-model call per file and input and returns only candidates that code has verified.
+- **Verification is in code, never by the model.** A candidate survives only if its quote appears word for word (whitespace-normalized) in the extracted text of that file at the cited location, and the number it names is inside the quote. Optional fields the file does not support (`observations`, `source_date`) are dropped; `period_months` is flagged as the assistant's reading. Duplicates are removed, candidates are ranked and capped, and a number that differs from the form's value gets no proposal.
+- **Nothing is applied.** Verified candidates come with ready `propose_backing` proposals. They change a copy of the form only through `applyProposal` after the user accepts and confirms the quote; `measured` still needs a same-project file and `quote_confirmed`.
+- **File text is untrusted data.** It is never placed in a system prompt; the extractor sees it only inside a block delimited by a fresh random marker in the user turn; tool outputs carry `untrusted: true`; file outputs are not provenance for narrative numbers; logs hold ids, hashes and counts only. `apply_override` still needs the host's acceptance, so a fooled model changes nothing.
+
 ## Confidence (why this is deterministic)
 
 Integrity checks must all pass (bounds, reconciliation, traceability, no unresolved double count, no missing essential cost). Evidence confidence: input = 1 minus haircut; driver = min over its effect inputs; project = benefit-weighted mean of included drivers, capped by the weakest driver that is over 30% of benefit. Floors: drivers 0.80 / 0.80 / 0.85 / 0.85 (time, data quality, decision speed, risk); project 0.85. All thresholds are config values.
