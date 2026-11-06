@@ -1,0 +1,301 @@
+{
+  "label": "STUB | Layout preview",
+  "title": "Operations workflow improvement",
+  "subtitle": "Pre-funding business case",
+  "date": "November 5, 2026",
+  "run": "layout-preview-02",
+  "notice": "Illustrative figures only. Evidence and the confidence gate have not been evaluated. This document is a report layout preview, not a released assessment.",
+  "summary": "This example shows how a workflow improvement could release staff capacity. Freed time is presented separately from documented cash savings. The tables and charts use supplied fixture values to demonstrate the report layout.",
+  "cards": [
+    {
+      "label": "NPV · hard savings",
+      "value": "-$10,000.00",
+      "note": "No documented cash reduction",
+      "tone": "hard"
+    },
+    {
+      "label": "NPV · capacity-inclusive",
+      "value": "$8,181.82",
+      "note": "Includes the value of freed time",
+      "tone": "capacity"
+    },
+    {
+      "label": "Annual capacity value",
+      "value": "$20,000.00",
+      "note": "After adoption, recapture and haircut",
+      "tone": "capacity"
+    },
+    {
+      "label": "Cost present value",
+      "value": "$10,000.00",
+      "note": "Initial investment at time zero",
+      "tone": "cost"
+    }
+  ],
+  "metrics": [
+    ["NPV", "-$10,000.00", "$8,181.82"],
+    ["ROI · undiscounted", "-100.0%", "100.0%"],
+    ["ROI · NPV / PV of costs", "-100.0%", "81.8%"],
+    ["Payback", "None within horizon", "6 months · illustrative"]
+  ],
+  "inputs": [
+    ["I1", "Annual gross capacity", "$100,000.00", "Synthetic fixture"],
+    ["I2", "Adoption", "50.0%", "Synthetic fixture"],
+    ["I3", "Productivity recapture", "50.0%", "Synthetic fixture"],
+    ["I4", "Benefit haircut", "20.0%", "Synthetic fixture"],
+    ["I5", "Initial investment", "$10,000.00", "Synthetic fixture"],
+    ["I6", "Discount rate / horizon", "10.0% / 1 year", "Synthetic fixture"]
+  ],
+  "benefits": [
+    ["A", "Task administration", "Capacity value", "$16,000.00"],
+    ["B", "Onboarding", "Capacity value", "$4,000.00"],
+    ["Total", "All included examples", "Capacity value", "$20,000.00"]
+  ],
+  "steps": [
+    ["S1", "Gross", "Supplied annual gross value", "$100,000.00"],
+    ["S2", "After adoption", "S1 × 50.0%", "$50,000.00"],
+    ["S3", "After recapture", "S2 × 50.0%", "$25,000.00"],
+    ["S4", "After haircut", "S3 × (1 - 20.0%)", "$20,000.00"],
+    ["S5", "Adjusted", "Supplied adjusted total", "$20,000.00"]
+  ],
+  "waterfall": {
+    "max": 100000,
+    "ticks": [
+      {
+        "value": 0,
+        "label": "$0"
+      },
+      {
+        "value": 50000,
+        "label": "$50k"
+      },
+      {
+        "value": 100000,
+        "label": "$100k"
+      }
+    ],
+    "bars": [
+      {
+        "label": "Gross",
+        "start": 0,
+        "end": 100000,
+        "display": "$100,000",
+        "kind": "total"
+      },
+      {
+        "label": "Adoption",
+        "start": 100000,
+        "end": 50000,
+        "display": "-$50,000",
+        "kind": "reduction"
+      },
+      {
+        "label": "Recapture",
+        "start": 50000,
+        "end": 25000,
+        "display": "-$25,000",
+        "kind": "reduction"
+      },
+      {
+        "label": "Haircut",
+        "start": 25000,
+        "end": 20000,
+        "display": "-$5,000",
+        "kind": "reduction"
+      },
+      {
+        "label": "Adjusted",
+        "start": 0,
+        "end": 20000,
+        "display": "$20,000",
+        "kind": "total"
+      }
+    ]
+  },
+  "contribution": [
+    {
+      "label": "Task administration",
+      "value": 16000,
+      "display": "$16,000.00",
+      "share": "80.0%"
+    },
+    {
+      "label": "Onboarding",
+      "value": 4000,
+      "display": "$4,000.00",
+      "share": "20.0%"
+    }
+  ],
+  "costs": [
+    ["C1", "Implementation", "Time zero", "$8,000.00", "25.0%", "$10,000.00"],
+    ["C2", "Recurring cost", "Year 1", "$0.00", "0.0%", "$0.00"]
+  ],
+  "unquantified": [
+    [
+      "Service consistency",
+      "Not quantified",
+      "Add before/after quality measures"
+    ],
+    [
+      "Future workflow reuse",
+      "Flexibility",
+      "Validate reuse before assigning value"
+    ]
+  ],
+  "cashFlow": {
+    "min": -10000,
+    "max": 20000,
+    "ticks": [
+      {
+        "value": -10000,
+        "label": "-$10k"
+      },
+      {
+        "value": 0,
+        "label": "$0"
+      },
+      {
+        "value": 10000,
+        "label": "$10k"
+      },
+      {
+        "value": 20000,
+        "label": "$20k"
+      }
+    ],
+    "periods": [
+      {
+        "label": "Time zero",
+        "hard": 0,
+        "capacity": 0,
+        "cost": -10000
+      },
+      {
+        "label": "Year 1",
+        "hard": 0,
+        "capacity": 20000,
+        "cost": 0
+      }
+    ],
+    "rows": [
+      ["Time zero", "$0.00", "$0.00", "$10,000.00", "-$10,000.00"],
+      ["Year 1", "$0.00", "$20,000.00", "$0.00", "$20,000.00"]
+    ]
+  },
+  "scenarios": [
+    ["Conservative", "35.0%", "$14,000.00", "$2,727.27", "27.3%"],
+    ["Expected", "50.0%", "$20,000.00", "$8,181.82", "81.8%"],
+    ["Optimistic", "65.0%", "$26,000.00", "$13,636.36", "136.4%"]
+  ],
+  "sensitivity": {
+    "min": -12000,
+    "max": 12000,
+    "ticks": [
+      {
+        "value": -10000,
+        "label": "-$10k"
+      },
+      {
+        "value": 0,
+        "label": "$0"
+      },
+      {
+        "value": 10000,
+        "label": "$10k"
+      }
+    ],
+    "points": [
+      {
+        "rate": "3%",
+        "hard": -10000,
+        "capacity": 9417.48,
+        "display": "$9,417.48",
+        "hardDisplay": "-$10,000.00"
+      },
+      {
+        "rate": "5%",
+        "hard": -10000,
+        "capacity": 9047.62,
+        "display": "$9,047.62",
+        "hardDisplay": "-$10,000.00"
+      },
+      {
+        "rate": "10%",
+        "hard": -10000,
+        "capacity": 8181.82,
+        "display": "$8,181.82",
+        "hardDisplay": "-$10,000.00"
+      },
+      {
+        "rate": "15%",
+        "hard": -10000,
+        "capacity": 7391.3,
+        "display": "$7,391.30",
+        "hardDisplay": "-$10,000.00"
+      },
+      {
+        "rate": "20%",
+        "hard": -10000,
+        "capacity": 6666.67,
+        "display": "$6,666.67",
+        "hardDisplay": "-$10,000.00"
+      }
+    ]
+  },
+  "risks": [
+    [
+      "Doing nothing",
+      "Manual effort continues",
+      "Measure the current workload"
+    ],
+    [
+      "Proceeding",
+      "Adoption may be slower",
+      "Track active use against the plan"
+    ],
+    [
+      "Proceeding",
+      "Freed time may not be reused",
+      "Agree a capacity allocation plan"
+    ]
+  ],
+  "measurement": [
+    [
+      "Task administration",
+      "Not measured",
+      "Compare task time before and after launch",
+      "Not assigned",
+      "Monthly"
+    ],
+    [
+      "Onboarding",
+      "Not measured",
+      "Compare onboarding effort across cohorts",
+      "Not assigned",
+      "Per cohort"
+    ]
+  ],
+  "audit": [
+    ["I1–I6", "Input snapshot", "Synthetic fixture; not source evidence"],
+    [
+      "S1–S5",
+      "Adjustment steps",
+      "Values are supplied, not recomputed by this renderer"
+    ],
+    ["C1–C2", "Cost lines", "Timing and uplift are illustrative"],
+    ["F1", "NPV convention", "Initial cost at time zero; benefit at year end"],
+    [
+      "F2",
+      "ROI convention",
+      "Undiscounted and PV-based definitions stay distinct"
+    ],
+    [
+      "F3",
+      "Payback convention",
+      "Illustrative monthly timing; not a verified forecast"
+    ],
+    ["E1", "Evidence status", "No evidence tiers or confidence gate evaluated"],
+    ["V1", "Template", "uniform-preview-2; run layout-preview-02"]
+  ],
+  "contributionTotal": 20000
+}
