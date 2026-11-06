@@ -1,0 +1,277 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Assumptions.dc.html": {
+      "expand": "fill",
+      "h": 1260,
+      "is_interactive": true,
+      "title": "06a Assumptions and audit trail",
+      "w": 1440,
+      "x": 3040,
+      "y": 2320
+    },
+    "Charts.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "06b Visualizations",
+      "w": 1440,
+      "x": 4560,
+      "y": 2320
+    },
+    "Clarify.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "04 Clarification",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "Compare.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "09 Compare, history, templates",
+      "w": 1440,
+      "x": 3040,
+      "y": 4800
+    },
+    "Intake.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "03 Intake + import preview",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "01 Sign in",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Processing.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "05 Processing",
+      "w": 1440,
+      "x": 0,
+      "y": 2320
+    },
+    "Projects.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "02 Projects",
+      "w": 1440,
+      "x": 1499,
+      "y": 0
+    },
+    "Report.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "is_interactive": true,
+      "title": "07 Final report",
+      "w": 1440,
+      "x": 0,
+      "y": 4800
+    },
+    "Requests.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "08 Data requests",
+      "w": 1440,
+      "x": 1520,
+      "y": 4800
+    },
+    "Review.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "is_interactive": true,
+      "title": "06 Review · Numbers",
+      "w": 1440,
+      "x": 1520,
+      "y": 2320
+    },
+    "Settings.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "10 Organization settings",
+      "w": 1440,
+      "x": 4560,
+      "y": 4800
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-30T12:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "row1",
+    "row2",
+    "row3",
+    "plan-Main",
+    "plan-Projects",
+    "plan-Intake",
+    "plan-Clarify",
+    "plan-Processing",
+    "plan-Review",
+    "plan-Assumptions",
+    "plan-Charts",
+    "plan-Report",
+    "plan-Requests",
+    "plan-Compare",
+    "plan-Settings"
+  ],
+  "notes": {
+    "plan-Assumptions": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Ryan, Eli · O4 (P7)\n\nKEEP: ordered calculation steps (show-the-math), inputs table\nCHANGE: Organization settings block → team goals (Q2); source / tier columns depend on Q5\nREMOVE: Flag an assumption",
+      "w": 560,
+      "x": 3040,
+      "y": 3660
+    },
+    "plan-Charts": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Ryan · O1, O4\n\nKEEP: waterfall, NPV by discount rate, driver mix, fixed chart chips\nADD: choose which charts go in the report\nREMOVE: free-text \"Another view\" (AI-requested charts are cut); Compare projects",
+      "w": 560,
+      "x": 4560,
+      "y": 3400
+    },
+    "plan-Clarify": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Eli · A3–A5\n\nKEEP: chat beside the inputs panel; question cards\nCHANGE: order: default-value check first (\"use industry defaults?\"), then cards for gaps\nREMOVE: \"Stuck? / Get help\"; \"Ask someone\"",
+      "w": 560,
+      "x": 4560,
+      "y": 1180
+    },
+    "plan-Compare": {
+      "fill": "red",
+      "size": 24,
+      "text": "CUT · Beta\n\nREMOVE: whole screen. Do not build for the Interim demo.",
+      "w": 560,
+      "x": 3040,
+      "y": 5780
+    },
+    "plan-Intake": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Jonathan, Jeremiah · I4, I5\n\nKEEP: project name, goal cards, file list\nCHANGE: goals = Time savings, Data quality, Decision speed, Risk reduction; several can be picked\nCHANGE: import preview → one description per file group, plus a project description file (pdf / md / docx)\nREMOVE: Revenue and Software goals; cell → field mapping; Tier column until Q5 says otherwise",
+      "w": 560,
+      "x": 3040,
+      "y": 980
+    },
+    "plan-Main": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Zihao · Z1\n\nKEEP: layout, email + password\nCHANGE: \"Create a workspace\" → sign up + create a team\nREMOVE: company SSO; \"Forgot?\" (password reset is stretch)",
+      "w": 560,
+      "x": 0,
+      "y": 980
+    },
+    "plan-Processing": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Eli · L1–L3\n\nKEEP: progress ring, step list, \"Saved · safe to leave\"\nCHANGE: steps → live updates: parsing data, reading plan documents, calculating ROI, finding people affected\nADD: panel for mid-run questions; error and open-question states",
+      "w": 560,
+      "x": 0,
+      "y": 3300
+    },
+    "plan-Projects": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Zihao · Z1, Z2\n\nKEEP: project list, status tabs, step progress, New project\nCHANGE: org switcher → team switcher\nREMOVE: Data requests and Compare nav items",
+      "w": 560,
+      "x": 1520,
+      "y": 980
+    },
+    "plan-Report": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Ryan + Zihao · O5, Z6\n\nKEEP: outline, results table, assumptions, unquantified benefits\nCHANGE: → report builder: choose charts and structure, then download PDF\nREMOVE: share, JSON export, comments; Approve is stretch",
+      "w": 560,
+      "x": 0,
+      "y": 6120
+    },
+    "plan-Requests": {
+      "fill": "red",
+      "size": 24,
+      "text": "CUT · Beta\n\nREMOVE: whole screen. Do not build for the Interim demo.",
+      "w": 560,
+      "x": 1520,
+      "y": 5780
+    },
+    "plan-Review": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Ryan · O4, O6, O7\n\nKEEP: headline cards, capacity / hard toggle, gross vs adjusted table, show-the-math buttons\nCHANGE: \"Edit inputs\" → review page with a back button that keeps answers; sliders are stretch (O7)\nREMOVE: Needs attention, CFM flags, Request evidence",
+      "w": 560,
+      "x": 1520,
+      "y": 3360
+    },
+    "plan-Settings": {
+      "fill": "teal",
+      "size": 24,
+      "text": "Zihao · Z1, Z4, Z5\n\nKEEP: Members → team page (add people by email)\nCHANGE: Financial rules → team goals (Q2)\nREMOVE: settings versioning; Model provider unless Q3 keeps team keys; roles wait for Q13",
+      "w": 560,
+      "x": 4560,
+      "y": 5780
+    },
+    "row1": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Core flow: sign in → intake → clarify",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "row2": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Process and review",
+      "w": 240,
+      "x": 0,
+      "y": 2020
+    },
+    "row3": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Report and supplemental workflows",
+      "w": 240,
+      "x": 0,
+      "y": 4500
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Projects.dc.html",
+    "Intake.dc.html",
+    "Clarify.dc.html",
+    "Processing.dc.html",
+    "Review.dc.html",
+    "Assumptions.dc.html",
+    "Charts.dc.html",
+    "Report.dc.html",
+    "Requests.dc.html",
+    "Compare.dc.html",
+    "Settings.dc.html"
+  ],
+  "pages": [],
+  "title": "ValueIQ Mock UI"
+}

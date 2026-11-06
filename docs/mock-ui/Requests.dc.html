@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ValueIQ · Data requests</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:#00645D}a:hover{color:#0D3D3B}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #F8FBFB; color: #152023; font-family: Geist, ui-sans-serif, system-ui, sans-serif; font-size: 15px; line-height: 1.5">
+
+  <nav aria-label="Workspace" style="flex: 1 1 14rem; display: flex; flex-direction: column; gap: 24px; padding: 20px 14px; background: #F4F8F8; border-right: 1px solid #DEE4E5">
+    <a href="Projects.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 0 8px; color: #152023; text-decoration: none"><img src="/_blob/cf4c36cdd9e8f3844f903387bd40c020" alt="" style="width: 28px; height: 28px; object-fit: contain"><span style="font-size: 18px; font-weight: 600; letter-spacing: -0.01em">ValueIQ</span></a>
+    <button type="button" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid #DEE4E5; border-radius: 10px; background: #FFFFFF; font: inherit; font-weight: 500; color: #152023">Example Org<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#586669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg></button>
+    <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px">
+      <li><a href="Projects.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #233538; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>Projects</a></li>
+      <li><a href="Requests.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; background: #E0F2F1; color: #0D3D3B; font-weight: 500; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span style="flex: 1">Data requests</span><span style="min-width: 22px; padding: 0 7px; border-radius: 999px; background: #FFFFFF; font-size: 12px; font-weight: 600; text-align: center">3</span></a></li>
+      <li><a href="Compare.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #233538; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>Compare</a></li>
+      <li><a href="Settings.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 8px; color: #233538; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg>Settings</a></li>
+    </ul>
+    <div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 0 8px"><span aria-hidden="true" style="flex: none; width: 32px; height: 32px; border-radius: 999px; background: #00645D; color: #F4FCFB; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px">P</span><span style="font-weight: 500; font-size: 14px">Priya</span></div>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; padding: 28px 40px 48px">
+    <div style="max-width: 72rem; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+      <header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+        <h1 style="margin: 0; font-size: 28px; line-height: 1.2; font-weight: 600; letter-spacing: -0.015em">Data requests</h1>
+        <button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #00645D; font: inherit; font-weight: 500; color: #F4FCFB"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>New request</button>
+      </header>
+
+      <div role="tablist" aria-label="Filter by status" style="display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #DEE4E5">
+        <button type="button" role="tab" aria-selected="true" style="min-height: 44px; padding: 0 14px; border: 0; border-bottom: 2px solid #00645D; background: transparent; font: inherit; font-weight: 600; color: #152023">All <span style="color: #586669; font-weight: 500">3</span></button>
+        <button type="button" role="tab" aria-selected="false" style="min-height: 44px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; font: inherit; color: #586669">Not started 2</button>
+        <button type="button" role="tab" aria-selected="false" style="min-height: 44px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; font: inherit; color: #586669">Submitted 1</button>
+        <button type="button" role="tab" aria-selected="false" style="min-height: 44px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; font: inherit; color: #586669">Validated 0</button>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+        <div style="flex: 3 1 32rem; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+          <div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DEE4E5; border-radius: 14px">
+            <table style="width: 100%; min-width: 34rem; border-collapse: collapse">
+              <thead>
+                <tr style="background: #EEF4F4; text-align: left; font-size: 14px; color: #586669">
+                  <th scope="col" style="padding: 10px 16px; font-weight: 500">Metric</th>
+                  <th scope="col" style="padding: 10px 16px; font-weight: 500">Owner</th>
+                  <th scope="col" style="padding: 10px 16px; font-weight: 500">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-top: 1px solid #DEE4E5; background: #F0F8F7">
+                  <th scope="row" style="padding: 12px 16px; text-align: left; font-weight: 500"><span style="display: flex; flex-direction: column"><span>Hours before / after</span><span style="font-size: 13px; font-weight: 400; color: #586669">Replenishment automation</span></span></th>
+                  <td style="padding: 12px 16px">Operations analyst</td>
+                  <td style="padding: 12px 16px"><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: #E0F2F1; color: #0D3D3B; font-size: 13px; font-weight: 500"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 999px; background: #00645D"></span>Submitted</span></td>
+                </tr>
+                <tr style="border-top: 1px solid #DEE4E5">
+                  <th scope="row" style="padding: 12px 16px; text-align: left; font-weight: 500"><span style="display: flex; flex-direction: column"><span>Loaded hourly cost</span><span style="font-size: 13px; font-weight: 400; color: #586669">Replenishment automation</span></span></th>
+                  <td style="padding: 12px 16px">Finance analyst</td>
+                  <td style="padding: 12px 16px"><span style="padding: 2px 10px; border-radius: 999px; border: 1px solid #C9D3D4; color: #233538; font-size: 13px; font-weight: 500">Not started</span></td>
+                </tr>
+                <tr style="border-top: 1px solid #DEE4E5">
+                  <th scope="row" style="padding: 12px 16px; text-align: left; font-weight: 500"><span style="display: flex; flex-direction: column"><span>Loss per outage</span><span style="font-size: 13px; font-weight: 400; color: #586669">Eastside reliability</span></span></th>
+                  <td style="padding: 12px 16px">Site operations lead</td>
+                  <td style="padding: 12px 16px"><span style="padding: 2px 10px; border-radius: 999px; border: 1px solid #C9D3D4; color: #233538; font-size: 13px; font-weight: 500">Not started</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <section aria-labelledby="own-h" style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #EEF4F4; border-radius: 14px">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+              <h2 id="own-h" style="margin: 0; font-size: 16px; font-weight: 600">Data owner view</h2>
+              <span style="padding: 1px 8px; border-radius: 999px; background: #FFFFFF; font-size: 12px; color: #586669">All fields required</span>
+            </div>
+            <form style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr)); gap: 12px; margin: 0">
+              <div style="display: flex; flex-direction: column; gap: 4px"><label for="v" style="font-size: 13px; font-weight: 500">Value</label><input id="v" type="text" value="5" style="height: 40px; padding: 0 12px; border: 1px solid #C9D3D4; border-radius: 8px; font: inherit; color: #152023; background: #FFFFFF"></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><label for="u" style="font-size: 13px; font-weight: 500">Unit</label><input id="u" type="text" value="h / staff / week" style="height: 40px; padding: 0 12px; border: 1px solid #C9D3D4; border-radius: 8px; font: inherit; color: #152023; background: #FFFFFF"></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><label for="s" style="font-size: 13px; font-weight: 500">Source</label><input id="s" type="text" value="Two-week time sample" style="height: 40px; padding: 0 12px; border: 1px solid #C9D3D4; border-radius: 8px; font: inherit; color: #152023; background: #FFFFFF"></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><label for="p" style="font-size: 13px; font-weight: 500">Period</label><input id="p" type="text" value="October 2026" style="height: 40px; padding: 0 12px; border: 1px solid #C9D3D4; border-radius: 8px; font: inherit; color: #152023; background: #FFFFFF"></div>
+            </form>
+            <div style="display: flex; gap: 8px">
+              <button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: #00645D; font: inherit; font-size: 14px; font-weight: 500; color: #F4FCFB">Submit</button>
+              <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #C9D3D4; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 14px; color: #152023">Cancel</button>
+            </div>
+          </section>
+        </div>
+
+        <aside aria-labelledby="val-h" style="flex: 2 1 20rem; display: flex; flex-direction: column; gap: 18px; padding: 22px; background: #FFFFFF; border: 1px solid #DEE4E5; border-radius: 14px">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
+            <h2 id="val-h" style="margin: 0; font-size: 17px; line-height: 1.35; font-weight: 600">Hours before / after</h2>
+            <span style="flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: #E0F2F1; color: #0D3D3B; font-size: 13px; font-weight: 500"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 999px; background: #00645D"></span>Submitted</span>
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px">
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid #DEE4E5; border-radius: 12px; color: #586669">
+              <span style="font-size: 13px">In use</span>
+              <span style="font-size: 24px; line-height: 1.2; font-weight: 600">5</span>
+              <span style="align-self: flex-start; padding: 0 8px; border-radius: 999px; background: #EBF2F3; font-size: 12px; font-weight: 500; color: #233538">Benchmark</span>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#586669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 2px solid #00645D; border-radius: 12px">
+              <span style="font-size: 13px; color: #586669">Candidate</span>
+              <span style="font-size: 24px; line-height: 1.2; font-weight: 600">5</span>
+              <span style="align-self: flex-start; padding: 0 8px; border-radius: 999px; background: #E0F2F1; font-size: 12px; font-weight: 500; color: #0D3D3B">Measured</span>
+            </div>
+          </div>
+          <dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 14px">
+            <dt style="color: #586669">Unit</dt><dd style="margin: 0">h / staff / week</dd>
+            <dt style="color: #586669">Source</dt><dd style="margin: 0">Two-week time sample</dd>
+            <dt style="color: #586669">Period</dt><dd style="margin: 0">October 2026</dd>
+            <dt style="color: #586669">From</dt><dd style="margin: 0">Operations analyst</dd>
+          </dl>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <a href="Review.dc.html" style="flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; border-radius: 10px; background: #00645D; color: #F4FCFB; font-weight: 500; text-decoration: none">Validate</a>
+            <button type="button" style="flex: 1 1 auto; height: 44px; padding: 0 16px; border: 1px solid #C9D3D4; border-radius: 10px; background: #FFFFFF; font: inherit; font-weight: 500; color: #152023">Return</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

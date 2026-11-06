@@ -18,7 +18,7 @@ Goal: a released run opens an auditable pre-funding estimate, a failed confidenc
 - [Architecture](../../../docs/architecture.md) records the merged authentication foundation and local output-pipeline proposal. The engine and Worker orchestration are implemented; live model checks and UI launch wiring remain separate.
 - [Integration contract](integration-contract.md) defines run states, the server API names and storage ownership. [Interim foundation](interim-foundation.md) owns sign-in, projects and saved intake.
 - [Research and reference cases](../../../docs/research/output/README.md) record source findings, limitations and arithmetic checks.
-- The linked [mockup](https://claude.ai/artifact/5U6NQ4wZL2tR1kE71VJBfd) could not be opened with the available browser tool. Screens 06, 06a, 06b and 07 still need visual review. Do not claim a visual match.
+- The [Mock UI](../../../docs/mock-ui/README.md) is in the repository: screens 06, 06a, 06b and 07 with owner notes. #146 built Review and Report against them; browser acceptance is pending, so do not claim a visual match yet.
 
 ## Fixed product scope
 
@@ -127,7 +127,7 @@ Alternatives considered: browser print does not establish the stored-file flow a
 - [x] Create a [uniform report layout preview](../../../docs/research/output/pdf-preview/README.md) with four vector charts, structured tables and eight-page visual review; verify a 13-page pagination stress case. This is a research prototype, not the integrated O5 report builder.
 - [x] Consume the supplied PR #123 released/gap samples without altering their numbers; add read-only workspace views and an offline-generated sample PDF.
 - [ ] Resolve the contract review with Eli and PDF/storage proposal with Zihao. This document is a review packet, not evidence of their agreement.
-- [ ] Obtain accessible mockup screens for visual acceptance.
+- [x] Obtain accessible mockup screens for visual acceptance ([docs/mock-ui](../../../docs/mock-ui/README.md)).
 
 Exit: one agreed canonical output contract, complete valid fixtures, exact server handoffs and a PDF choice demonstrated in the local Worker.
 
