@@ -32,7 +32,21 @@ export async function checkProjectAccess(
     headers: request.headers,
   });
   if (!session) return "signed_out";
+  return (
+    (await getProjectMembership(projectId, session.user.id)) ?? "forbidden"
+  );
+}
 
+/**
+ * The membership check without a session: for a caller that already holds a
+ * trusted user id, such as an agent method re-checking access (integration
+ * contract section 6). Null when the project is missing or the user is not
+ * on its team.
+ */
+export async function getProjectMembership(
+  projectId: string,
+  userId: string,
+): Promise<ProjectAccess | null> {
   const row = await createDb(env.DB)
     .select({ teamId: projects.teamId, role: member.role })
     .from(projects)
@@ -40,15 +54,14 @@ export async function checkProjectAccess(
       member,
       and(
         eq(member.organizationId, projects.teamId),
-        eq(member.userId, session.user.id),
+        eq(member.userId, userId),
       ),
     )
     .where(eq(projects.id, projectId))
     .get();
-  if (!row) return "forbidden";
-
+  if (!row) return null;
   return {
-    userId: session.user.id,
+    userId,
     teamId: row.teamId,
     projectId,
     role: row.role === "owner" ? "owner" : "member",
