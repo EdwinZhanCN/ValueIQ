@@ -91,7 +91,7 @@ export function RunPanel(props: RunPanelProps) {
           {connection === "denied" || connection === "reconnecting" ? (
             <WifiOffIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
           ) : (
-            <Spinner className="mt-0.5" />
+            <Spinner className="mt-0.5" aria-hidden />
           )}
           {note}
         </p>
@@ -117,7 +117,11 @@ export function RunPanel(props: RunPanelProps) {
             type="button"
             onClick={props.onStart}
             disabled={!controls.start.enabled}
-            aria-describedby={controls.reason ? "run-reason" : undefined}
+            aria-describedby={
+              controls.reason && controls.reason !== note
+                ? "run-reason"
+                : undefined
+            }
           >
             {props.busy ? <Spinner /> : null}
             {controls.start.label}
@@ -155,7 +159,7 @@ export function RunPanel(props: RunPanelProps) {
         ) : null}
       </div>
 
-      {controls.reason ? (
+      {controls.reason && controls.reason !== note ? (
         <p id="run-reason" className="text-sm text-muted-foreground">
           {controls.reason}
         </p>
@@ -270,7 +274,7 @@ function ProgressCard({ view }: { view: RunView }) {
       </div>
       {blocked ? (
         <p className="text-sm text-muted-foreground">
-          Not supported yet. Cancel this run and start a new one.
+          Cancel this run, then start a new one.
         </p>
       ) : (
         <Checklist items={checklistItems(view)} />
@@ -555,9 +559,9 @@ function GapCard({
         </p>
       ) : null}
       <p className="text-sm text-muted-foreground">
-        {summary.reason}. Project confidence is {summary.confidence}; the
-        project needs {summary.floor}. Adding the evidence below raises it. This
-        is a normal outcome, not an error.
+        {summary.reason.replace(/\.$/, "")}. Project confidence is{" "}
+        {summary.confidence}; the project needs {summary.floor}. Adding the
+        evidence below raises it. This is a normal outcome, not an error.
       </p>
       {summary.items.length > 0 ? (
         <ol className="flex flex-col gap-2">
