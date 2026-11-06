@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; a user-facing Start Run control is still pending. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work.
+ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; a user-facing Start Run control is still pending. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work. The Input team's form wire type and serializer/validator (`shared/form.ts`, `app/lib/intake-form.ts`) produce engine fixtures; they are not connected to the intake UI or saved projects yet.
 
 ## Stack
 
@@ -41,6 +41,8 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 `/projects/:projectId` shows the saved form file as plain JSON, labelled as a placeholder until the Input team's intake form mounts there.
 
 ## Runs and the agent gate
+
+The Input team's pre-integration wire type is `shared/form.ts`. `app/lib/intake-form.ts` owns serialization, parsing, field/evidence validation and preserving accepted state on rejected edits; it imports no engine or storage code. `pnpm fixtures:forms` produces deterministic engine handoff files from typed form state, including explicit rejected candidates for negative tests. `pnpm test:forms` runs the boundary checks and detects stale generated fixtures. The existing project JSON placeholder and intake UI are not connected to this numerical form model yet. [Fixture handoff and compatibility notes](../engine/fixtures/forms/README.md) record differences from the old research skeleton and #127 proposal.
 
 - `shared/types.ts` — run states, `RunView`, and `Question` from the [integration contract](../.agents/exec-plans/active/integration-contract.md) section 3.
 - `db/schema.ts` — `runs`, `run_events` (append-only, `seq` from the agent), `run_questions`, and `run_results` (CHECK: a result or a gap list, never both).

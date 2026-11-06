@@ -43,6 +43,7 @@ jobs:
         continue-on-error: true
       - run: pnpm test:engine
       - run: pnpm test:output
+      - run: pnpm test:forms
       - run: pnpm build
       - run: pnpm deploy:check
       - run: node --test scripts/check-deploy-target.test.mjs
