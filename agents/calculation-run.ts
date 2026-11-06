@@ -3,6 +3,7 @@ import type { AgentWorkflowEvent, AgentWorkflowStep } from "agents/workflows";
 import { NonRetryableError } from "cloudflare:workflows";
 import type { ValueIQAgent } from "./valueiq-agent";
 import { makeOrchestrator, runStoreFor } from "../app/server/run-wiring.server";
+import { OrchestratorError } from "../assistant/run/orchestrator";
 import {
   RETRY_DELAY,
   RETRY_LIMIT,
@@ -72,20 +73,46 @@ export class CalculationRun extends AgentWorkflow<
         // A retryable failure must not end the run before the last attempt.
         store.deferFailure = true;
         const pending: Promise<void>[] = [];
-        const orch = makeOrchestrator({
-          projectId,
-          userId,
-          store,
-          onView: (view) => {
-            if (
-              view.status === "failed" &&
-              view.error &&
-              shouldRetry(view.error, ctx.attempt)
-            )
-              return;
-            pending.push(this.reportProgress({ view }).catch(() => undefined));
-          },
-        });
+        let orch;
+        try {
+          orch = makeOrchestrator({
+            projectId,
+            userId,
+            store,
+            onView: (view) => {
+              if (
+                view.status === "failed" &&
+                view.error &&
+                shouldRetry(view.error, ctx.attempt)
+              )
+                return;
+              pending.push(
+                this.reportProgress({ view }).catch(() => undefined),
+              );
+            },
+          });
+        } catch (error) {
+          if (error instanceof OrchestratorError && !error.retryable) {
+            const events = await store.listRunEvents(runId);
+            await store.appendRunEvent({
+              run_id: runId,
+              seq:
+                events.reduce((last, event) => Math.max(last, event.seq), 0) +
+                1,
+              step: "Setup",
+              type: "error",
+              payload_json: JSON.stringify({
+                code: error.code,
+                message: error.message,
+                retryable: false,
+              }),
+              created_at: new Date().toISOString(),
+            });
+            await store.finalizeFailed(runId);
+            throw new NonRetryableError(`${error.code}: ${error.message}`);
+          }
+          throw error;
+        }
         const out = await orch.executeRun(runId);
         await Promise.all(pending);
         const err = out.view.error;
