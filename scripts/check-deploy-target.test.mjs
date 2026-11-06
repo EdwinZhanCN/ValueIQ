@@ -67,6 +67,11 @@ for (const [name, mutate, message] of [
     /wrong R2 bucket/,
   ],
   [
+    "another environment's workflow",
+    (_, built) => (built.workflows[0].name = "valueiq-dev-run"),
+    /wrong workflow/,
+  ],
+  [
     "cross-Worker Durable Object",
     (_, built) =>
       (built.durable_objects.bindings[0].script_name = "valueiq-dev"),

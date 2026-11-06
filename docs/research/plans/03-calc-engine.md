@@ -56,6 +56,8 @@ One driver over 50% of benefit; over 50% from vendor-supplied numbers; same hour
 
 ## Tests (M4) and fixtures (Ag7)
 
+The KPIs, the independent published cases (Forrester TEI studies, Excel, Green Book, government worked examples) and the input families the tests must cover are in `../engine-test-plan.md`.
+
 `roi_prototype.py` has 47 checks to port; 45 pass, 2 are recorded gaps.
 
 | Fixture                                                                                                                                                                                       | Expected                                                                       | Status                                                               |
