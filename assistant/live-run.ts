@@ -3,7 +3,12 @@
 // does pre-flight, the calculation model does the engine tools and writes the narrative, with the
 // narrative guard ON. Logs carry ids and hashes only. The key is never printed or stored.
 import { readFileSync } from "node:fs";
-import { CATALOG, type FormFile, type RunOutput } from "../engine";
+import {
+  CATALOG,
+  engineNarrative,
+  type FormFile,
+  type RunOutput,
+} from "../engine";
 import { goldenGapForm, goldenResultForm } from "../engine/tests/forms";
 import { dryFetch } from "./dry-fetch";
 import {
@@ -16,8 +21,8 @@ import {
   type GeminiEvent,
   type LoopResult,
 } from "./gemini";
-import { resolveModels, resolveThinkingBudget } from "./models";
-import { NarrativeRejectedError } from "./narrative-guard";
+import { describeThinking, resolveModels, resolveThinking } from "./models";
+import { NarrativeRejectedError, checkModelText } from "./narrative-guard";
 import { TOOLS, createContext, type ToolContext } from "./tools";
 
 /** Standard prices, USD per 1M tokens (assistant tier / calculation tier), valid through 2026-12-31. */
@@ -58,8 +63,9 @@ Do not write any digits in your reply.`;
 
 const CALC_SYSTEM = `You are the ValueIQ calculation agent. You run deterministic engine tools over the saved form and explain results. You never calculate, round or estimate a number yourself.
 Loop: call compute_haircut for each effect input listed by the user, then compute_driver for each goal, then compute_project, then sensitivity (param discount_rate), then get_confidence, then release_gate.
-Then write the summary from tool output only. Every sentence that contains a number must end that number with a step ref in square brackets taken from the tool output, for example [A4] or [D1, D2, D3]. Quote numbers exactly as the tool returned them (money to two decimals).
-Report capacity-inclusive and hard-savings NPV separately, and label both ROIs (undiscounted, and NPV over PV of costs) if you mention ROI. Never call a pre-funding estimate a guarantee.
+Then write the narrative as PLAIN TEXT only: no markdown, no tables, no lists, no headings, no bold. Write one summary paragraph of at most about 90 words, then at most one sentence for each included driver. Do not restate the full report; the screen already shows the tables.
+Every sentence that contains a number must end with the step refs from the tool output in square brackets, for example [A4] or [D1, D2, D3]. Quote numbers exactly as the tool returned them. Never mention a number that is not in a tool output.
+Report capacity-inclusive and hard-savings NPV separately, and label both ROIs (undiscounted, and NPV over PV of costs) if you mention ROI.
 If release_gate fails, do not state any NPV, ROI or payback: say there is not enough backed evidence for a result and point to the gap list. You cannot raise confidence by wording.`;
 
 export interface Check {
@@ -74,6 +80,7 @@ export interface ScenarioReport {
 }
 export interface RunReport {
   ok: boolean;
+  narratives: { scenario: string; source: string; text: string }[];
   scenarios: ScenarioReport[];
   cost_usd: number;
   lines: string[];
@@ -118,12 +125,45 @@ function effectIds(form: FormFile): string[] {
     .map((i) => i.id);
 }
 
+/** Compact, verbatim engine results for a retry (refs, values, confidence, warnings). */
+function lastResults(role: Role, ctx: ToolContext): unknown {
+  if (role === "assistant") return ctx.state.seen.slice(-1);
+  const o = ctx.state.last;
+  if (!o) return null;
+  if (o.kind === "gap_list") return { kind: o.kind, gap_list: o.gap_list };
+  const r = o.result;
+  return {
+    kind: o.kind,
+    currency: o.meta.currency,
+    horizon_years: o.meta.horizon_years,
+    headline: r?.headline,
+    drivers: r?.drivers.map((d) => ({
+      id: d.id,
+      label: d.label,
+      total: d.total,
+      steps: d.steps.map((x) => ({
+        ref: x.ref,
+        label: x.label,
+        value: x.value,
+      })),
+    })),
+    cost_lines: r?.costs.lines.map((l) => ({
+      ref: l.ref,
+      label: l.label,
+      adjusted: l.adjusted,
+    })),
+    confidence: r?.confidence.project,
+    warnings: r?.warnings,
+  };
+}
+
 export interface LiveOptions {
   dry: boolean;
   env: Record<string, string | undefined>;
   out: (line: string) => void;
   fetch?: FetchLike;
   dryBadFirst?: boolean;
+  dryBadAlways?: boolean;
 }
 
 export async function runLive(o: LiveOptions): Promise<RunReport> {
@@ -134,9 +174,12 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
   };
   const key = o.dry ? "dry-run-key" : (o.env["GEMINI_API_KEY"] ?? "");
   const models = resolveModels(o.env);
-  const budget = resolveThinkingBudget(o.env);
+  const thinking = resolveThinking(o.env);
   const doFetch: FetchLike | undefined = o.dry
-    ? dryFetch(o.dryBadFirst ? { badFirst: true } : {})
+    ? dryFetch({
+        ...(o.dryBadFirst ? { badFirst: true } : {}),
+        ...(o.dryBadAlways ? { badAlways: true } : {}),
+      })
     : o.fetch;
   const fixture = (name: string): unknown =>
     JSON.parse(
@@ -150,11 +193,12 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
     calc: models.calc,
   };
   say(
-    `live-run ${o.dry ? "(DRY: scripted fake model, no network)" : "(LIVE)"}; assistant=${models.assistant} calc=${models.calc} thinking_budget=${budget ?? "unset"}`,
+    `live-run ${o.dry ? "(DRY: scripted fake model, no network)" : "(LIVE)"}; assistant=${models.assistant} calc=${models.calc} thinking(calc)=${describeThinking(thinking)}`,
   );
 
   const events: Tagged[] = [];
   const scenarios: ScenarioReport[] = [];
+  const narratives: RunReport["narratives"] = [];
 
   async function phase(
     role: Role,
@@ -162,7 +206,12 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
     system: string,
     userText: string,
     toolNames: string[],
-  ): Promise<{ text: string; ok: boolean; note: string }> {
+  ): Promise<{
+    text: string;
+    ok: boolean;
+    note: string;
+    source: "model" | "engine" | "none";
+  }> {
     const tools = TOOLS.filter((t) => toolNames.includes(t.name));
     const run = (contents: Content[]): Promise<LoopResult> =>
       runToolLoop({
@@ -174,19 +223,27 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
         ctx,
         maxSteps: 16,
         ...(doFetch ? { fetch: doFetch } : {}),
-        ...(role === "calc" && budget !== undefined
-          ? { thinkingBudget: budget }
-          : {}),
+        ...(role === "calc" && thinking !== undefined ? { thinking } : {}),
         log: (e) => events.push({ ...e, role }),
+      });
+    const source = (src: "model" | "engine") =>
+      events.push({
+        role,
+        type: "narrative_source",
+        model: modelOf[role],
+        source: src,
       });
     let contents: Content[] = [{ role: "user", parts: [{ text: userText }] }];
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const r = await run(contents);
+        source("model");
+        say(`  [${role}] narrative_source = model`);
         return {
           text: r.text,
           ok: true,
           note: attempt === 2 ? "passed after one retry" : "",
+          source: "model",
         };
       } catch (e) {
         if (e instanceof NarrativeRejectedError) {
@@ -194,18 +251,39 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
             say(
               `  [${role}] GUARD REJECTED (attempt ${attempt}): "${d.sentence}" because ${d.reason}`,
             );
-          if (attempt === 2)
-            return { text: "", ok: false, note: "rejected twice" };
+          if (attempt === 2) {
+            // never output rejected text: fall back to the engine's deterministic narrative
+            const fb = ctx.state.last
+              ? engineNarrative(ctx.state.last)
+              : "Pre-flight finished; see the structured pre-flight output.";
+            if (checkModelText(fb, ctx.state.last, ctx.state.seen).length > 0)
+              return {
+                text: "",
+                ok: false,
+                note: "fallback failed the scan",
+                source: "engine",
+              };
+            source("engine");
+            say(
+              `  [${role}] narrative_source = engine (model text rejected twice)`,
+            );
+            return {
+              text: fb,
+              ok: true,
+              note: "engine fallback",
+              source: "engine",
+            };
+          }
+          // retry with only the rejection and the last tool results, not the whole history
           const why = e.diagnosis
             .map((d) => `"${d.sentence}" (${d.reason})`)
             .join("; ");
           contents = [
-            ...(e.contents as Content[]),
             {
               role: "user",
               parts: [
                 {
-                  text: `Your text was rejected by the integrity scan: ${why}. Rewrite it using only numbers returned by the tools, and put the step ref in square brackets after the last number of every sentence that has a number.`,
+                  text: `${userText}\n\nEngine tool results (the only numbers you may use):\n${JSON.stringify(lastResults(role, ctx))}\n\nYour previous text was rejected by the integrity scan: ${why}. Write the narrative again as plain text with no markdown, using only numbers from the tool results above, with the step refs in square brackets after the last number of every sentence that has a number. Do not call tools.`,
                 },
               ],
             },
@@ -220,10 +298,10 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
               ? "HTTP ERROR"
               : "ERROR";
         say(`  [${role}] ${kind}: ${msg}`);
-        return { text: "", ok: false, note: kind };
+        return { text: "", ok: false, note: kind, source: "none" };
       }
     }
-    return { text: "", ok: false, note: "unreachable" };
+    return { text: "", ok: false, note: "unreachable", source: "none" };
   }
 
   async function scenario(
@@ -252,6 +330,8 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
       CALC_TOOLS,
     );
 
+    narratives.push({ scenario: name, source: c.source, text: c.text });
+
     // ---- per-step table ----
     say("  step log (ids and hashes only):");
     const mine = events.slice(start);
@@ -264,6 +344,8 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
         say(
           `  [${e.role}] step ${e.step} tool      ${e.tool} args#${e.args_hash} result#${e.result_hash} ${e.error_code ? `ERROR ${e.error_code}` : "ok"}`,
         );
+      else if (e.type === "narrative_source")
+        say(`  [${e.role}] narrative_source ${e.source}`);
       else if (e.type === "text_rejected" || e.type === "model_mismatch")
         say(
           `  [${e.role}] step ${e.step} ${e.type} text#${e.result_hash ?? ""}`,
@@ -429,7 +511,7 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
   say(
     `\nRESULT: ${ok ? "ALL CHECKS PASSED" : "SOME CHECKS FAILED (see FAIL lines above)"}`,
   );
-  return { ok, scenarios, cost_usd: cost, lines };
+  return { ok, narratives, scenarios, cost_usd: cost, lines };
 }
 
 /** Entry point used by assistant/scripts/live-run.mjs. Returns the process exit code. */

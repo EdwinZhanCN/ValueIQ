@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRequest } from "../gemini";
 import { main, runLive } from "../live-run";
-import { ModelConfigError, resolveThinkingBudget } from "../models";
+import { ModelConfigError, resolveThinking } from "../models";
 import { TOOLS } from "../tools";
 
 describe("K16 live-run --dry (scripted fake model, no key, no network)", () => {
@@ -64,27 +64,79 @@ describe("K16 live-run --dry (scripted fake model, no key, no network)", () => {
   });
 });
 
-describe("K16 thinking budget option for the calculation model", () => {
-  it("is unset by default, read from GEMINI_THINKING_BUDGET_CALC, validated, and sent as thinkingConfig", () => {
-    expect(resolveThinkingBudget({})).toBeUndefined();
-    expect(resolveThinkingBudget({ GEMINI_THINKING_BUDGET_CALC: "0" })).toBe(0);
-    expect(resolveThinkingBudget({ GEMINI_THINKING_BUDGET_CALC: "-1" })).toBe(
-      -1,
+describe("K16 thinking option for the calculation model", () => {
+  it("defaults to the low level, accepts levels, budgets and unset, and is sent as thinkingConfig", () => {
+    expect(resolveThinking({})).toEqual({ level: "low" });
+    expect(resolveThinking({ GEMINI_THINKING_CALC: "high" })).toEqual({
+      level: "high",
+    });
+    expect(resolveThinking({ GEMINI_THINKING_CALC: "minimal" })).toEqual({
+      level: "minimal",
+    });
+    expect(resolveThinking({ GEMINI_THINKING_CALC: "unset" })).toBeUndefined();
+    expect(resolveThinking({ GEMINI_THINKING_CALC: "0" })).toEqual({
+      budget: 0,
+    });
+    expect(resolveThinking({ GEMINI_THINKING_CALC: "1024" })).toEqual({
+      budget: 1024,
+    });
+    expect(resolveThinking({ GEMINI_THINKING_BUDGET_CALC: "512" })).toEqual({
+      budget: 512,
+    });
+    expect(() => resolveThinking({ GEMINI_THINKING_CALC: "lots" })).toThrow(
+      ModelConfigError,
     );
-    expect(resolveThinkingBudget({ GEMINI_THINKING_BUDGET_CALC: "512" })).toBe(
-      512,
+    expect(() => resolveThinking({ GEMINI_THINKING_CALC: "-5" })).toThrow(
+      ModelConfigError,
     );
-    expect(() =>
-      resolveThinkingBudget({ GEMINI_THINKING_BUDGET_CALC: "lots" }),
-    ).toThrow(ModelConfigError);
-    expect(() =>
-      resolveThinkingBudget({ GEMINI_THINKING_BUDGET_CALC: "-5" }),
-    ).toThrow(ModelConfigError);
     const none = buildRequest("s", [], TOOLS);
     expect("generationConfig" in none).toBe(false);
-    const with0 = buildRequest("s", [], TOOLS, 0) as {
-      generationConfig?: { thinkingConfig: { thinkingBudget: number } };
+    const lvl = buildRequest("s", [], TOOLS, { level: "low" }) as {
+      generationConfig?: { thinkingConfig: Record<string, unknown> };
     };
-    expect(with0.generationConfig?.thinkingConfig.thinkingBudget).toBe(0);
+    expect(lvl.generationConfig?.thinkingConfig).toEqual({
+      thinkingLevel: "low",
+    });
+    const bud = buildRequest("s", [], TOOLS, { budget: 0 }) as {
+      generationConfig?: { thinkingConfig: Record<string, unknown> };
+    };
+    expect(bud.generationConfig?.thinkingConfig).toEqual({ thinkingBudget: 0 });
+  });
+});
+
+describe("K16 narrative fallback and lean retry", () => {
+  it("when the retry is rejected too, the engine narrative is used, rejected text is never output, and the source is recorded", async () => {
+    const lines: string[] = [];
+    const r = await runLive({
+      dry: true,
+      dryBadAlways: true,
+      env: {},
+      out: (l) => lines.push(l),
+    });
+    expect(r.ok).toBe(true);
+    for (const n of r.narratives) {
+      expect(n.source).toBe("engine");
+      expect(n.text).not.toContain("8,181.82");
+      expect(n.text.length).toBeGreaterThan(20);
+    }
+    const text = lines.join("\n");
+    expect(text).toContain("narrative_source = engine");
+    expect(text).toContain("GUARD REJECTED (attempt 2)");
+    expect(
+      r.narratives.find((n) => n.scenario === "sample-result")?.text,
+    ).toContain("$127,956.73");
+  });
+
+  it("a passing model narrative is recorded as source model; a retry that passes is also model", async () => {
+    const ok = await runLive({ dry: true, env: {}, out: () => undefined });
+    expect(ok.narratives.every((n) => n.source === "model")).toBe(true);
+    const retry = await runLive({
+      dry: true,
+      dryBadFirst: true,
+      env: {},
+      out: () => undefined,
+    });
+    expect(retry.ok).toBe(true);
+    expect(retry.narratives.every((n) => n.source === "model")).toBe(true);
   });
 });

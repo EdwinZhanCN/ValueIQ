@@ -44,19 +44,44 @@ export function resolveModels(
   };
 }
 
-/** Thinking budget (tokens) for the calculation-run model. Unset by default. */
-export const DEFAULT_THINKING_BUDGET_CALC: number | undefined = undefined;
+export type ThinkingLevel = "minimal" | "low" | "medium" | "high";
+/** Gemini 3 models take a thinking level; older ones take a token budget. */
+export type ThinkingSetting = { level: ThinkingLevel } | { budget: number };
 
-/** GEMINI_THINKING_BUDGET_CALC: integer >= -1 (-1 = dynamic, 0 = off). Unset means model default. */
-export function resolveThinkingBudget(
+/**
+ * Default thinking for the calculation-run model. The Gemini docs list thinking levels (minimal,
+ * low, medium, high) for the Gemini 3 family and do not document a token budget for them, so the
+ * default is the "low" level. A token budget is still possible through the env var.
+ */
+export const DEFAULT_THINKING_CALC: ThinkingSetting | undefined = {
+  level: "low",
+};
+
+const LEVELS = ["minimal", "low", "medium", "high"];
+
+/**
+ * GEMINI_THINKING_CALC (alias GEMINI_THINKING_BUDGET_CALC): a level word (minimal|low|medium|high),
+ * an integer token budget >= -1 (0 = off, -1 = dynamic), or "unset" for the model default.
+ */
+export function resolveThinking(
   env: Record<string, string | undefined> = {},
-): number | undefined {
-  const raw = env["GEMINI_THINKING_BUDGET_CALC"];
-  if (raw === undefined || raw === "") return DEFAULT_THINKING_BUDGET_CALC;
+): ThinkingSetting | undefined {
+  const raw = env["GEMINI_THINKING_CALC"] || env["GEMINI_THINKING_BUDGET_CALC"];
+  if (raw === undefined || raw === "") return DEFAULT_THINKING_CALC;
+  if (raw === "unset" || raw === "default") return undefined;
+  if (LEVELS.includes(raw)) return { level: raw as ThinkingLevel };
   const n = Number(raw);
   if (!Number.isInteger(n) || n < -1)
     throw new ModelConfigError(
-      "GEMINI_THINKING_BUDGET_CALC must be an integer >= -1",
+      "GEMINI_THINKING_CALC must be minimal|low|medium|high, an integer >= -1, or unset",
     );
-  return n;
+  return { budget: n };
+}
+
+export function describeThinking(t: ThinkingSetting | undefined): string {
+  return t === undefined
+    ? "unset"
+    : "level" in t
+      ? `level ${t.level}`
+      : `budget ${t.budget}`;
 }

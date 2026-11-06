@@ -1,7 +1,7 @@
 // Minimal Gemini REST client with a tool-call loop. Plain fetch (injectable), no SDK.
 // The API key is held in a closure, sent only in the x-goog-api-key header, and never logged.
 import { toGeminiSchema } from "./schema";
-import { assertExactModelId } from "./models";
+import { assertExactModelId, type ThinkingSetting } from "./models";
 import { NarrativeRejectedError, assertModelText } from "./narrative-guard";
 import {
   ToolArgError,
@@ -57,6 +57,7 @@ export interface GeminiEvent {
     | "model_mismatch"
     | "paused"
     | "text_rejected"
+    | "narrative_source"
     | "done";
   model: string;
   step?: number;
@@ -66,6 +67,8 @@ export interface GeminiEvent {
   returned_model?: string | null;
   error_code?: string;
   tokens?: number;
+  /** Who wrote the final narrative: the model (guard passed) or the engine (fallback). */
+  source?: "model" | "engine";
   prompt_tokens?: number;
   output_tokens?: number;
   thought_tokens?: number;
@@ -95,8 +98,8 @@ export interface LoopOptions {
   guardText?: boolean;
   log?: (e: GeminiEvent) => void;
   baseUrl?: string;
-  /** Thinking budget in tokens for this call (unset = model default). */
-  thinkingBudget?: number;
+  /** Thinking for this call: a level (Gemini 3) or a token budget; unset = model default. */
+  thinking?: ThinkingSetting;
 }
 
 export interface LoopResult {
@@ -143,11 +146,18 @@ export function buildRequest(
   system: string,
   contents: Content[],
   tools: readonly ToolDef[],
-  thinkingBudget?: number,
+  thinking?: ThinkingSetting,
 ) {
   return {
-    ...(thinkingBudget !== undefined
-      ? { generationConfig: { thinkingConfig: { thinkingBudget } } }
+    ...(thinking !== undefined
+      ? {
+          generationConfig: {
+            thinkingConfig:
+              "level" in thinking
+                ? { thinkingLevel: thinking.level }
+                : { thinkingBudget: thinking.budget },
+          },
+        }
       : {}),
     systemInstruction: { parts: [{ text: system }] },
     contents,
@@ -199,7 +209,7 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
 
   for (let step = 1; step <= maxSteps; step++) {
     const body = JSON.stringify(
-      buildRequest(o.system, contents, o.tools, o.thinkingBudget),
+      buildRequest(o.system, contents, o.tools, o.thinking),
     );
     emit({ type: "request", model: o.model, step, args_hash: hashOf(body) });
     const res = await doFetch(`${base}/models/${o.model}:generateContent`, {
