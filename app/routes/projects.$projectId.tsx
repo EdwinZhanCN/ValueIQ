@@ -3,15 +3,14 @@ import { RunAssessment } from "../components/run/run-assessment";
 import { listProjectFiles } from "../server/files.server";
 import { readSmallForm } from "../server/form-body.server";
 import { getLatestOutcome } from "../server/run-outcome.server";
-import { useEffect, useRef } from "react";
-import { data, Form, Link } from "react-router";
+import { data, Link } from "react-router";
+import { StructuredIntake } from "../components/intake/structured-intake";
 import { requireProjectAccess } from "../server/access.server";
 import {
   getProject,
   getProjectForm,
   saveProjectForm,
 } from "../server/projects.server";
-import { SubmitButton } from "../components/submit-button";
 import type { Route } from "./+types/projects.$projectId";
 const MAX_BYTES = 256 * 1024;
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -33,7 +32,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     files,
     latest,
     hasForm: form !== null,
-    formText: JSON.stringify(form ? form.formJson : {}, null, 2),
+    form: form?.formJson ?? null,
     savedAt: form?.updatedAt.toISOString() ?? null,
     target: url.searchParams.get("input"),
     resultUrl: `/projects/${params.projectId}/results${run ? `?run=${encodeURIComponent(run)}` : ""}`,
@@ -93,18 +92,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     );
   return { error: null, saved: true };
 }
-export default function ProjectIntake({
-  loaderData,
-  actionData,
-}: Route.ComponentProps) {
-  const editor = useRef<HTMLTextAreaElement>(null);
-  const { target, formText } = loaderData;
-  useEffect(() => {
-    if (!target || !editor.current) return;
-    const at = formText.indexOf(JSON.stringify(target));
-    editor.current.focus();
-    if (at >= 0) editor.current.setSelectionRange(at, at + target.length + 2);
-  }, [target, formText]);
+export default function ProjectIntake({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -122,61 +110,15 @@ export default function ProjectIntake({
           latest={loaderData.latest}
         />
       </section>
-      <section id="intake" className="rounded-xl border bg-card p-6">
-        <h2 className="mb-2 font-semibold">Saved intake · JSON preview</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          The structured intake form is being built by the input team. This
-          editor loads and saves the actual project form without changing its
-          shape.
-        </p>
-        {target && (
-          <p className="mb-4 rounded-lg bg-accent p-3 text-sm">
-            Requested input: <code>{target}</code>
-          </p>
-        )}
-        <Form method="post" className="flex flex-col gap-4">
-          <label htmlFor="formJson">Project form</label>
-          <textarea
-            ref={editor}
-            key={loaderData.savedAt ?? "new"}
-            id="formJson"
-            name="formJson"
-            defaultValue={formText}
-            rows={18}
-            spellCheck={false}
-            className="w-full rounded-lg border bg-background p-4 font-mono text-xs"
-          />
-          <input
-            type="hidden"
-            name="baseUpdatedAt"
-            value={loaderData.savedAt ?? ""}
-          />
-          {actionData?.error && (
-            <p role="alert">
-              {actionData.error}{" "}
-              {"conflict" in actionData && (
-                <Link reloadDocument to=".">
-                  Reload latest
-                </Link>
-              )}
-            </p>
-          )}
-          {actionData?.saved && (
-            <p role="status">
-              Intake saved. Existing results remain tied to their original run.
-            </p>
-          )}
-          <div className="flex items-center gap-4">
-            <SubmitButton>Save intake</SubmitButton>
-            <Link to={loaderData.resultUrl}>View result</Link>
-          </div>
-        </Form>
-        {loaderData.savedAt && (
-          <p className="mt-4 text-xs text-muted-foreground">
-            Saved {loaderData.savedAt}
-          </p>
-        )}
-      </section>
+      <div id="intake">
+        <StructuredIntake
+          projectId={loaderData.project.id}
+          initial={loaderData.form}
+          savedAt={loaderData.savedAt}
+          projectFiles={loaderData.files}
+          target={loaderData.target}
+        />
+      </div>
       <p className="text-sm text-muted-foreground">
         Saving the intake preserves your answers. A calculation must be started
         separately; saving does not change existing results.

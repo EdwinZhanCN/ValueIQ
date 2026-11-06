@@ -338,6 +338,14 @@ try {
   );
   const fileId = (await uploaded.json()).file.id;
 
+  // The project page holds the intake form, and offers the uploaded file as
+  // a source with its upload description.
+  const intake = await page(`/projects/${alpha.projectId}`, alpha.cookie);
+  assert.equal(intake.response.status, 200, "project page");
+  assert.match(intake.html, /aria-label="Project intake"/, "intake form");
+  assert.match(intake.html, /Save draft/, "intake save");
+  assert.match(intake.html, /Q3 é\.csv/, "intake lists the uploaded file");
+
   const fetched = await download(alpha.projectId, fileId, alpha.cookie);
   assert.equal(fetched.status, 200, "own download");
   assert.deepEqual(new Uint8Array(await fetched.arrayBuffer()), bytes);

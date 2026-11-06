@@ -1,7 +1,6 @@
-import { useRef, useState } from "react";
-import { Link } from "react-router";
-import { Download, FileText, Plus, Target, Trash2 } from "lucide-react";
-import sample from "../../../docs/research/samples/sample-result.form.json";
+import { useEffect, useRef, useState } from "react";
+import { Link, useFetcher } from "react-router";
+import { Download, FileText, Save } from "lucide-react";
 import type {
   Backing,
   FormContext,
@@ -13,26 +12,24 @@ import type {
 import { INPUT_RULES } from "../../lib/intake-catalog";
 import { DEFAULTS, GOAL_LABELS, LABELS } from "../../lib/intake-fields";
 import {
-  parseFormFile,
+  readFormDraft,
   serializeFormFile,
   validateFormFile,
 } from "../../lib/intake-form";
 
-type FileGroup = {
-  id: string;
-  files: { id: string; name: string }[];
-  description: string;
-};
+export type IntakeFile = { id: string; name: string; description: string };
+type SaveResult = { error: string | null; saved: boolean; conflict?: true };
+
 const control =
   "block w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const action =
   "rounded-lg border px-3 py-2 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const pretty = (value: Input["value"]) =>
   value === null ? "" : Array.isArray(value) ? value.join(", ") : String(value);
-const sampleContext: FormContext = {
-  projectId: "local-intake",
-  files: [{ id: "f1", projectId: "local-intake" }],
-};
+const hasNaN = (value: Input["value"]) =>
+  Array.isArray(value)
+    ? value.some((v) => typeof v === "number" && Number.isNaN(v))
+    : typeof value === "number" && Number.isNaN(value);
 const sourceChoices = [
   ["estimate", "My best estimate"],
   ["documented", "Written source about our organization"],
@@ -41,33 +38,101 @@ const sourceChoices = [
   ["measured", "System record with confirmed passage"],
 ] as const;
 
-export function StructuredIntake() {
-  const [selected, setSelected] = useState<Goal[]>([]);
-  const [currency, setCurrency] = useState("USD");
-  const [horizon, setHorizon] = useState("");
-  const acceptedHorizon = useRef("");
-  const [records, setRecords] = useState<Input[]>([]);
+/** Which input method a saved draft used, from the ids it holds. */
+function pathsOf(form: FormFile) {
+  const has = (...ids: string[]) =>
+    form.inputs.some((record) => ids.includes(record.id));
+  return {
+    time:
+      has("minutes_per_task_before", "minutes_per_task_after") &&
+      !has("hours_saved_per_staff_week")
+        ? "tasks"
+        : "hours",
+    quality: has("records_or_events_per_year", "error_rate_before")
+      ? "rates"
+      : "counts",
+    errorCost: has("cost_per_clean_unit") ? "derived" : "direct",
+    risk: has("asset_value", "exposure_factor_pct") ? "asset" : "direct",
+  };
+}
+
+/**
+ * The project's intake form. It loads the saved draft (`initial`), saves
+ * drafts to the project page action with an edit-conflict check (`savedAt`),
+ * and references only files uploaded to this project (`projectFiles`).
+ * Drafts may be incomplete; Start run checks the saved form strictly.
+ */
+export function StructuredIntake({
+  projectId,
+  initial,
+  savedAt,
+  projectFiles,
+  target,
+}: {
+  projectId: string;
+  initial: unknown;
+  savedAt: string | null;
+  projectFiles: IntakeFile[];
+  target?: string | null;
+}) {
+  const [start] = useState(() => {
+    const form = readFormDraft(initial);
+    return { form, paths: pathsOf(form) };
+  });
+  const [selected, setSelected] = useState<Goal[]>(start.form.goals);
+  const [currency, setCurrency] = useState(start.form.currency);
+  const startHorizon = start.form.horizon_years
+    ? String(start.form.horizon_years)
+    : "";
+  const [horizon, setHorizon] = useState(startHorizon);
+  const acceptedHorizon = useRef(startHorizon);
+  const [records, setRecords] = useState<Input[]>(start.form.inputs);
   const [raw, setRaw] = useState<Record<string, string>>({});
-  const [notes, setNotes] = useState("");
-  const [plans, setPlans] = useState<FormFile["measurement_plan"]>({});
-  const [asked, setAsked] = useState<string[]>([]);
-  const [files, setFiles] = useState<FileGroup[]>([]);
-  const [sampleMode, setSampleMode] = useState(false);
-  const [sampleEdited, setSampleEdited] = useState(false);
+  const [notes, setNotes] = useState(start.form.other_notes);
+  const [plans, setPlans] = useState<FormFile["measurement_plan"]>(
+    start.form.measurement_plan,
+  );
+  const [asked, setAsked] = useState<string[]>(start.form.asked);
+  // File id -> the description this form gives it. Only uploaded files.
+  const [fileNotes, setFileNotes] = useState<Record<string, string>>(
+    start.form.file_descriptions,
+  );
   const [issues, setIssues] = useState<FormIssue[]>([]);
-  const [fileError, setFileError] = useState("");
   const [json, setJson] = useState<string | null>(null);
-  const [copyStatus, setCopyStatus] = useState("");
+  const [ready, setReady] = useState("");
+  const [unsaved, setUnsaved] = useState(false);
   const summary = useRef<HTMLDivElement>(null);
-  const [timePath, setTimePath] = useState("hours");
-  const [qualityPath, setQualityPath] = useState("counts");
-  const [errorCostPath, setErrorCostPath] = useState("direct");
-  const [riskPath, setRiskPath] = useState("direct");
+  const [timePath, setTimePath] = useState(start.paths.time);
+  const [qualityPath, setQualityPath] = useState(start.paths.quality);
+  const [errorCostPath, setErrorCostPath] = useState(start.paths.errorCost);
+  const [riskPath, setRiskPath] = useState(start.paths.risk);
+  // Local time only after hydration: the server's time zone differs.
+  const [savedLabel, setSavedLabel] = useState(savedAt ? "Saved" : "");
+  useEffect(() => {
+    setSavedLabel(savedAt ? `Saved ${new Date(savedAt).toLocaleString()}` : "");
+  }, [savedAt]);
+  const saver = useFetcher<SaveResult>();
+  const saving = saver.state !== "idle";
+  const saved = saver.state === "idle" ? saver.data : undefined;
+  useEffect(() => {
+    if (saved?.saved) setUnsaved(false);
+  }, [saved]);
+  useEffect(() => {
+    if (!target) return;
+    const element = document.getElementById(`value-${target}`);
+    element?.scrollIntoView({ block: "center" });
+    element?.focus();
+  }, [target]);
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
+  const fileName = new Map(projectFiles.map((file) => [file.id, file.name]));
   const context: FormContext = {
-    projectId: "local-intake",
-    files: files.flatMap((group) =>
-      group.files.map((file) => ({ id: file.id, projectId: "local-intake" })),
-    ),
+    projectId,
+    files: projectFiles.map((file) => ({ id: file.id, projectId })),
   };
   const sections = [
     { title: "Project context", ids: ["project_name", "decision_statement"] },
@@ -169,8 +234,8 @@ export function StructuredIntake() {
   const byId = new Map(records.map((record) => [record.id, record]));
   function dirty(id?: string) {
     setJson(null);
-    setCopyStatus("");
-    if (sampleMode) setSampleEdited(true);
+    setReady("");
+    setUnsaved(true);
     if (id) {
       setIssues((previous) => previous.filter((issue) => issue.field !== id));
       setAsked((previous) =>
@@ -245,11 +310,7 @@ export function StructuredIntake() {
       currency,
       horizon_years: horizon.trim() ? Number(horizon) : 0,
       inputs: [...merged.values()],
-      file_descriptions: Object.fromEntries(
-        files.flatMap((group) =>
-          group.files.map((file) => [file.id, group.description]),
-        ),
-      ),
+      file_descriptions: fileNotes,
       other_notes: notes,
       measurement_plan: Object.fromEntries(
         Object.entries(plans).filter(([goal]) =>
@@ -369,6 +430,24 @@ export function StructuredIntake() {
     setJson(serialized);
     return serialized;
   }
+  function save() {
+    const form = candidate();
+    // An uncommitted invalid number is left out rather than saved as null.
+    form.inputs = form.inputs.filter((record) => !hasNaN(record.value));
+    void saver.submit(
+      { formJson: JSON.stringify(form), baseUpdatedAt: savedAt ?? "" },
+      { method: "post" },
+    );
+  }
+  function check() {
+    if (!validate()) return;
+    setReady("The form is complete. Save it, then start the assessment.");
+    requestAnimationFrame(() =>
+      document
+        .getElementById("validated-output")
+        ?.scrollIntoView({ block: "start" }),
+    );
+  }
   function download() {
     const serialized = validate();
     if (!serialized) return;
@@ -377,88 +456,12 @@ export function StructuredIntake() {
     );
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download =
-      sampleMode && !sampleEdited
-        ? "sample-result.form.json"
-        : "project.form.json";
+    anchor.download = "project.form.json";
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
     // Allow the browser to finish handing the blob to its download service.
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  }
-  async function copyJson() {
-    const serialized = validate();
-    if (!serialized) return;
-    try {
-      await navigator.clipboard.writeText(serialized);
-      setCopyStatus("Copied validated form JSON.");
-    } catch {
-      setCopyStatus(
-        "Clipboard access is unavailable. The JSON preview is selected so you can copy it.",
-      );
-      requestAnimationFrame(() => {
-        document
-          .getElementById("validated-output")
-          ?.scrollIntoView({ block: "start" });
-        const output = document.getElementById("form-json");
-        if (output instanceof HTMLTextAreaElement) {
-          output.focus();
-          output.select();
-        }
-      });
-    }
-  }
-  function loadSample() {
-    const form = parseFormFile(JSON.stringify(sample), sampleContext);
-    setSelected(form.goals);
-    setCurrency(form.currency);
-    setHorizon(String(form.horizon_years));
-    acceptedHorizon.current = String(form.horizon_years);
-    setRecords(form.inputs);
-    setRaw({});
-    setNotes(form.other_notes);
-    setPlans(form.measurement_plan);
-    setAsked(form.asked);
-    setFiles([
-      {
-        id: "sample",
-        files: [{ id: "f1", name: "f1 (sample file reference)" }],
-        description: form.file_descriptions.f1 ?? "",
-      },
-    ]);
-    setSampleMode(true);
-    setSampleEdited(false);
-    setCopyStatus("");
-    setFileError("");
-    setIssues([]);
-    setJson(null);
-    setTimePath("hours");
-    setQualityPath("counts");
-    setErrorCostPath("direct");
-    setRiskPath("direct");
-  }
-  function startBlank() {
-    setCopyStatus("");
-    acceptedHorizon.current = "";
-    setSelected([]);
-    setCurrency("USD");
-    setHorizon("");
-    setRecords([]);
-    setRaw({});
-    setNotes("");
-    setPlans({});
-    setAsked([]);
-    setFiles([]);
-    setSampleMode(false);
-    setSampleEdited(false);
-    setIssues([]);
-    setFileError("");
-    setJson(null);
-    setTimePath("hours");
-    setQualityPath("counts");
-    setErrorCostPath("direct");
-    setRiskPath("direct");
   }
   function field(id: string) {
     const rule = INPUT_RULES[id];
@@ -700,13 +703,11 @@ export function StructuredIntake() {
                   }
                 >
                   <option value="">No file selected</option>
-                  {files
-                    .flatMap((group) => group.files)
-                    .map((file) => (
-                      <option key={file.id} value={file.id}>
-                        {file.name}
-                      </option>
-                    ))}
+                  {Object.keys(fileNotes).map((id) => (
+                    <option key={id} value={id}>
+                      {fileName.get(id) ?? id}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="block text-xs">
@@ -846,87 +847,61 @@ export function StructuredIntake() {
   }
 
   return (
-    <main
-      className="h-full scroll-pt-32 overflow-y-auto bg-background p-4 sm:p-8"
-      aria-label="Project intake"
-    >
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2 font-semibold">
-            <Target className="size-5 text-primary" />
-            ValueIQ
-          </Link>
-          <span className="rounded-full border px-3 py-1 text-xs">
-            {sampleMode
-              ? sampleEdited
-                ? "Edited sample · local draft"
-                : "Sample data · local draft"
-              : "Local draft · not saved"}
-          </span>
-        </header>
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="mb-2 text-xs text-muted-foreground">
-              Intake / Structured form
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Build your project case
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Choose outcomes, record the facts, and attach the evidence behind
-              them. Download the validated form for assessment.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={action} onClick={startBlank}>
-              Start blank draft
-            </button>
-            <button type="button" className={action} onClick={loadSample}>
-              Load Eli’s sample
-            </button>
-          </div>
+    <section aria-label="Project intake" className="scroll-pt-32">
+      <div>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold tracking-tight">Intake</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Choose outcomes, record the facts, and attach the evidence behind
+            them. Drafts can be incomplete; the assessment checks the saved form
+            when it starts.
+          </p>
         </div>
-        <p className="mb-6 rounded-xl border bg-muted/50 p-4 text-sm">
-          This editor exports a local JSON file. It does not save a project,
-          upload files, run the assistant, or calculate results.{" "}
-          {sampleMode && "Sample file references are for testing only."}
-        </p>
-        <div className="sticky top-0 z-10 mb-5 flex flex-wrap gap-3 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
+        <div className="sticky top-0 z-10 mb-5 flex flex-wrap items-center gap-3 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
           <button
             type="button"
-            className={action}
-            onClick={() => {
-              if (validate())
-                requestAnimationFrame(() =>
-                  document
-                    .getElementById("validated-output")
-                    ?.scrollIntoView({ block: "start" }),
-                );
-            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+            onClick={save}
+            disabled={saving}
           >
-            Preview JSON
+            <Save className="size-4" />
+            {saving ? "Saving…" : "Save draft"}
+          </button>
+          <button type="button" className={action} onClick={check}>
+            Check form
           </button>
           <button
             type="button"
-            className={action}
-            onClick={() => {
-              void copyJson();
-            }}
-          >
-            Copy JSON
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className={`${action} inline-flex items-center gap-2`}
             onClick={download}
           >
             <Download className="size-4" />
-            Download form JSON
+            Download JSON
           </button>
+          <span role="status" className="text-xs text-muted-foreground">
+            {saving
+              ? ""
+              : unsaved
+                ? "Unsaved changes"
+                : savedLabel || "Not saved yet"}
+          </span>
         </div>
-        {copyStatus && (
+        {saved?.error && (
+          <p
+            role="alert"
+            className="mb-4 rounded-xl border border-destructive p-3 text-sm"
+          >
+            {saved.error}{" "}
+            {saved.conflict && (
+              <Link reloadDocument to="." className="underline">
+                Reload latest
+              </Link>
+            )}
+          </p>
+        )}
+        {ready && (
           <p role="status" className="mb-4 text-sm text-primary">
-            {copyStatus}
+            {ready}
           </p>
         )}
         {issues.length > 0 && (
@@ -936,9 +911,7 @@ export function StructuredIntake() {
             role="alert"
             className="mb-6 rounded-xl border border-destructive p-4 outline-none"
           >
-            <h2 className="font-medium">
-              Check these answers before exporting
-            </h2>
+            <h2 className="font-medium">Check these answers before running</h2>
             <ul className="mt-2 list-inside list-disc text-sm">
               {issues.map((issue, index) => (
                 <li key={index}>
@@ -1054,102 +1027,84 @@ export function StructuredIntake() {
             Source files
           </h2>
           <p className="my-2 text-xs text-muted-foreground">
-            Local references only, not uploaded. Each file group needs a
-            description. Up to 10 files, 10 MB each. Files must be uploaded
-            before a connected assessment can read them.
+            Files uploaded to this project. Choose the ones this assessment uses
+            and describe what each holds. Upload files under Project files
+            below.
           </p>
-          <label
-            className={`${action} inline-flex cursor-pointer items-center gap-2`}
-          >
-            <Plus className="size-4" />
-            Add file group
-            <input
-              aria-label="Add file group"
-              type="file"
-              multiple
-              className="sr-only"
-              onChange={(event) => {
-                const picked = Array.from(event.target.files ?? []);
-                event.target.value = "";
-                if (!picked.length) return;
-                if (
-                  files.flatMap((group) => group.files).length + picked.length >
-                    10 ||
-                  picked.some(
-                    (file) => !file.size || file.size > 10 * 1024 * 1024,
-                  )
-                ) {
-                  setFileError(
-                    "Select non-empty files up to 10 MB each, 10 files total. Previous selections were kept.",
-                  );
-                  return;
-                }
-                setFiles((previous) => [
-                  ...previous,
-                  {
-                    id: crypto.randomUUID(),
-                    files: picked.map((file) => ({
-                      id: `local-${crypto.randomUUID()}`,
-                      name: file.name,
-                    })),
-                    description: "",
-                  },
-                ]);
-                setFileError("");
-                dirty();
-              }}
-            />
-          </label>
-          {fileError && (
-            <p role="alert" className="mt-2 text-sm text-destructive">
-              {fileError}
+          {projectFiles.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No files uploaded yet.
             </p>
           )}
-          {files.map((group, index) => (
-            <div key={group.id} className="mt-4 rounded-lg border p-4">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <ul className="min-w-0 text-sm">
-                  {group.files.map((file) => (
-                    <li key={file.id} className="flex gap-2 break-all">
-                      <FileText className="mt-0.5 size-4 shrink-0" />
-                      {file.name}
-                    </li>
-                  ))}
-                </ul>
+          {projectFiles.map((file) => {
+            const used = file.id in fileNotes;
+            return (
+              <div key={file.id} className="mt-3 rounded-lg border p-3">
+                <label className="flex items-start gap-2 break-all text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1 accent-primary"
+                    checked={used}
+                    onChange={(event) => {
+                      setFileNotes((previous) => {
+                        const next = { ...previous };
+                        if (event.target.checked)
+                          next[file.id] = file.description;
+                        else delete next[file.id];
+                        return next;
+                      });
+                      dirty("file_descriptions");
+                    }}
+                  />
+                  <FileText className="mt-0.5 size-4 shrink-0" />
+                  {file.name}
+                </label>
+                {used && (
+                  <label className="mt-2 block text-xs">
+                    Description (required)
+                    <textarea
+                      aria-label={`Description: ${file.name}`}
+                      className={`${control} mt-1`}
+                      value={fileNotes[file.id]}
+                      onChange={(event) => {
+                        setFileNotes((previous) => ({
+                          ...previous,
+                          [file.id]: event.target.value,
+                        }));
+                        dirty("file_descriptions");
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            );
+          })}
+          {Object.keys(fileNotes)
+            .filter((id) => !fileName.has(id))
+            .map((id) => (
+              <div
+                key={id}
+                className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-destructive p-3 text-sm"
+              >
+                <span className="break-all">
+                  {id} is not a file in this project.
+                </span>
                 <button
                   type="button"
                   className={action}
-                  aria-label={`Remove file group ${index + 1}`}
                   onClick={() => {
-                    setFiles((previous) =>
-                      previous.filter((file) => file.id !== group.id),
-                    );
-                    dirty();
-                  }}
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-              <label className="text-xs">
-                Group {index + 1} description (required)
-                <textarea
-                  aria-label={`Group ${index + 1} description`}
-                  className={`${control} mt-1`}
-                  value={group.description}
-                  onChange={(event) => {
-                    setFiles((previous) =>
-                      previous.map((file) =>
-                        file.id === group.id
-                          ? { ...file, description: event.target.value }
-                          : file,
-                      ),
-                    );
+                    setFileNotes((previous) => {
+                      const next = { ...previous };
+                      delete next[id];
+                      return next;
+                    });
                     dirty("file_descriptions");
                   }}
-                />
-              </label>
-            </div>
-          ))}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
         </section>
         {selected.includes("time_savings") && (
           <label className="mb-4 block text-sm">
@@ -1300,8 +1255,8 @@ export function StructuredIntake() {
             className="mb-6 rounded-xl border bg-card p-5"
             aria-label="Validated JSON"
           >
-            <h2 className="font-semibold">Validated form output</h2>
-            <p role="status" className="my-2 text-sm text-muted-foreground">
+            <h2 className="font-semibold">Validated form</h2>
+            <p className="my-2 text-sm text-muted-foreground">
               Form validation passed. Calculation and confidence checks belong
               to the assessment engine.
             </p>
@@ -1315,10 +1270,7 @@ export function StructuredIntake() {
             />
           </section>
         )}
-        <p className="pb-6 text-xs text-muted-foreground">
-          Draft answers stay in this tab and clear when you leave or refresh.
-        </p>
       </div>
-    </main>
+    </section>
   );
 }
