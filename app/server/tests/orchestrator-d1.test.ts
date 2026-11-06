@@ -3,7 +3,12 @@ import { dryFetch } from "../../../assistant/dry-fetch";
 import { resolveModels } from "../../../assistant/models";
 import { RunOrchestrator } from "../../../assistant/run/orchestrator";
 import { DEFAULT_CONFIG } from "../../../engine/config";
-import { NOW, goldenResultForm } from "../../../engine/tests/forms";
+import type { FormFile } from "../../../engine/types";
+import {
+  NOW,
+  goldenGapForm,
+  goldenResultForm,
+} from "../../../engine/tests/forms";
 import { getRun as getOutputSnapshot } from "../output-runs.server";
 import { D1RunStore } from "../run-store.server";
 import { env } from "./cf-workers-stub";
@@ -18,14 +23,17 @@ beforeEach(() => {
   ids = seedTeams(t);
 });
 
-function orchestrator(userId: string) {
+function orchestrator(
+  userId: string,
+  getForm: () => Promise<FormFile> = () => Promise.resolve(goldenResultForm()),
+) {
   const store = new D1RunStore({ projectId: ids.projectId, userId });
   let n = 0;
   const orch = new RunOrchestrator({
     store,
     project_id: ids.projectId,
     user_id: userId,
-    getForm: () => Promise.resolve(goldenResultForm()),
+    getForm,
     apiKey: "test-key",
     models: resolveModels({}),
     fetch: dryFetch(),
@@ -72,10 +80,9 @@ describe("RunOrchestrator on the D1 store", () => {
     expect(again.run_id).toBe("run-1");
   });
 
-  it("executeRun on an existing run continues the event sequence and saves once", async () => {
-    const { orch, store } = orchestrator(ids.owner);
-    await store.createRun({
-      id: "run-9",
+  const pinnedRun = (store: D1RunStore, id: string, form?: FormFile) =>
+    store.createRun({
+      id,
       project_id: ids.projectId,
       mode: "real",
       form_hash: "h",
@@ -84,7 +91,36 @@ describe("RunOrchestrator on the D1 store", () => {
       settings_version: DEFAULT_CONFIG.versions.settings,
       started_by: ids.owner,
       started_at: NOW,
+      form: form ?? goldenResultForm(),
     });
+
+  it("executeRun calculates the form pinned at start, never the live form", async () => {
+    // The live form was edited into a gap-list form after the run started.
+    const { orch, store } = orchestrator(ids.owner, () =>
+      Promise.resolve(goldenGapForm()),
+    );
+    await pinnedRun(store, "run-7", goldenResultForm());
+    const out = await orch.executeRun("run-7");
+    expect(out.view.status).toBe("released");
+    expect(await store.getRunForm("run-7")).toEqual(goldenResultForm());
+  });
+
+  it("executeRun refuses a run without a pinned form", async () => {
+    const { orch } = orchestrator(ids.owner);
+    // A row from before form_json existed.
+    t.exec(
+      "insert into runs (id, project_id, status, mode, form_hash, contract_version, formula_version, settings_version, started_by) values ('run-old', ?, 'running', 'real', 'h', '1', '1', '1', ?)",
+      ids.projectId,
+      ids.owner,
+    );
+    await expect(orch.executeRun("run-old")).rejects.toMatchObject({
+      code: "BAD_INPUT",
+    });
+  });
+
+  it("executeRun on an existing run continues the event sequence and saves once", async () => {
+    const { orch, store } = orchestrator(ids.owner);
+    await pinnedRun(store, "run-9");
     await store.appendRunEvent({
       run_id: "run-9",
       seq: 5,

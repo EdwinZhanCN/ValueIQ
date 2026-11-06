@@ -298,6 +298,7 @@ export class RunOrchestrator {
       settings_version: v.settings,
       started_by: this.d.user_id,
       started_at: this.d.now(),
+      form,
     });
     return this.executeRun(run_id, form);
   }
@@ -306,14 +307,23 @@ export class RunOrchestrator {
    * Runs the calculation for a run row that already exists (created by the agent or by startRun).
    * Safe to call again after a failed attempt: the event sequence continues where it stopped, and
    * a result is only saved once.
+   *
+   * The form is the copy pinned on the run row, never the live project form: edits saved after
+   * the run started must not change what it calculates (or what its form_hash claims).
    */
   async executeRun(run_id: string, form?: FormFile): Promise<RunOutcome> {
     await this.guardAccess();
     const { store } = this.d;
-    const f = form ?? (await this.d.getForm());
     const rec = await store.getRun(run_id);
     if (!rec) throw new OrchestratorError("BAD_INPUT", "Unknown run", false);
     if (rec.status === "cancelled") return this.cancelledOutcome(run_id);
+    const f = form ?? (await store.getRunForm(run_id));
+    if (!f)
+      throw new OrchestratorError(
+        "BAD_INPUT",
+        "This run has no saved input; start a new run",
+        false,
+      );
     // a retry after a failed attempt starts the same run again
     if (rec.status === "failed")
       await store.updateRun(run_id, { status: "running", finished_at: null });

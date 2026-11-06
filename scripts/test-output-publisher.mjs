@@ -2,7 +2,7 @@
 // This worker is constructed by the test, never routed by the application.
 import assert from "node:assert/strict";
 import { realpathSync } from "node:fs";
-import { readFile, mkdtemp, rm } from "node:fs/promises";
+import { readFile, readdir, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -43,11 +43,11 @@ const mf = new Miniflare(
 );
 try {
   const db = await mf.getD1Database("DB");
-  for (const file of [
-    "drizzle/0000_auth_projects_files.sql",
-    "drizzle/0001_runs.sql",
-    "drizzle/0002_smart_korvac.sql",
-  ]) {
+  const migrations = (await readdir("drizzle"))
+    .filter((name) => name.endsWith(".sql"))
+    .sort()
+    .map((name) => `drizzle/${name}`);
+  for (const file of migrations) {
     for (const statement of (await readFile(file, "utf8")).split(
       "--> statement-breakpoint",
     )) {

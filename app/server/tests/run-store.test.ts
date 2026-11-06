@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { RunOutput } from "../../../engine/types";
+import { goldenResultForm } from "../../../engine/tests/forms";
 import type { NewRun } from "../../../assistant/run/types";
 import { D1RunStore, RunAccessError } from "../run-store.server";
 import { env } from "./cf-workers-stub";
@@ -30,6 +31,7 @@ const newRun = (
   settings_version: result.meta.settings_version,
   started_by: by,
   started_at: T0,
+  form: goldenResultForm(),
   ...over,
 });
 
