@@ -120,8 +120,8 @@ export default function ProjectIntake({
         )}
       </section>
       <p className="text-sm text-muted-foreground">
-        The executable engine is not connected yet. Saving the intake does not
-        start or fabricate a calculation.
+        Saving the intake preserves your answers. A calculation must be started
+        separately; saving does not change existing results.
       </p>
       <ProjectFiles
         projectId={loaderData.project.id}

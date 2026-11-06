@@ -49,8 +49,8 @@ export default function ProjectResults({ loaderData }: Route.ComponentProps) {
             : "No engine result has been published for this project."}
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
-          Your saved intake is available. The executable engine has not been
-          connected; this page will read its stored output when it is published.
+          Your saved intake is available. This page displays the recorded run
+          status and will show its output when the workflow publishes it.
         </p>
         <button
           className="mt-5 rounded-lg border px-4 py-2"

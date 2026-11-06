@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The Worker agent and workflow still have placeholder bodies; project pages do not pretend to start a live calculation. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work.
+ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; a user-facing Start Run control is still pending. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work.
 
 ## Stack
 
@@ -50,21 +50,21 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 - `shared/output.ts` — version 1 runtime output validator; `engine/types.ts` owns the calculation types.
 - `app/server/agent-gate.server.ts` — `agentGate`, run by `routeAgentRequest` as both `onBeforeConnect` and `onBeforeRequest`. It allows only `ValueIQAgent`, refuses a cross-site `Origin` (403), answers 401/404 from `checkProjectAccess`, and forwards the request with `x-valueiq-user-id` replaced by the caller's id. `getProjectMembership(projectId, userId)` (in `access.server.ts`) is the re-check for agent methods that change a run.
 
-## Empty shells
+## Run execution
 
-- `agents/valueiq-agent.ts` — an empty `ValueIQAgent` Durable Object: no state shape, no tools, no RPC methods.
-- `agents/calculation-run.ts` — `CalculationRun extends AgentWorkflow`, a placeholder so `RUN_WORKFLOW` deploys; nothing starts it, and it rejects if run.
+- `agents/valueiq-agent.ts` — per-project run state and access-checked preflight/start/cancel RPC. Mid-run questions return NOT_SUPPORTED.
+- `agents/calculation-run.ts` — workflow steps check access and invoke the orchestrator with retry/backoff; results use the canonical run API.
 - `app/context.server.ts` — typed Worker bindings for loaders and actions.
 
-The agent methods, workflow steps, and stub run follow the integration contract (Eli). Nothing may present a stub as a real assessment.
+`app/server/run-store.server.ts` adapts the orchestrator to canonical D1 APIs. `run-wiring.server.ts` loads saved forms and Worker secrets. No mock replaces a missing model key.
 
 ## Runtime and generated artifacts
 
 `pnpm dev` uses the Cloudflare Vite plugin to execute SSR and bindings in local workerd. D1 and Durable Object data persist under ignored `.wrangler/state/`. `pnpm build` produces client assets and a server Worker with a generated Wrangler deployment configuration. `pnpm deploy:check` packages that build without publishing it.
 
-`wrangler.jsonc` owns binding declarations: the `DB` D1 database, the `FILES` R2 bucket (`valueiq-dev-files`, `valueiq-prod-files`, simulated locally), the `ValueIQAgent` Durable Object, and the `RUN_WORKFLOW` workflow (`valueiq-run`, `valueiq-dev-run`, `valueiq-prod-run`), plus each environment's `AUTH_ALLOWED_HOSTS` variable and required `BETTER_AUTH_SECRET` secret. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. The default configuration is local. Named `development` and `production` environments declare separate Workers, D1 databases, and Durable Object bindings. Their D1 databases are provisioned in the maintainer’s Cloudflare account, and their non-secret IDs are committed in `wrangler.jsonc`. Deployment rejects placeholder IDs and shared databases. Checks run without credentials. [Development and release guide](deployment.md) documents the live environments, access controls, and ongoing release workflow.
+`wrangler.jsonc` owns binding declarations: the `DB` D1 database, the `FILES` R2 bucket (`valueiq-dev-files`, `valueiq-prod-files`, simulated locally), the `ValueIQAgent` Durable Object, and the `RUN_WORKFLOW` workflow (`valueiq-run`, `valueiq-dev-run`, `valueiq-prod-run`), plus each environment's `AUTH_ALLOWED_HOSTS` and `BETTER_AUTH_SECRET`. The merged development configuration also requires `GEMINI_API_KEY`; production needs that key before live model runs are enabled. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. The default configuration is local. Named `development` and `production` environments declare separate Workers, D1 databases, and Durable Object bindings. Their D1 databases are provisioned in the maintainer’s Cloudflare account, and their non-secret IDs are committed in `wrangler.jsonc`. Deployment rejects placeholder IDs and shared databases. Checks run without credentials. [Development and release guide](deployment.md) documents the live environments, access controls, and ongoing release workflow.
 
-The assistant library includes a Gemini adapter, but it is not wired into Worker requests. Local verification uses fakes and makes no live model calls. There are no MCP integrations, queues, or separate backend. People sign up, create a team, and add teammates through the account pages.
+The assistant includes a Gemini adapter invoked by the Worker workflow. Local automated verification uses fakes or the explicit missing-key error path; it makes no live model calls. There are no MCP integrations, queues, or separate backend. People sign up, create a team, and add teammates through the account pages.
 
 ## Verification boundaries
 

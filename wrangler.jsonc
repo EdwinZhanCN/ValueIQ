@@ -8,7 +8,7 @@
   // Hosts Better Auth may build its base URL from, comma-separated.
   "vars": { "AUTH_ALLOWED_HOSTS": "localhost:*,127.0.0.1:*" },
   // Set locally in .dev.vars; per environment with `wrangler secret put`.
-  "secrets": { "required": ["BETTER_AUTH_SECRET"] },
+  "secrets": { "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY"] },
   "durable_objects": {
     "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
   },
@@ -34,7 +34,7 @@
       "name": "valueiq-dev",
       "workers_dev": true,
       "vars": { "AUTH_ALLOWED_HOSTS": "valueiq-dev.zhanz.workers.dev" },
-      "secrets": { "required": ["BETTER_AUTH_SECRET"] },
+      "secrets": { "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY"] },
       "durable_objects": {
         "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
       },
