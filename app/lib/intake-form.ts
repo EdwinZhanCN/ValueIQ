@@ -420,6 +420,44 @@ export function parseFormFile(json: string, context: FormContext): FormFile {
   return candidate as FormFile;
 }
 
+/**
+ * Reads a saved draft for the editor. Drafts may be incomplete, so this only
+ * keeps fields of the right shape and never validates; `validateFormFile`
+ * decides whether the form is ready. Unknown or malformed content becomes an
+ * empty draft field, never an invented value.
+ */
+export function readFormDraft(json: unknown): FormFile {
+  const f = object(json) ? json : {};
+  const record = (value: unknown): value is FormFile["inputs"][number] =>
+    object(value) && typeof value.id === "string" && value.id in INPUT_RULES;
+  const text = (value: unknown) => (typeof value === "string" ? value : "");
+  return {
+    version: 1,
+    goals: strings(f.goals)
+      ? (f.goals.filter((goal) => goals.includes(goal)) as FormFile["goals"])
+      : [],
+    currency: typeof f.currency === "string" ? f.currency : "USD",
+    horizon_years: finite(f.horizon_years) ? f.horizon_years : 0,
+    inputs: Array.isArray(f.inputs) ? f.inputs.filter(record) : [],
+    file_descriptions: object(f.file_descriptions)
+      ? Object.fromEntries(
+          Object.entries(f.file_descriptions).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string",
+          ),
+        )
+      : {},
+    other_notes: text(f.other_notes),
+    measurement_plan: object(f.measurement_plan)
+      ? Object.fromEntries(
+          Object.entries(f.measurement_plan).filter(
+            ([goal, plan]) => goals.includes(goal) && object(plan),
+          ),
+        )
+      : {},
+    asked: strings(f.asked) ? f.asked : [],
+  };
+}
+
 /** Reject edits without replacing the last accepted form state. */
 export function applyFormEdit(
   previous: FormFile,

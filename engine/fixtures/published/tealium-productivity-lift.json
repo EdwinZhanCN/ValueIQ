@@ -1,0 +1,85 @@
+{
+  "id": "tealium-productivity-lift",
+  "case_ref": "T9",
+  "kind": "driver",
+  "driver": "time_savings",
+  "tests": "driver formulas (time savings: staff x hours x weeks x rate, adoption, recapture, haircut)",
+  "source": {
+    "title": "The Total Economic Impact of Tealium CDP",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "January 2022",
+    "url": "https://resources.martechseries.com/whitepapers/MTH-tealiumCDP.pdf",
+    "status": "READ",
+    "how_opened": "PDF downloaded and text-extracted; table 'Productivity Lift' (Ref D1-D5, Dt, Dtr), p.18",
+    "table": "Productivity Lift",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Forrester states labor efficiency as a percent of a 12-person team at $120,000 burdened cost. We express it as hours: 40 hours x 50 weeks = 2,000 hours, so $60 per hour reproduces $120,000. The 2,000-hour year is our choice, not Forrester's.",
+    "The efficiency ramp 21% / 23% / 25% is carried by adoption_by_year = efficiency / 25% = 84 / 92 / 100, with hours saved per person per week set at the Year 3 value (25% x 40 = 10).",
+    "Productivity recapture 80% is the study's own assumption (source: Assumption) and maps to recapture_pct."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.1,
+    "published_risk_adjustment": "10% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "productivity lift",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [84, 92, 100],
+          "tier": "estimate",
+          "published_as": "D2 labor efficiencies 21% / 23% / 25% divided by 25%"
+        },
+        {
+          "id": "staff_affected",
+          "value": 12,
+          "tier": "estimate",
+          "published_as": "D1 employees impacted (composite)"
+        },
+        {
+          "id": "hours_saved_per_staff_week",
+          "value": 10,
+          "tier": "estimate",
+          "published_as": "D2 25% (interviews) x 40 hours per week"
+        },
+        {
+          "id": "weeks_per_year",
+          "value": 50,
+          "tier": "estimate",
+          "published_as": "our convention: 40 x 50 = 2,000 hours"
+        },
+        {
+          "id": "loaded_hourly_cost",
+          "value": 60,
+          "tier": "estimate",
+          "published_as": "D4 $120,000 burdened cost / 2,000 hours"
+        },
+        {
+          "id": "recapture_pct",
+          "value": 80,
+          "tier": "assumption",
+          "published_as": "D5 productivity recapture 80% (assumption)"
+        }
+      ]
+    }
+  ],
+  "combine": "concat",
+  "outside_engine_by_year": null,
+  "expected": {
+    "annual_benefit": [217728, 238464, 259200],
+    "pv": 589753,
+    "published_total": 715392,
+    "rounding": "Forrester prints whole dollars; arithmetic is exact"
+  },
+  "tolerance": {
+    "annual_abs": 0.5,
+    "pv_abs": 1.5,
+    "why": "published whole-dollar rounding; the arithmetic is exact (recomputed in recompute.py)"
+  }
+}

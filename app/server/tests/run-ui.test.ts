@@ -8,15 +8,20 @@ import type { RunView } from "../../../shared/types";
 import {
   EMPTY_VIEW,
   callErrorText,
+  canRerun,
   checklistItems,
   clampPct,
   connectionNote,
   intakeHref,
+  missingInputs,
   money,
   percent,
+  phaseItems,
+  processAction,
   runControls,
   runHeading,
   share,
+  shownView,
   summarizeOutput,
   utcStamp,
   type ConnectionState,
@@ -352,5 +357,162 @@ describe("links", () => {
     );
     expect(intakeHref("p1", null)).toBe("/projects/p1#intake");
     expect(intakeHref("p1", "a b")).toBe("/projects/p1?input=a%20b#intake");
+  });
+});
+
+describe("Process screen", () => {
+  const ALL = [
+    "Files read",
+    "Haircuts",
+    "Drivers",
+    "Project",
+    "Scenarios",
+    "Confidence",
+    "Gate",
+    "Narrative",
+  ];
+  const at = (states: RunView["checklist"][number]["state"][]) =>
+    view({
+      status: "running",
+      checklist: ALL.map((label, i) => ({ label, state: states[i] ?? "todo" })),
+    });
+
+  it("groups the orchestrator's steps into rows from their real states only", () => {
+    const items = phaseItems(at(["done", "done", "doing"]));
+    expect(items.map((i) => [i.label, i.state, i.done, i.total])).toEqual([
+      ["Reading files and data", "done", 1, 1],
+      ["Calculating ROI", "doing", 1, 4],
+      ["Checking confidence", "todo", 0, 2],
+      ["Writing the summary", "todo", 0, 1],
+    ]);
+    expect(phaseItems(at([])).every((i) => i.state === "todo")).toBe(true);
+    expect(
+      phaseItems(at(["done", "done", "error"])).find(
+        (i) => i.label === "Calculating ROI",
+      )?.state,
+    ).toBe("error");
+  });
+  it("keeps a step no row claims as its own row", () => {
+    const items = phaseItems(
+      view({
+        checklist: [
+          { label: "Files read", state: "done" },
+          { label: "Something new", state: "doing" },
+        ],
+      }),
+    );
+    expect(items.map((i) => i.label)).toEqual([
+      "Reading files and data",
+      "Something new",
+    ]);
+  });
+  it("names missing fields once, with the validator's message", () => {
+    const missing = missingInputs([
+      {
+        code: "BASIS",
+        field: "cost_annual_run",
+        message: "Specify the cost basis explicitly.",
+      },
+      { code: "BASIS", field: "cost_annual_run", message: "second" },
+      { code: "SHAPE", field: "measurement_plan.time_savings", message: "x" },
+      { code: "SHAPE", field: "other_notes", message: "Expected text." },
+    ]);
+    expect(missing.map((m) => m.label)).toEqual([
+      "Annual run cost",
+      "Measurement plan: Time savings",
+      "Other notes",
+    ]);
+    expect(missing[0]?.message).toBe("Specify the cost basis explicitly.");
+  });
+
+  const act = (
+    v: RunView,
+    o: {
+      missing?: number;
+      hasForm?: boolean;
+      connection?: ConnectionState;
+    } = {},
+  ) =>
+    processAction({
+      projectId: "p1",
+      view: v,
+      connection: o.connection ?? "open",
+      hasForm: o.hasForm ?? true,
+      missing: Array.from({ length: o.missing ?? 0 }, (_, i) => ({
+        field: `f${i}`,
+        label: `F${i}`,
+        message: "m",
+      })),
+      busy: false,
+    });
+
+  it("picks one primary action per state", () => {
+    expect(act(view())).toEqual({
+      kind: "start",
+      label: "Start run",
+      enabled: true,
+    });
+    expect(act(view(), { connection: "connecting" })).toMatchObject({
+      enabled: false,
+    });
+    expect(act(view(), { missing: 2 })).toEqual({
+      kind: "fix",
+      label: "Go to Clarify",
+      href: "/projects/p1/clarify",
+    });
+    expect(act(view(), { hasForm: false })).toMatchObject({
+      href: "/projects/p1",
+    });
+    expect(act(view({ status: "running", run_id: "r1" })).kind).toBe("waiting");
+    expect(
+      act(view({ status: "blocked_on_question", run_id: "r1" })).kind,
+    ).toBe("cancel");
+    expect(act(view({ status: "released", run_id: "r 1" }))).toEqual({
+      kind: "results",
+      label: "View results",
+      href: "/projects/p1/results?run=r%201",
+    });
+    expect(act(view({ status: "gap_list", run_id: "r1" })).label).toBe(
+      "See what to add",
+    );
+    const failed = (retryable: boolean) =>
+      view({
+        status: "failed",
+        run_id: "r1",
+        error: { code: "X", message: "m", retryable },
+      });
+    expect(act(failed(true)).label).toBe("Retry");
+    expect(act(failed(false)).label).toBe("Start new run");
+    expect(act(failed(true), { missing: 1 }).kind).toBe("fix");
+  });
+  it("shows the saved outcome while the agent is idle", () => {
+    const latest = {
+      runId: "r9",
+      status: "released" as const,
+      finishedAt: null,
+      formChangedSince: true,
+      summary: null,
+    };
+    const shown = shownView(view(), latest);
+    expect(shown).toMatchObject({
+      status: "released",
+      run_id: "r9",
+      progress_pct: 100,
+    });
+    expect(shown.checklist.every((c) => c.state === "done")).toBe(true);
+    expect(shownView(view({ status: "running" }), latest).status).toBe(
+      "running",
+    );
+    expect(canRerun({ view: shown, latest, hasForm: true, missing: [] })).toBe(
+      true,
+    );
+    expect(
+      canRerun({
+        view: shown,
+        latest: { ...latest, formChangedSince: false },
+        hasForm: true,
+        missing: [],
+      }),
+    ).toBe(false);
   });
 });

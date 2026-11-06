@@ -168,7 +168,7 @@ export async function seedDemoOutput({
     mode: "stub",
     pdfSha256: hash(pdf),
     resultsUrl,
-    reportUrl: `${resultsUrl}&tab=report`,
+    reportUrl: `${origin}/projects/${projectId}/report?run=${id}`,
     downloadUrl: `${origin}/projects/${projectId}/runs/${id}/reports/${reportId}`,
   };
 }

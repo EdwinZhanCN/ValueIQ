@@ -102,7 +102,7 @@ const otherCreated = await call("/projects/new", {
 assert.equal(otherCreated.status, 302);
 const otherProject = otherCreated.headers.get("location").split("/").at(-1);
 const before = await call(`/projects/${project}/results`);
-assert((await before.text()).includes("No engine result has been published"));
+assert((await before.text()).includes("No result yet"));
 const form = {
   answers: { hours_saved_per_staff_week: 5 },
   note: "Preserve this answer",
@@ -112,9 +112,16 @@ const saved = await call(`/projects/${project}`, {
   body: new URLSearchParams({ formJson: JSON.stringify(form) }),
 });
 assert.equal(saved.status, 200, await saved.text());
-const stored = await call(
+// A numeric field link on Intake hands off to its Clarify card.
+const handoff = await call(
   `/projects/${project}?input=hours_saved_per_staff_week`,
 );
+assert.equal(handoff.status, 302);
+assert.match(
+  handoff.headers.get("location") ?? "",
+  /\/clarify\?input=hours_saved_per_staff_week$/,
+);
+const stored = await call(`/projects/${project}`);
 assert((await stored.text()).includes("Preserve this answer"));
 const source = JSON.parse(
   await readFile("docs/research/samples/sample-result.json", "utf8"),
@@ -229,14 +236,20 @@ assert.equal(
   ).status,
   409,
 );
-const pinned = await call(`/projects/${project}/results?run=${run}&tab=report`);
+const legacy = await call(`/projects/${project}/results?run=${run}&tab=report`);
+assert.equal(legacy.status, 302);
+assert.equal(
+  legacy.headers.get("location"),
+  `/projects/${project}/report?run=${run}`,
+);
+const pinned = await call(`/projects/${project}/report?run=${run}`);
 const pinHtml = await pinned.text();
 assert(pinHtml.includes("$127,956.73") && pinHtml.includes(report));
 await sql(insert(pending, "running", null, at + 2000));
 const running = await call(`/projects/${project}/results`);
 const runningHtml = await running.text();
 assert(
-  runningHtml.includes("Run status: running") &&
+  runningHtml.includes("The run is still working") &&
     !runningHtml.includes('data-testid="headline"'),
 );
 const invalidId = randomUUID();

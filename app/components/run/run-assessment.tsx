@@ -14,8 +14,9 @@ import {
   callErrorText,
   type ConnectionState,
   type LatestOutcome,
+  type MissingInput,
 } from "~/lib/run-ui";
-import { RunPanel, type ReadinessReport } from "./run-panel";
+import { RunPanel } from "./run-panel";
 
 const noop = () => () => {};
 /** False on the server and during hydration, true afterwards: the socket is browser-only. */
@@ -31,15 +32,17 @@ export interface RunAssessmentProps {
   projectId: string;
   /** The project has a saved form file (loader data). */
   hasForm: boolean;
+  /** What the strict form validator rejects in the saved form. */
+  missing: readonly MissingInput[];
   /** The newest saved outcome (loader data), or null. */
   latest: LatestOutcome | null;
 }
 
 /**
- * Run assessment section of the project page. Connects to the project's
- * `ValueIQAgent` (`/agents/value-i-q-agent/{projectId}`, behind the access
- * gate), reads its synced `RunView`, and calls `startRun`, `cancelRun` and
- * `preflight` over the agent's RPC. The socket only opens in the browser.
+ * The Process step's run card. Connects to the project's `ValueIQAgent`
+ * (`/agents/value-i-q-agent/{projectId}`, behind the access gate), reads its
+ * synced `RunView`, and calls `startRun` and `cancelRun` over the agent's RPC.
+ * The socket only opens in the browser.
  */
 export function RunAssessment(props: RunAssessmentProps) {
   const hydrated = useHydrated();
@@ -52,28 +55,21 @@ export function RunAssessment(props: RunAssessmentProps) {
         busy={false}
         cancelling={false}
         notice={null}
-        readiness={null}
         onStart={noop}
         onCancel={noop}
-        onRetry={noop}
-        onReadiness={noop}
       />
     );
   }
   return <ConnectedRunAssessment {...props} />;
 }
 
-function ConnectedRunAssessment({
-  projectId,
-  hasForm,
-  latest,
-}: RunAssessmentProps) {
+function ConnectedRunAssessment(props: RunAssessmentProps) {
+  const { projectId, hasForm, missing, latest } = props;
   const [open, setOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [readiness, setReadiness] = useState<ReadinessReport | null>(null);
   const revalidator = useRevalidator();
 
   const agent = useAgent<RunView>({
@@ -95,7 +91,7 @@ function ConnectedRunAssessment({
         ? "reconnecting"
         : "connecting";
 
-  // When a run ends, fetch the saved outcome the loader reads.
+  // When a run ends, refresh the layout's saved outcome (step bar, stale note).
   const seen = useRef<string | null>(null);
   useEffect(() => {
     if (view.status !== "released" && view.status !== "gap_list") return;
@@ -106,12 +102,12 @@ function ConnectedRunAssessment({
   }, [view.run_id, view.status, latest?.runId, revalidator]);
 
   const call = useCallback(
-    async <T,>(
-      method: "startRun" | "cancelRun" | "preflight",
+    async (
+      method: "startRun" | "cancelRun",
       timeout: number,
-    ): Promise<CallResult<T> | null> => {
+    ): Promise<CallResult<RunView> | null> => {
       try {
-        return await agent.call<CallResult<T>>(method, [], { timeout });
+        return await agent.call<CallResult<RunView>>(method, [], { timeout });
       } catch {
         setNotice(
           "The request did not reach the server. Check your connection and try again.",
@@ -123,58 +119,40 @@ function ConnectedRunAssessment({
   );
 
   const start = useCallback(async () => {
+    // Strict validation gates the button; this re-check covers a stale page.
+    if (!hasForm || missing.length > 0) return;
     setBusy(true);
     setNotice(null);
-    setReadiness(null);
-    const res = await call<RunView>("startRun", 60_000);
+    const res = await call("startRun", 60_000);
     if (res && !res.ok) setNotice(callErrorText(res.error));
     else if (
       res?.value.status === "released" ||
       res?.value.status === "gap_list"
     )
       setNotice(
-        "These inputs were already assessed, so the saved outcome is shown. Change the form to run again.",
+        "These inputs were already assessed, so the saved outcome is shown.",
       );
     setBusy(false);
-  }, [call]);
+  }, [call, hasForm, missing.length]);
 
   const cancel = useCallback(async () => {
     setCancelling(true);
     setNotice(null);
-    const res = await call<RunView>("cancelRun", 30_000);
+    const res = await call("cancelRun", 30_000);
     if (res && !res.ok) setNotice(callErrorText(res.error));
     setCancelling(false);
   }, [call]);
 
-  const checkReadiness = useCallback(async () => {
-    setBusy(true);
-    setNotice(null);
-    setReadiness(null);
-    const res = await call<ReadinessReport & { cancelled: boolean }>(
-      "preflight",
-      180_000,
-    );
-    if (res && !res.ok) setNotice(callErrorText(res.error));
-    else if (res?.ok && !res.value.cancelled)
-      setReadiness({ passed: res.value.passed, message: res.value.message });
-    setBusy(false);
-  }, [call]);
-
   return (
     <RunPanel
-      projectId={projectId}
+      {...props}
       view={view}
       connection={connection}
-      hasForm={hasForm}
       busy={busy}
       cancelling={cancelling}
       notice={notice}
-      readiness={readiness}
-      latest={latest}
       onStart={() => void start()}
-      onRetry={() => void start()}
       onCancel={() => void cancel()}
-      onReadiness={() => void checkReadiness()}
     />
   );
 }

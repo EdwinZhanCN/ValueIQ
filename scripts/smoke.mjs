@@ -338,6 +338,43 @@ try {
   );
   const fileId = (await uploaded.json()).file.id;
 
+  // The project page is the light Intake step: goal cards, no numbers, and
+  // the uploaded file grouped under its upload description.
+  const intake = await page(`/projects/${alpha.projectId}`, alpha.cookie);
+  assert.equal(intake.response.status, 200, "project page");
+  assert.match(intake.html, /aria-label="Project intake"/, "intake form");
+  assert.match(intake.html, /Save draft/, "intake save");
+  assert.match(intake.html, /Continue to Clarify/, "intake continue");
+  for (const goal of [
+    "Time savings",
+    "Data quality",
+    "Decision speed",
+    "Risk reduction",
+  ])
+    assert.match(
+      intake.html,
+      new RegExp(`aria-pressed="false"[^>]*>.*?${goal}`),
+    );
+  assert.doesNotMatch(intake.html, />(Revenue|Software)</, "removed goals");
+  assert.doesNotMatch(intake.html, /inputMode="decimal"|inputmode="decimal"/);
+  assert.match(intake.html, /Q3 é\.csv/, "intake lists the uploaded file");
+  assert.match(intake.html, /Quarterly costs/, "file group description");
+  // Number fields live on Clarify; links to them are sent there.
+  const moved = await page(
+    `/projects/${alpha.projectId}?input=staff_affected`,
+    alpha.cookie,
+  );
+  assert.equal(moved.response.status, 302, "clarify input redirect");
+  assert.equal(
+    moved.response.headers.get("location"),
+    `/projects/${alpha.projectId}/clarify?input=staff_affected`,
+  );
+  const kept = await page(
+    `/projects/${alpha.projectId}?input=decision_statement`,
+    alpha.cookie,
+  );
+  assert.equal(kept.response.status, 200, "intake input stays on intake");
+
   const fetched = await download(alpha.projectId, fileId, alpha.cookie);
   assert.equal(fetched.status, 200, "own download");
   assert.deepEqual(new Uint8Array(await fetched.arrayBuffer()), bytes);
@@ -388,6 +425,88 @@ try {
   const signedOut = await download(alpha.projectId, fileId);
   assert.equal(signedOut.status, 302, "signed-out download");
   assert.match(signedOut.headers.get("location") ?? "", /^\/sign-in/);
+
+  // Clarify: no goals sends the user back to Intake; with goals it asks for
+  // the defaults first, a ?input= target opens that field's question, and
+  // Continue to Process waits for a form that passes validation.
+  const clarifyPath = `/projects/${beta.projectId}/clarify`;
+  const saveForm = async (form) => {
+    const body = new URLSearchParams({ formJson: JSON.stringify(form) });
+    const response = await fetch(`${origin}/projects/${beta.projectId}/form`, {
+      method: "POST",
+      headers: { origin, cookie: beta.cookie },
+      body,
+      redirect: "manual",
+      signal: AbortSignal.timeout(15000),
+    });
+    assert.equal(response.status, 200, `save form: ${await response.text()}`);
+  };
+  const noGoals = await page(clarifyPath, beta.cookie);
+  assert.equal(noGoals.response.status, 200, "clarify without goals");
+  assert.match(noGoals.html, /No goals yet/, "clarify empty state");
+  assert.match(noGoals.html, /Back to Intake/, "clarify links to Intake");
+  const draftForm = {
+    version: 1,
+    goals: ["time_savings"],
+    currency: "USD",
+    horizon_years: 3,
+    inputs: [],
+    file_descriptions: {},
+    other_notes: "",
+    measurement_plan: {},
+    asked: [],
+  };
+  await saveForm(draftForm);
+  const asking = await page(clarifyPath, beta.cookie);
+  assert.equal(asking.response.status, 200, "clarify with goals");
+  assert.match(asking.html, /aria-label="Clarify questions"/, "clarify cards");
+  assert.match(asking.html, /Use industry defaults\?/, "defaults card first");
+  assert.match(asking.html, /id="inputs-heading"/, "clarify inputs panel");
+  assert.match(asking.html, /Before Process/, "clarify lists what is missing");
+  assert.doesNotMatch(asking.html, /Stuck\?|Get help|Ask someone/);
+  const targeted = await page(
+    `${clarifyPath}?input=loaded_hourly_cost`,
+    beta.cookie,
+  );
+  assert.match(
+    targeted.html,
+    /How much time will it save\?[\s\S]*id="value-loaded_hourly_cost"/,
+    "?input= opens the field's question",
+  );
+  await saveForm({
+    ...draftForm,
+    inputs: [
+      {
+        id: "discount_rate_pct",
+        value: 10,
+        tier: "benchmark",
+        origin: "default",
+      },
+      {
+        id: "adoption_by_year",
+        value: [50, 80, 90],
+        tier: "estimate",
+        origin: "user",
+      },
+      {
+        id: "cost_one_time_vendor_license",
+        value: 1000,
+        tier: "estimate",
+        origin: "user",
+        basis: "quoted",
+      },
+      {
+        id: "cost_annual_run",
+        value: 100,
+        tier: "estimate",
+        origin: "user",
+        basis: "estimated",
+      },
+    ],
+  });
+  const ready = await page(clarifyPath, beta.cookie);
+  assert.doesNotMatch(ready.html, /Before Process/, "complete form");
+  assert.match(ready.html, /Continue to Process/, "clarify continue");
 
   console.log(
     "Smoke passed: landing chrome, fullscreen workspace, sign-up session, account pages, /projects behind sign-in, file round trip, cap, and isolation.",
