@@ -90,6 +90,8 @@ Every row is reached only through server functions that run the project access c
 
 ### 5. Server functions
 
+Output release integration (2026-11-06): canonical infrastructure signatures remain in `runs.server.ts`. `finishRun` validates complete RunOutput envelopes and atomically prevents overwriting terminal data. Project-scoped consumer reads live in `output-runs.server.ts`; report generation/download live in `reports.server.ts`. The additive report migration follows merged `0001_runs.sql`. See [concrete handoff](../../../docs/output-pipeline.md). The pushed engine and PR #138 Worker orchestration are included; output UI launch wiring is still pending.
+
 Existing in [`interim-foundation.md`](interim-foundation.md): `getProjectForm`, `saveProjectForm`, `listProjectFiles`, `readProjectFile`, `requireProjectAccess`, and its core `checkProjectAccess(request, projectId)`, which returns `{ userId, role }` or `signed_out` / `forbidden` without building a response. Additions in Phase 1 (in `app/server/runs.server.ts`): `createRun`, `appendRunEvent`, `finishRun`, `getRun`, `getLatestResult`, plus `updateRunStatus`, `recordRunQuestion`, and `answerRunQuestion` for the `blocked_on_question` round trip, and `getProjectMembership(projectId, userId)` in `access.server.ts` for the section 6 re-check. Additions in Phase 2: `readProjectFileForModel(fileId)` (bytes or text plus mime for Gemini, project-scoped, size-limited), `saveReportPdf`, `getReportPdf`. Callers never receive a raw D1 or R2 handle outside these modules.
 
 ### 6. Agent methods

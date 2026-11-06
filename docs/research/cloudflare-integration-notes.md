@@ -52,3 +52,7 @@ orchestrator changes onto Zihao's `feature/64-run-infra`. His tables, migration
 Real Gemini calls, workflow retry/backoff on Cloudflare, and the deployed
 `RUN_WORKFLOW`. Locally the matrix runs the workflow without a key and checks it
 fails as `MODEL_ERROR`.
+
+## Output integration follow-up
+
+The output pipeline preserves these live agent/workflow APIs. Canonical publication now validates complete envelopes and pins run metadata. Non-retryable orchestrator setup errors (including a missing model key) record an error event and end the run immediately instead of entering workflow backoff. The access matrix exercises that real missing-key path without model calls. The output snapshot loader is also tested against a result published through RunOrchestrator and D1RunStore.

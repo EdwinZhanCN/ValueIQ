@@ -43,6 +43,56 @@ const TARGETS = [
     },
   },
   {
+    name: "persisted result page",
+    setup: async (fx) => {
+      const output = JSON.parse(
+        readFileSync("docs/research/samples/sample-result.json", "utf8"),
+      );
+      fx.runId = `${fx.run}-result`;
+      output.meta.run_id = fx.runId;
+      const q = (value) => `'${String(value).replaceAll("'", "''")}'`;
+      await localSql(
+        `INSERT INTO runs(id,project_id,status,mode,form_hash,contract_version,formula_version,settings_version,started_by,finished_at) VALUES(${q(fx.runId)},${q(fx.projectId)},'released','stub','matrix','1','0.1','s1',${q(fx.users.owner)},1)`,
+      );
+      await localSql(
+        `INSERT INTO run_results(run_id,result_json) VALUES(${q(fx.runId)},${q(JSON.stringify(output))})`,
+      );
+    },
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/results?run=${fx.runId}`,
+    }),
+    allowed: (result) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert.match(result.body, /127,956\.73/);
+      assert.match(result.body, /STUB/);
+    },
+  },
+  {
+    name: "report generation action",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/runs/${fx.runId}/reports`,
+      method: "POST",
+    }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 302, result.body.slice(0, 400));
+      fx.reportId = new URL(
+        result.location,
+        "http://local.test",
+      ).searchParams.get("report");
+      assert(fx.reportId);
+    },
+  },
+  {
+    name: "private report download",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/runs/${fx.runId}/reports/${fx.reportId}`,
+    }),
+    allowed: (result) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert.match(result.body, /^%PDF-/);
+    },
+  },
+  {
     name: "form save action",
     request: (fx, actor) => ({
       path: `/projects/${fx.projectId}`,

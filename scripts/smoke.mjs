@@ -193,7 +193,12 @@ try {
   // Workspace surface: the interface owns the page, with no site chrome
   // wrapped around it.
   const workspace = await get("/workspace");
-  assert.match(workspace, /Agent workspace/, "Workspace interface missing");
+  assert.match(workspace, /STUB/, "Preview must label stub data");
+  assert.match(workspace, /127,956\.73/);
+  assert.match(workspace, /202\.9%/);
+  assert.match(workspace, /169\.9%/);
+  const gaps = await get("/workspace?view=gaps");
+  assert(!gaps.includes("127,956.73"), "Gap exposed a headline");
   assert(
     !workspace.includes('aria-label="Main"'),
     "Workspace still renders the site header",

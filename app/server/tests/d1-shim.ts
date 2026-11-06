@@ -19,7 +19,13 @@ class Stmt {
     return this.db.prepare(this.sql).all(...this.params);
   }
   all() {
-    return Promise.resolve({ results: this.rows(), success: true, meta: {} });
+    const results = this.rows();
+    const changes = this.db.prepare("select changes() as n").get()?.n ?? 0;
+    return Promise.resolve({
+      results,
+      success: true,
+      meta: { changes: Number(changes) },
+    });
   }
   raw() {
     const stmt = this.db.prepare(this.sql);
@@ -58,9 +64,16 @@ export function createTestD1(): TestD1 {
   const shim = {
     prepare: (sql: string) => new Stmt(db, sql),
     batch: async (stmts: Stmt[]) => {
-      const out = [];
-      for (const s of stmts) out.push(await s.all());
-      return out;
+      db.exec("BEGIN");
+      try {
+        const out = [];
+        for (const s of stmts) out.push(await s.all());
+        db.exec("COMMIT");
+        return out;
+      } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+      }
     },
   };
   return {
