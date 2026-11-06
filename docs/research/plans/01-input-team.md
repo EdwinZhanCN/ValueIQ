@@ -1,5 +1,7 @@
 # Plan 01: Input team (Jonathan, Jeremiah)
 
+Current handoff: use [the exact form-file format](../samples/FORM-FILE-FORMAT.md) and `shared/form.ts` from #129. [Question wording and source notes](input-question-wording.md) preserve useful research from the superseded #127 proposal without creating another wire contract. The structured frontend is tracked in #130, superseding the local-screen implementation in #122.
+
 Read `README.md` first, then **`01a-input-structure.md`: the field-by-field spec you build from** (ids, roles, bounds, defaults, backing fields). It is aligned with the engine and the assistant, which are built in parallel from the same ids (`ROI.md` section 3). Do not rename an id or change a unit without telling Eli (sole owner of the engine and assistant). Issues: #51 I1, #52 I2, #53 I3 (Ag1), #54 I4, #55 I5, #56 I6, #91 Q5, #93 Q7, #77 A6.
 
 ## Your goal

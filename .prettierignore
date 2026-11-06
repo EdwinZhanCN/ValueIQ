@@ -1,4 +1,6 @@
 pnpm-lock.yaml
+# Git symlink to AGENTS.md; Windows checkouts may expose its target as text.
+CLAUDE.md
 worker-configuration.d.ts
 build/
 .react-router/

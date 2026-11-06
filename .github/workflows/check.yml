@@ -43,9 +43,11 @@ jobs:
         continue-on-error: true
       - run: pnpm test:engine
       - run: pnpm test:output
+      - run: pnpm test:forms
       - run: pnpm build
       - run: pnpm deploy:check
       - run: node --test scripts/check-deploy-target.test.mjs
+      - run: node --test scripts/seed-demo-upload.test.mjs scripts/seed-demo-output.test.mjs
       - name: Local session secret for the smoke test
         run: printf 'BETTER_AUTH_SECRET=%s\n' "$(openssl rand -base64 32)" > .dev.vars
       - run: pnpm test:access

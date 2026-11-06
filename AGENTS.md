@@ -30,6 +30,7 @@ Human setup and deployment commands live in [README.md](README.md).
 - Every loader, action, and resource route that touches a project calls `requireProjectAccess` first, and gets a row in `scripts/access-matrix.mjs`.
 - Agent routes (`/agents/value-i-q-agent/{projectId}`) pass `agentGate` first: 401 signed out, 404 other team or missing project, 403 cross-site; on success the agent reads the caller from `x-valueiq-user-id`, never from the client. They are covered in `scripts/access-matrix.mjs`.
 - Cross-track types live in `shared/types.ts` and change only through a pull request to the integration contract. Agent state, tools, and skill conventions follow that contract; nothing in the agent or workflow may present a stub as a real assessment. New tables follow the active exec plans.
+- The pre-integration Input form contract is `shared/form.ts`, with its serializer/validator in `app/lib/intake-form.ts` and field rules in `app/lib/intake-catalog.ts`. `pnpm fixtures:forms` generates the engine handoff; `pnpm test:forms` checks accepted and rejected cases. It does not wire the UI, assistant, engine or storage together; see `engine/fixtures/forms/README.md` for remaining spec/type mismatches.
 - Never present mock or scripted behaviour as a working assessment.
 - `worker-configuration.d.ts` and `.react-router/types/` are generated and ignored; use `pnpm typegen` rather than hand-editing them.
 - Generate migrations from `db/schema.ts` with `pnpm db:generate`. Review generated SQL and retain applied migrations unchanged.

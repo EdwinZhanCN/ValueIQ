@@ -73,9 +73,9 @@ export class CalculationRun extends AgentWorkflow<
         // A retryable failure must not end the run before the last attempt.
         store.deferFailure = true;
         const pending: Promise<void>[] = [];
-        let orch;
+        let out;
         try {
-          orch = makeOrchestrator({
+          const orch = makeOrchestrator({
             projectId,
             userId,
             store,
@@ -91,6 +91,9 @@ export class CalculationRun extends AgentWorkflow<
               );
             },
           });
+          // A non-retryable setup failure (no key, no pinned form) ends the run
+          // now; retrying cannot fix it and would leave the row `running`.
+          out = await orch.executeRun(runId);
         } catch (error) {
           if (error instanceof OrchestratorError && !error.retryable) {
             const events = await store.listRunEvents(runId);
@@ -113,7 +116,6 @@ export class CalculationRun extends AgentWorkflow<
           }
           throw error;
         }
-        const out = await orch.executeRun(runId);
         await Promise.all(pending);
         const err = out.view.error;
         if (out.view.status === "failed" && err) {

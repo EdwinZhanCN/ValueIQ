@@ -2,6 +2,8 @@
 
 Companion to `01-input-team.md`. Read `README.md` first.
 
+Implementation handoff: [Eli's exact form-file format](../samples/FORM-FILE-FORMAT.md) and `shared/form.ts` define the producer wire shape. Adoption and discount rate are input records; optional units are preserved when supplied. This file's older skeleton is research context. [Retained question wording](input-question-wording.md) is non-normative and introduces no alternate FormFile type. The validator checks range endpoint bounds and low <= high even when the point value is unknown.
+
 **Alignment rule (important).** The calculation engine is built in parallel from `ROI.md` section 3 (input ids) and section 4 (formulas). **The field ids, units and bounds below are copied from there. If this file and `ROI.md` ever disagree, `ROI.md` wins** and this file is wrong: open a PR on both. You (Jonathan, Jeremiah) own wording, order, grouping and defaults' presentation. Renaming an id, changing a unit, or adding a field the engine reads means telling Eli first (sole owner of the engine and assistant).
 
 ## 1. How the engine uses a field
