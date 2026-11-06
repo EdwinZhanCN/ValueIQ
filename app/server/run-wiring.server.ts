@@ -54,7 +54,7 @@ export function makeOrchestrator(o: {
   if (!apiKey)
     throw new OrchestratorError(
       "MODEL_ERROR",
-      "The model key is not configured for this environment",
+      "The AI service is not set up for this environment (no Gemini key). Ask an admin to add it.",
       false,
     );
   const thinking = resolveThinking(vars);

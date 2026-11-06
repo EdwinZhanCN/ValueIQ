@@ -20,6 +20,7 @@ import { RunAccessError } from "../app/server/run-store.server";
 import type { RunView } from "../shared/types";
 import type { RunError } from "../shared/types";
 import type { RunProgress } from "./calculation-run";
+import { errorFromWorkflowText } from "../assistant/run/error-text";
 
 type ConnState = { userId: string };
 export type CallResult<T> =
@@ -295,14 +296,9 @@ export class ValueIQAgent extends Agent<Env, RunView> {
     }
     if (rec?.status === "cancelled") return;
     const failedView = rec ? viewOf(rec) : this.state;
-    const err: RunError = failedView.error ?? {
-      code: "MODEL_ERROR",
-      message: "The run failed",
-      retryable: true,
-    };
+    const err: RunError = failedView.error ?? errorFromWorkflowText(error);
     this.setState({ ...failedView, status: "failed", error: err });
-    // `error` is the runtime's text and can hold anything: only the code is stored below
-    void error;
+    // Only the code is stored below; the runtime's text is never logged as is.
     await this.eventFor(workflowId, "workflow_error", {
       code: err.code,
       retryable: err.retryable,
