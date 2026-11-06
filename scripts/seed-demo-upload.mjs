@@ -212,7 +212,7 @@ if (
       const { appendFile } = await import("node:fs/promises");
       await appendFile(
         process.env.GITHUB_STEP_SUMMARY,
-        `Synthetic demo upload ${result.created ? "created" : "already present"}: [open project](${result.projectUrl}) · [mock file](${result.downloadUrl}). STUB output: [Numbers/Math/Charts](${demo.resultsUrl}) · [Report](${demo.reportUrl}) · [private PDF](${demo.downloadUrl}). File and PDF bytes verified. Existing intake and previous runs unchanged.\n`,
+        `Synthetic demo upload ${result.created ? "created" : "already present"}: [open project](${result.projectUrl}) · [mock file](${result.downloadUrl}). STUB output: [Review](${demo.resultsUrl}) · [Report](${demo.reportUrl}) · [private PDF](${demo.downloadUrl}). File and PDF bytes verified. Existing intake and previous runs unchanged.\n`,
       );
     }
   } finally {

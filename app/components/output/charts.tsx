@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import {
   confidence,
   labels,
@@ -7,19 +8,28 @@ import {
   type SensitivityPoint,
 } from "./samples";
 
+/** Optional control rendered in the chart header (e.g. "In report"). */
+export type ChartSlot = { action?: ReactNode };
+
 export function Chart({
   title,
   description,
+  action,
   children,
 }: {
   title: string;
   description: string;
-  children: React.ReactNode;
-}) {
+  children: ReactNode;
+} & ChartSlot) {
   return (
     <section className="output-card output-chart">
-      <h3>{title}</h3>
-      <p className="output-muted">{description}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h3>{title}</h3>
+          <p className="output-muted">{description}</p>
+        </div>
+        {action}
+      </div>
       {children}
     </section>
   );
@@ -28,16 +38,18 @@ export function Chart({
 export function AdjustmentChart({
   result,
   currency = "USD",
+  action,
 }: {
   currency?: string;
   result: ResultSample["result"];
-}) {
+} & ChartSlot) {
   const points = result.charts.waterfall;
   const max = Math.max(1, ...points.map((point) => point.value));
   return (
     <Chart
-      title="Value through each adjustment"
-      description="Ordered levels supplied by the engine · undiscounted benefit over the selected horizon"
+      title="Gross → adjusted"
+      description="Undiscounted benefit over the horizon, level by level"
+      action={action}
     >
       <div className="output-levels">
         {points.map((point) => (
@@ -66,16 +78,18 @@ export function AdjustmentChart({
 export function ContributionChart({
   result,
   currency = "USD",
+  action,
 }: {
   currency?: string;
   result: ResultSample["result"];
-}) {
+} & ChartSlot) {
   const points = result.charts.driver_contribution;
   const max = Math.max(1, ...points.map((point) => point.value));
   return (
     <Chart
-      title="Benefits by driver"
-      description="Adjusted, undiscounted benefit · classifications remain separate"
+      title="Driver mix"
+      description="Adjusted, undiscounted benefit · classifications stay separate"
+      action={action}
     >
       <div className="output-levels">
         {points.map((point) => {
@@ -114,12 +128,15 @@ export function ContributionChart({
 export function SensitivityChart({
   points,
   axisLabel,
+  title = "NPV sensitivity",
   currency = "USD",
+  action,
 }: {
   currency?: string;
   points: SensitivityPoint[];
   axisLabel: string;
-}) {
+  title?: string;
+} & ChartSlot) {
   const id = useId();
   const valid = points.flatMap((point) =>
     point.npv_hard === null || point.npv_capacity_inclusive === null
@@ -145,7 +162,7 @@ export function SensitivityChart({
     100 + ((value - xmin) / (xmax - xmin || 1)) * 620;
   const y = (value: number) => 235 - ((value - min) / (max - min)) * 190;
   return (
-    <Chart title="NPV sensitivity" description={axisLabel}>
+    <Chart title={title} description={axisLabel} action={action}>
       <svg
         viewBox="0 0 780 290"
         role="img"
@@ -210,26 +227,92 @@ export function SensitivityChart({
           Capacity-inclusive
         </span>
       </div>
-      <div className="output-table-wrap">
-        <table>
-          <caption className="sr-only">Exact sensitivity values</caption>
-          <thead>
-            <tr>
-              <th>{axisLabel}</th>
-              <th>NPV · hard</th>
-              <th>NPV · capacity-inclusive</th>
-            </tr>
-          </thead>
-          <tbody>
-            {points.map((point) => (
-              <tr key={point.x}>
-                <td>{point.x}</td>
-                <td>{money(point.npv_hard, currency)}</td>
-                <td>{money(point.npv_capacity_inclusive, currency)}</td>
+      <details className="output-details">
+        <summary>
+          Chart inputs <ChevronDown size={14} aria-hidden="true" />
+        </summary>
+        <div className="output-table-wrap">
+          <table>
+            <caption className="sr-only">Exact sensitivity values</caption>
+            <thead>
+              <tr>
+                <th>{axisLabel}</th>
+                <th>NPV · hard</th>
+                <th>NPV · capacity-inclusive</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {points.map((point) => (
+                <tr key={point.x}>
+                  <td>{point.x}</td>
+                  <td>{money(point.npv_hard, currency)}</td>
+                  <td>{money(point.npv_capacity_inclusive, currency)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </Chart>
+  );
+}
+
+/** Yearly hard vs capacity/avoided-loss benefit, as supplied in cash_flows. */
+export function HardCapacityChart({
+  result,
+  currency = "USD",
+  action,
+}: {
+  currency?: string;
+  result: ResultSample["result"];
+} & ChartSlot) {
+  const rows = result.cash_flows.filter((row) => row.year > 0);
+  const max = Math.max(
+    1,
+    ...rows.flatMap((row) => [row.benefits_hard, row.benefits_capacity]),
+  );
+  return (
+    <Chart
+      title="Hard vs. capacity"
+      description="Undiscounted benefit by year · capacity and avoided loss are not cash"
+      action={action}
+    >
+      <div className="output-levels">
+        {rows.map((row) => (
+          <div key={row.year}>
+            <div>
+              <span>Year {row.year}</span>
+              <strong>
+                {money(row.benefits_hard, currency)}
+                <small>
+                  hard · {money(row.benefits_capacity, currency)} capacity
+                </small>
+              </strong>
+            </div>
+            <div className="output-bar-track">
+              <div
+                className="output-bar output-bar-hard_savings"
+                style={{ width: `${(row.benefits_hard / max) * 100}%` }}
+              />
+            </div>
+            <div className="output-bar-track">
+              <div
+                className="output-bar"
+                style={{ width: `${(row.benefits_capacity / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="output-legend">
+        <span>
+          <i className="output-dot-hard" />
+          Hard savings
+        </span>
+        <span>
+          <i className="output-dot-capacity" />
+          Capacity / avoided loss
+        </span>
       </div>
     </Chart>
   );

@@ -122,7 +122,7 @@ test("full UI seed publishes a STUB snapshot and valid PDF without changing prio
       '{"existing_answers":true}',
     );
     assert(out.resultsUrl.includes(`run=${out.runId}`));
-    assert(out.reportUrl.endsWith("tab=report"));
+    assert(out.reportUrl.endsWith(`/report?run=${out.runId}`));
   } finally {
     db.close();
   }

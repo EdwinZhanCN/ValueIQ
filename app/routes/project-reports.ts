@@ -10,6 +10,6 @@ export async function action({ request, params }: Route.ActionArgs) {
     throw new Response("Forbidden", { status: 403 });
   const id = await saveReportPdf(access, params.runId);
   return redirect(
-    `/projects/${params.projectId}/results?run=${params.runId}&tab=report&report=${id}`,
+    `/projects/${params.projectId}/report?${new URLSearchParams({ run: params.runId, report: id })}`,
   );
 }
