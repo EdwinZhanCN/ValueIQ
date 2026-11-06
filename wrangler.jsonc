@@ -8,7 +8,7 @@
   // Hosts Better Auth may build its base URL from, comma-separated.
   "vars": { "AUTH_ALLOWED_HOSTS": "localhost:*,127.0.0.1:*" },
   // Set locally in .dev.vars; per environment with `wrangler secret put`.
-  "secrets": { "required": ["BETTER_AUTH_SECRET"] },
+  "secrets": { "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY"] },
   "durable_objects": {
     "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
   },
@@ -22,12 +22,19 @@
   ],
   // Private upload bucket; local runs keep objects under .wrangler/state/.
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "valueiq-files" }],
+  "workflows": [
+    {
+      "name": "valueiq-run",
+      "binding": "RUN_WORKFLOW",
+      "class_name": "CalculationRun",
+    },
+  ],
   "env": {
     "development": {
       "name": "valueiq-dev",
       "workers_dev": true,
       "vars": { "AUTH_ALLOWED_HOSTS": "valueiq-dev.zhanz.workers.dev" },
-      "secrets": { "required": ["BETTER_AUTH_SECRET"] },
+      "secrets": { "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY"] },
       "durable_objects": {
         "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
       },
@@ -41,6 +48,13 @@
       ],
       "r2_buckets": [
         { "binding": "FILES", "bucket_name": "valueiq-dev-files" },
+      ],
+      "workflows": [
+        {
+          "name": "valueiq-dev-run",
+          "binding": "RUN_WORKFLOW",
+          "class_name": "CalculationRun",
+        },
       ],
     },
     "production": {
@@ -62,6 +76,13 @@
       ],
       "r2_buckets": [
         { "binding": "FILES", "bucket_name": "valueiq-prod-files" },
+      ],
+      "workflows": [
+        {
+          "name": "valueiq-prod-run",
+          "binding": "RUN_WORKFLOW",
+          "class_name": "CalculationRun",
+        },
       ],
     },
   },

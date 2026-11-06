@@ -1,0 +1,74 @@
+{
+  "id": "broadcom-ses-breach-risk",
+  "case_ref": "T18",
+  "kind": "driver",
+  "driver": "risk_reduction",
+  "tests": "driver formulas (risk reduction with a growing reduction: ARO x loss x reduction ramp)",
+  "source": {
+    "title": "The Total Economic Impact of Symantec Endpoint Security Complete (Broadcom)",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "September 2025",
+    "url": "https://tei.forrester.com/go/broadcom/sescomplete/",
+    "status": "READ",
+    "how_opened": "page HTML fetched with curl and text-extracted; table 'Strengthened Security Posture' (Ref A1-A6, At, Atr)",
+    "table": "Strengthened Security Posture",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Annual exposure = $4,427,000 cumulative breach cost x 68% likelihood x 81% addressable = $2,438,391.60 (printed rounded to $2,438,392). The reduction is 70% / 75% / 80%.",
+    "aro_before = 0.68 x 0.81 = 0.5508, aro_after = 0 and adoption_by_year = 70 / 75 / 80 carries the reduction ramp; equivalent to reducing ARO by 70-80%.",
+    "The printed A4 'addressable with SES Complete 70%' is not used in the printed formula (A5 = A1 x A2 x A3), and we follow the printed formula.",
+    "ARO is a probability (68% chance of at least one breach), used as an expected count, as the study does."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.15,
+    "published_risk_adjustment": "15% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "breach risk",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [70, 75, 80],
+          "tier": "estimate",
+          "published_as": "A6 reduced risk of exposure 70% / 75% / 80% (interviews)"
+        },
+        {
+          "id": "aro_before",
+          "value": 0.5508,
+          "tier": "benchmark",
+          "published_as": "A2 68% x A3 81% (Forrester security survey 2024)"
+        },
+        {
+          "id": "aro_after",
+          "value": 0,
+          "tier": "estimate",
+          "published_as": "full elimination at 100% adoption; the ramp is carried by adoption"
+        },
+        {
+          "id": "loss_per_event",
+          "value": 4427000,
+          "tier": "benchmark",
+          "published_as": "A1 cumulative cost of breaches (Forrester research)"
+        }
+      ]
+    }
+  ],
+  "combine": "concat",
+  "outside_engine_by_year": null,
+  "expected": {
+    "annual_benefit": [1450843, 1554475, 1658107],
+    "pv": 3849398,
+    "published_total": 4663425,
+    "rounding": "whole dollars; A5 printed rounded"
+  },
+  "tolerance": {
+    "annual_abs": 1,
+    "pv_abs": 1.5,
+    "why": "A5 is printed rounded, so Year 3 differs by $0.71"
+  }
+}

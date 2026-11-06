@@ -33,7 +33,9 @@ Eli owns the engine and the assistant. When development is done, the engine retu
 
 Until the real engine lands (Nov 8-10), the **stub returns this same shape** filled from the Sprint 4 fixture, with `meta.mode = "stub"`. Build against the stub first: your screens will not change when the real engine replaces it. Show a visible **STUB** label whenever `meta.mode === "stub"`.
 
-### The type (the canonical copy moves to `shared/types.ts` once built; `ROI.md` section 7 is the design source)
+### The type (matches the real engine output in `engine/types.ts`, updated Nov 5; the canonical copy moves to `shared/types.ts` once built; `ROI.md` section 7 is the design source)
+
+Conventions that apply to every field: ROI values are in **percent** (313.85 means 313.85%); money is full precision (the UI rounds); a `null` number always has a matching key in `headline.null_reasons`; **hard savings** are only documented cash (cash reduction, or a cash cost), everything else is in the capacity-inclusive figure; a driver labeled `customer_benefit` (customer-borne loss) is shown but has `share_of_benefit` 0 and is excluded from `cash_flows`, `charts` and the benefit total.
 
 ```ts
 type Tier = "measured" | "documented" | "benchmark" | "estimate" | "assumption";
@@ -61,7 +63,7 @@ interface Meta {
   horizon_years: number;
   discount_rate_pct: number;
   scenario: "expected"; // the headline scenario
-  tier_counts: Record<Tier, number>; // "5 measured, 2 documented, 3 benchmark ..."
+  tier_counts: Record<Tier, number>; // effect inputs of included drivers by effective tier: "5 measured, 2 documented, 3 benchmark ..."
   contract_version: string;
   formula_version: string;
   settings_version: string;
@@ -78,47 +80,50 @@ interface Result {
     ScenarioSummary
   >;
   sensitivity: {
-    discount_rate: SensPoint[];
-    adoption: SensPoint[];
-    haircut: SensPoint[];
+    x_labels: { discount_rate: string; adoption: string; haircut: string }; // what x means per series
+    discount_rate: SensPoint[]; // x in percent
+    adoption: SensPoint[]; // x = adoption multiplier
+    haircut: SensPoint[]; // x = extra haircut, percentage points
   };
   charts: Charts; // data for the fixed chart set, precomputed
   confidence: ConfidenceLedger;
   narrative: Narrative; // text only; every number in it cites a step ref
-  unquantified: Unquantified[]; // dropped or excluded benefits, with the one fix
+  unquantified: Unquantified[]; // dropped, missing-input or unselected-goal drivers, with the one fix
   flexibility: string[];
   doing_nothing_risks: string[];
   proceeding_risks: string[];
-  measurement_plan: Record<DriverId, MeasurementPlan>;
+  measurement_plan: Partial<Record<DriverId, MeasurementPlan>>; // included drivers; "Not specified" fields when the form has none
   proxies_used: ProxyUsed[]; // defaults the user accepted, with source and tier
-  overrides: Override[]; // computed value kept next to the override
+  overrides: Override[]; // computed value kept next to the override (empty until overrides are applied)
   warnings: Warning[]; // guardrails (see below)
 }
 
 interface Headline {
-  npv: { hard: number | null; capacity_inclusive: number | null };
+  npv: { hard: number | null; capacity_inclusive: number | null }; // hard is null without a documented cash reduction
   roi: {
-    undiscounted: { hard: number | null; capacity_inclusive: number | null }; // Sprint 4 spec
-    pv: { hard: number | null; capacity_inclusive: number | null }; // NPV / PV(costs), Forrester style
+    undiscounted: { hard: number | null; capacity_inclusive: number | null }; // percent, Sprint 4 spec
+    pv: { hard: number | null; capacity_inclusive: number | null }; // percent, NPV / PV(costs), Forrester style
   };
   payback: { hard: Payback; capacity_inclusive: Payback };
   benefits_pv: number | null;
   costs_pv: number | null;
-  null_reasons: Record<string, string>; // why a field is null (e.g. zero cost => ROI undefined)
+  null_reasons: Record<string, string>; // keys like "npv.hard", "roi.pv.capacity_inclusive"; why a field is null (no documented cash, or zero cost => ROI undefined)
 }
-type Payback = { years: number | null; text: string }; // years null => "No payback within the selected horizon"
+type Payback = { years: number | null; text: string }; // years null => "No payback within the selected horizon"; otherwise text like "1.5 years (uniform-flow assumption)"
 
 interface Driver {
   id: DriverId;
   label_class: LabelClass;
-  steps: Step[]; // ordered: gross, adoption, recapture, haircut
-  annual: { year: number; benefit: number }[];
+  label: string; // display name, e.g. "Time savings"
+  included: boolean; // always true in result.drivers (dropped drivers are listed in unquantified)
+  steps: Step[]; // ordered: gross, adoption, recapture (time savings), haircut, then hard_cash / adjusted when cash netting or a delay applies
+  annual: { year: number; benefit: number }[]; // after delay, by project year
   haircut_pct: number; // effective, weakest link
   confidence: number; // 0-1, equals 1 - haircut
-  tier_counts: Record<Tier, number>;
+  tier_counts: Record<Tier, number>; // effect inputs of this driver by effective tier
   total: number;
   pv: number;
-  share_of_benefit: number; // 0-1
+  share_of_benefit: number; // 0-1; 0 for customer_benefit
   measured_by: string; // how achievement will be verified
   risk_factors: string[]; // what makes this vary (TEI "Risks" paragraph)
 }
@@ -126,11 +131,13 @@ interface Driver {
 interface Step {
   ref: string; // "A1", "A2"... shown in the UI and cited by the narrative
   order: number;
-  name: "gross" | "adoption" | "recapture" | "haircut" | "adjusted" | string;
+  name: string; // gross | adoption | recapture | haircut | hard_cash | adjusted
+  label: string; // display text, e.g. "After adoption (50% / 80% / 90%)"
   formula: string; // human-readable
   inputs: { id: string; label: string; value: number | string }[];
   source_type: "user" | "file" | "default" | "proxy" | "calculated";
-  value: number;
+  by_year: number[]; // one value per year of the horizon
+  value: number; // sum of by_year over the horizon
   evidence_tier: Tier | null;
 }
 
@@ -149,6 +156,7 @@ interface Costs {
 }
 
 interface CashFlowRow {
+  // row year 0 holds the one-time costs (benefits 0); rows 1..N follow
   year: number;
   benefits_hard: number;
   benefits_capacity: number;
@@ -172,7 +180,7 @@ interface SensPoint {
 
 interface Charts {
   // plot these as given; do not derive them
-  waterfall: { label: string; value: number }[]; // gross -> adopted -> recaptured -> haircut -> adjusted
+  waterfall: { label: string; value: number }[]; // gross -> adoption -> recapture -> haircut (sums over included cash drivers); a fifth entry appears only when a delay or cash netting changes the total
   driver_contribution: { driver: DriverId; value: number }[]; // reconciles to the benefit total
   sensitivity: SensPoint[]; // NPV across discount rates (fixture: $9,417.48 at 3%, $8,181.82 at 10%)
 }
