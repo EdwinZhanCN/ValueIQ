@@ -1,4 +1,4 @@
-﻿// Run types shared with the integration contract (section 3). blocked_on_question stays in the type
+// Run types shared with the integration contract (section 3). blocked_on_question stays in the type
 // for the contract but is NOT implemented: ask_user is tabled until after the demo.
 import type { RunOutput } from "../../engine";
 

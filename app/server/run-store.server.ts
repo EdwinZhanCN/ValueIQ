@@ -1,4 +1,4 @@
-﻿/**
+/**
  * D1 implementation of the run store (integration contract sections 4 and 5).
  *
  * Every method re-checks that `userId` is a member of the project's team

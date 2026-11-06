@@ -1,4 +1,4 @@
-﻿# ValueIQ agent guide
+# ValueIQ agent guide
 
 Human setup and deployment commands live in [README.md](README.md).
 
@@ -13,7 +13,7 @@ Human setup and deployment commands live in [README.md](README.md).
 
 - `app/`: React Router routes, the two surface layouts, and the UI under `components/`.
 - `workers/app.ts`: Worker entry and the `ValueIQAgent` Durable Object export.
-- `agents/valueiq-agent.ts`: empty agent shell â€” no state, no tools, no methods.
+- `agents/valueiq-agent.ts`: the `ValueIQAgent` (state is the run view; run methods only, no tools yet). `workers/calculation-run.ts`: the `CalculationRun` workflow. `shared/types.ts`: types shared across tracks.
 - `db/`, `drizzle/`: Drizzle client, Better Auth tables (`auth-schema.ts`, generated from `auth.cli.ts`), application tables (`schema.ts`), and their migrations.
 - `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), the signed-in user and current team (`team.server.ts`), the project API (`projects.server.ts`), and project files in R2 (`files.server.ts`).
 - `docs/`: [architecture](docs/architecture.md) and [core beliefs](docs/core-beliefs.md).

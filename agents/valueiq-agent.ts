@@ -1,4 +1,4 @@
-﻿import {
+import {
   Agent,
   callable,
   getCurrentAgent,

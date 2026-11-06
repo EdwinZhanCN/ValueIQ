@@ -1,15 +1,16 @@
 // Access matrix (interim-foundation validation): every project route is
 // checked as four actors against a real local Worker and local D1.
 //
-//   signed out → redirect to /sign-in?redirectTo=<path>
-//   other team → 404
-//   member     → allowed
-//   owner      → allowed
+//   signed out â†’ redirect to /sign-in?redirectTo=<path>
+//   other team â†’ 404
+//   member     â†’ allowed
+//   owner      â†’ allowed
 //
 // To cover a new project route, append an entry to `TARGETS`. Anything the
 // route needs (an uploaded file, say) goes in `setup`, which runs once as the
 // owner and can add fields to the shared fixture.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { localSql, startDevServer, stopDevServer } from "./dev-server.mjs";
 
 const port = Number(process.env.VALUEIQ_SMOKE_PORT ?? 5179);
@@ -210,6 +211,110 @@ try {
     }
   }
 
+  // Agent routes (contract section 7): the gate runs for HTTP and WebSocket.
+  // Gate: signed out 401, other team 404, member and owner through.
+  const agentPath = `/agents/value-i-q-agent/${projectId}`;
+  for (const actor of ACTORS) {
+    const http = await call(actor, { path: `${agentPath}/matrix-probe` });
+    const label = `agent http as ${actor}`;
+    if (actor === "signedOut")
+      assert.equal(http.status, 401, `${label}: expected 401`);
+    else if (actor === "outsider")
+      assert.equal(http.status, 404, `${label}: expected 404`);
+    else assert.notEqual(http.status, 401, `${label}: refused`);
+    rows.push(`${label}: ${http.status}`);
+
+    // WebSocket: refused callers never open; members and owners do, and the
+    // callable methods answer with typed results.
+    const ws = await openAgentSocket(origin, agentPath, cookies[actor], {
+      // A client-sent copy of the header must be overwritten by the gate.
+      "x-valueiq-user-id": users.outsider,
+    });
+    const wsLabel = `agent websocket as ${actor}`;
+    if (actor === "signedOut" || actor === "outsider") {
+      assert.equal(ws.opened, false, `${wsLabel}: connection was accepted`);
+    } else {
+      assert.equal(ws.opened, true, `${wsLabel}: connection refused`);
+      const state = await ws.state();
+      assert.equal(state.status, "idle", `${wsLabel}: initial state`);
+      // Not supported while ask_user is tabled.
+      const answer = await ws.rpc("answerQuestion", ["q1", "value"]);
+      assert.equal(answer.ok, false);
+      assert.equal(answer.error.code, "NOT_SUPPORTED");
+      // Before a form is saved the member gets BAD_INPUT, not ACCESS_DENIED:
+      // the forged header above did not become the connection's user id.
+      if (actor === "member") {
+        const start = await ws.rpc("startRun", []);
+        assert.equal(start.ok, false);
+        assert.equal(start.error.code, "BAD_INPUT", JSON.stringify(start));
+        const cancel = await ws.rpc("cancelRun", []);
+        assert.equal(cancel.ok, true);
+      }
+      ws.close();
+    }
+    rows.push(`${wsLabel}: ${ws.opened ? "open" : "refused"}`);
+  }
+
+  // Workflow plumbing, only when no Gemini key is configured locally (so this
+  // never calls the model): a saved form starts a real run, the workflow fails
+  // it as MODEL_ERROR, and the run row, event and agent state say so. Nothing
+  // is faked. Delete the key from .dev.vars to run this block.
+  if (!/^GEMINI_API_KEY=/m.test(readFileSync(".dev.vars", "utf8"))) {
+    const form = readFileSync(
+      "docs/research/samples/sample-result.form.json",
+      "utf8",
+    );
+    const saved = await call("owner", {
+      path: `/projects/${projectId}`,
+      method: "POST",
+      form: { formJson: form },
+    });
+    assert.equal(saved.status, 200, "save sample form");
+    const live = await openAgentSocket(origin, agentPath, cookies.owner, {});
+    const start = await live.rpc("startRun", []);
+    assert.equal(start.ok, true, JSON.stringify(start));
+    const runId = start.value.run_id;
+    assert(runId, "startRun returned no run id");
+    let status = "";
+    for (let i = 0; i < 40 && status !== "failed"; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      const out = JSON.parse(
+        (
+          await localSql(`SELECT status FROM runs WHERE id = '${runId}'`)
+        ).replace(/^[^[]*/, ""),
+      );
+      status = out[0].results[0].status;
+    }
+    assert.equal(status, "failed", "run without a key should fail");
+    const state = await live.state();
+    assert(["running", "failed"].includes(state.status));
+    // Same form again: a failed run does not block a new one.
+    const again = await live.rpc("startRun", []);
+    assert.equal(again.ok, true, JSON.stringify(again));
+    assert.notEqual(again.value.run_id, runId, "failed run was reused");
+    live.close();
+    // Put the marker form back for the denied-save check below.
+    await call("owner", {
+      path: `/projects/${projectId}`,
+      method: "POST",
+      form: { formJson: JSON.stringify({ marker: `${run}-owner` }) },
+    });
+    rows.push("agent workflow run without a key: failed (MODEL_ERROR)");
+  }
+
+  // A user who leaves the team loses callable access on a live connection.
+  {
+    const live = await openAgentSocket(origin, agentPath, cookies.member, {});
+    assert.equal(live.opened, true, "member socket before removal");
+    await localSql(
+      `DELETE FROM member WHERE user_id = '${users.member}' AND organization_id IN (SELECT team_id FROM projects WHERE id = '${projectId}')`,
+    );
+    const start = await live.rpc("startRun", []);
+    assert.equal(start.ok, false);
+    assert.equal(start.error.code, "ACCESS_DENIED", JSON.stringify(start));
+    live.close();
+  }
+
   // Denied saves left nothing behind: the owner's save is the last one.
   const saved = JSON.parse(
     await localSql(
@@ -244,4 +349,81 @@ function assertSignInRedirect(result, path) {
     result.location,
     `/sign-in?redirectTo=${encodeURIComponent(path)}`,
   );
+}
+
+/**
+ * Opens an Agents SDK WebSocket with the actor's cookie. `opened` is false when
+ * the gate refused the handshake. `rpc` follows the SDK client's wire format.
+ */
+async function openAgentSocket(origin, path, cookie, extraHeaders) {
+  const url = origin.replace(/^http/, "ws") + path;
+  const socket = new WebSocket(url, {
+    headers: { cookie, origin, ...extraHeaders },
+  });
+  const pending = new Map();
+  const stateWaiters = [];
+  let lastState = null;
+  socket.addEventListener("message", (event) => {
+    let msg;
+    try {
+      msg = JSON.parse(String(event.data));
+    } catch {
+      return;
+    }
+    if (msg.type === "cf_agent_state") {
+      lastState = msg.state;
+      stateWaiters.splice(0).forEach((resolve) => resolve(msg.state));
+    } else if (msg.type === "rpc" && pending.has(msg.id)) {
+      const resolve = pending.get(msg.id);
+      pending.delete(msg.id);
+      resolve(msg);
+    }
+  });
+  const opened = await new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), 8000);
+    socket.addEventListener("open", () => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+    socket.addEventListener("error", () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
+    socket.addEventListener("close", () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
+  });
+  let n = 0;
+  return {
+    opened,
+    state: () =>
+      lastState
+        ? Promise.resolve(lastState)
+        : new Promise((resolve, reject) => {
+            const timer = setTimeout(
+              () => reject(new Error("no state message")),
+              8000,
+            );
+            stateWaiters.push((s) => {
+              clearTimeout(timer);
+              resolve(s);
+            });
+          }),
+    rpc: (method, args) =>
+      new Promise((resolve, reject) => {
+        const id = `m${++n}`;
+        const timer = setTimeout(
+          () => reject(new Error(`rpc ${method} timed out`)),
+          15000,
+        );
+        pending.set(id, (msg) => {
+          clearTimeout(timer);
+          if (!msg.success) reject(new Error(`rpc ${method}: ${msg.error}`));
+          else resolve(msg.result);
+        });
+        socket.send(JSON.stringify({ type: "rpc", id, method, args }));
+      }),
+    close: () => socket.close(),
+  };
 }

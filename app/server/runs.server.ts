@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Server functions for calculation runs (integration contract section 5):
  * `createRun`, `appendRunEvent`, `finishRun`, `getRun`, `getLatestResult`.
  *
