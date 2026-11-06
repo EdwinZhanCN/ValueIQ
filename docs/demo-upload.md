@@ -6,7 +6,7 @@ The manual **Seed development demo UI** workflow populates one existing developm
 - A new immutable **STUB** result snapshot using the engine owner's `engine/fixtures/round1/r1-result.json`; its numbers are preserved exactly. Numbers, Show the Math and Charts render this recorded run.
 - A generated private PDF and report metadata, so the Report tab and download work too. Every report page carries the STUB label.
 
-Existing saved intake and previous runs are preserved. No model call or real assessment runs. The supplied fixture is explicitly converted to stub mode; it does not claim to represent the project's current saved answers. A seed provenance event records the fixture and mock-upload identity.
+Existing saved intake and previous runs are preserved. No model call or real assessment runs. The supplied fixture is explicitly converted to stub mode; it does not claim to represent the project's current saved answers. The demo run pins a synthetic form snapshot in `runs.form_json`. A provenance event records the fixture and mock-upload identity.
 
 Run the workflow on `develop`, supplying the existing project's UUID. GitHub's development environment supplies the existing Cloudflare credential; it needs D1 query/write and R2 object read/write permissions. The script validates the configured development Worker/database/bucket and existing project. Upload/report ownership follows the project creator; descriptions and the GitHub workflow identify administrative seeding.
 

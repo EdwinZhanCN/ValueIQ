@@ -195,6 +195,9 @@ if (
       objects,
     });
     const demo = await seedDemoOutput({
+      form: JSON.parse(
+        await readFile("docs/research/samples/sample-result.form.json", "utf8"),
+      ),
       projectId: process.argv[2],
       config: parsed.config,
       template: JSON.parse(

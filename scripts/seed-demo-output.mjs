@@ -55,6 +55,7 @@ export async function seedDemoOutput({
   projectId,
   config,
   template,
+  form,
   file,
   store,
   objects,
@@ -68,7 +69,11 @@ export async function seedDemoOutput({
     meta: { ...template.meta, mode: "stub" },
   });
   assert.equal(source.kind, "result", "A released-result fixture is required");
-  const marker = "demo-output-v1:" + hash(JSON.stringify(source));
+  assert(
+    form && Array.isArray(form.goals) && Array.isArray(form.inputs),
+    "Synthetic form snapshot required",
+  );
+  const marker = "demo-output-v1:" + hash(JSON.stringify({ source, form }));
   const project = await store.findProject(projectId);
   assert(project && project.id === projectId, "Project not found");
   assert(/^[\w-]{1,128}$/.test(project.team_id), "Invalid team id");
@@ -86,6 +91,11 @@ export async function seedDemoOutput({
     const stored = parseRunOutput(JSON.parse(existing.result_json));
     assert.equal(stored.meta.mode, "stub");
     assert.equal(stored.meta.run_id, id);
+    assert.deepEqual(
+      JSON.parse(existing.form_json),
+      form,
+      "Existing demo form differs; refusing to overwrite it",
+    );
     assert.equal(
       hash(JSON.stringify(stored.result)),
       hash(JSON.stringify(source.result)),
@@ -115,6 +125,7 @@ export async function seedDemoOutput({
       key,
       projectId,
       marker,
+      form: structuredClone(form),
       output,
       createdBy: project.created_by,
       startedAt,
@@ -167,11 +178,11 @@ export function createDemoStore(query) {
   return {
     findDemoRun: async (id, marker) =>
       query(
-        `SELECT r.id,rr.result_json,rp.id AS report_id,rp.r2_key AS report_key FROM runs r JOIN run_results rr ON rr.run_id=r.id JOIN run_reports rp ON rp.run_id=r.id WHERE r.project_id=${q(id)} AND r.form_hash=${q(marker)} AND r.mode='stub' AND r.status='released' ORDER BY r.started_at DESC LIMIT 1`,
+        `SELECT r.id,r.form_json,rr.result_json,rp.id AS report_id,rp.r2_key AS report_key FROM runs r JOIN run_results rr ON rr.run_id=r.id JOIN run_reports rp ON rp.run_id=r.id WHERE r.project_id=${q(id)} AND r.form_hash=${q(marker)} AND r.mode='stub' AND r.status='released' ORDER BY r.started_at DESC LIMIT 1`,
       )[0] ?? null,
     createDemoRun: async (r) => {
       query(
-        `INSERT INTO runs(id,project_id,status,mode,form_hash,contract_version,formula_version,settings_version,started_by,started_at) VALUES(${[r.id, r.projectId, "running", "stub", r.marker, r.output.meta.contract_version, r.output.meta.formula_version, r.output.meta.settings_version, r.createdBy, r.startedAt].map(q).join(",")})`,
+        `INSERT INTO runs(id,project_id,status,mode,form_hash,contract_version,formula_version,settings_version,started_by,started_at,form_json) VALUES(${[r.id, r.projectId, "running", "stub", r.marker, r.output.meta.contract_version, r.output.meta.formula_version, r.output.meta.settings_version, r.createdBy, r.startedAt, JSON.stringify(r.form)].map(q).join(",")})`,
       );
     },
     saveDemoResult: async (r) => {

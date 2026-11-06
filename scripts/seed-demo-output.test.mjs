@@ -23,6 +23,9 @@ const config = {
     production: { d1_databases: [{ database_id: "prod" }] },
   },
 };
+const form = JSON.parse(
+  readFileSync("docs/research/samples/sample-result.form.json", "utf8"),
+);
 const template = JSON.parse(
   readFileSync("engine/fixtures/round1/r1-result.json", "utf8"),
 );
@@ -57,6 +60,7 @@ function fixture() {
     projectId,
     config: structuredClone(config),
     template,
+    form,
     file: { fileId: "mock-upload" },
     store,
     objects: {
@@ -87,6 +91,7 @@ test("full UI seed publishes a STUB snapshot and valid PDF without changing prio
     const run = db.prepare("SELECT * FROM runs WHERE id=?").get(out.runId);
     assert.equal(run.status, "released");
     assert.equal(run.mode, "stub");
+    assert.deepEqual(JSON.parse(run.form_json), form);
     const stored = parseRunOutput(
       JSON.parse(
         db
