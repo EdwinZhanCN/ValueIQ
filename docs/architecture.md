@@ -4,16 +4,16 @@ ValueIQ is a technology-stack skeleton for a project value assessment product. W
 
 ## Stack
 
-| Layer      | Choice and wiring                                                                                                                               |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework  | React Router v8 in framework mode: `app/routes.ts`, route modules, SSR through `app/entry.server.tsx`                                           |
-| Runtime    | Cloudflare Workers through the Cloudflare Vite plugin; `workers/app.ts` is the fetch entry                                                      |
-| Data       | D1 through Drizzle ORM: `db/client.ts`, `db/schema.ts`, and the `DB` binding in `wrangler.jsonc`                                                |
-| Identity   | Better Auth (email/password, organization plugin) on D1: `app/server/auth.server.ts`, endpoints at `/api/auth/*`; a team is an organization     |
-| Agent      | Cloudflare Agents SDK: the `ValueIQAgent` Durable Object class, exported from `workers/app.ts`                                                  |
-| Styling    | Tailwind CSS v4 with design tokens in `app/styles.css`                                                                                          |
-| Components | Vendored shadcn/ui on Base UI primitives (`app/components/ui/`), beUI motion (`app/components/motion/`), Lucide icons, Geist through Fontsource |
-| Checks     | `typegen`, `typecheck`, `lint`, `format:check`, `build`, `deploy:check`, `test:smoke`                                                           |
+| Layer      | Choice and wiring                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework  | React Router v8 in framework mode: `app/routes.ts`, route modules, SSR through `app/entry.server.tsx`                                             |
+| Runtime    | Cloudflare Workers through the Cloudflare Vite plugin; `workers/app.ts` is the fetch entry                                                        |
+| Data       | D1 through Drizzle ORM: `db/client.ts`, `db/schema.ts`, and the `DB` binding in `wrangler.jsonc`                                                  |
+| Identity   | Better Auth (email/password, organization plugin) on D1: `app/server/auth.server.ts`, endpoints at `/api/auth/*`; a team is an organization       |
+| Agent      | Cloudflare Agents SDK: the `ValueIQAgent` Durable Object (one per project) behind `agentGate`, and the `CalculationRun` workflow (`RUN_WORKFLOW`) |
+| Styling    | Tailwind CSS v4 with design tokens in `app/styles.css`                                                                                            |
+| Components | Vendored shadcn/ui on Base UI primitives (`app/components/ui/`), beUI motion (`app/components/motion/`), Lucide icons, Geist through Fontsource   |
+| Checks     | `typegen`, `typecheck`, `lint`, `format:check`, `build`, `deploy:check`, `test:smoke`                                                             |
 
 ## Surfaces
 
@@ -42,16 +42,26 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 
 ## Empty shells
 
+## Runs and the agent gate
+
+- `shared/types.ts` — run states, `RunView`, and `Question` from the [integration contract](../.agents/exec-plans/active/integration-contract.md) section 3.
+- `db/schema.ts` — `runs`, `run_events` (append-only, `seq` from the agent), `run_questions`, and `run_results` (CHECK: a result or a gap list, never both).
+- `app/server/runs.server.ts` — `createRun`, `getRun`, `updateRunStatus`, `appendRunEvent`, `recordRunQuestion`, `answerRunQuestion`, `finishRun`, `getLatestResult`. No access checks of their own; callers authorize first.
+- `app/server/agent-gate.server.ts` — `agentGate`, run by `routeAgentRequest` as both `onBeforeConnect` and `onBeforeRequest`. It allows only `ValueIQAgent`, refuses a cross-site `Origin` (403), answers 401/404 from `checkProjectAccess`, and forwards the request with `x-valueiq-user-id` replaced by the caller's id. `getProjectMembership(projectId, userId)` (in `access.server.ts`) is the re-check for agent methods that change a run.
+
+## Empty shells
+
 - `agents/valueiq-agent.ts` — an empty `ValueIQAgent` Durable Object: no state shape, no tools, no RPC methods.
+- `agents/calculation-run.ts` — `CalculationRun extends AgentWorkflow`, a placeholder so `RUN_WORKFLOW` deploys; nothing starts it, and it rejects if run.
 - `app/context.server.ts` — typed Worker bindings for loaders and actions.
 
-Undecided on purpose: agent state, agent tools, application skill conventions, and every shared domain type. Add them when the design is settled and reconnect a surface to them deliberately.
+The agent methods, workflow steps, and stub run follow the integration contract (Eli). Nothing may present a stub as a real assessment.
 
 ## Runtime and generated artifacts
 
 `pnpm dev` uses the Cloudflare Vite plugin to execute SSR and bindings in local workerd. D1 and Durable Object data persist under ignored `.wrangler/state/`. `pnpm build` produces client assets and a server Worker with a generated Wrangler deployment configuration. `pnpm deploy:check` packages that build without publishing it.
 
-`wrangler.jsonc` owns binding declarations: the `DB` D1 database, the `FILES` R2 bucket (`valueiq-dev-files`, `valueiq-prod-files`, simulated locally), and the `ValueIQAgent` Durable Object, plus each environment's `AUTH_ALLOWED_HOSTS` variable and required `BETTER_AUTH_SECRET` secret. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. The default configuration is local. Named `development` and `production` environments declare separate Workers, D1 databases, and Durable Object bindings. Their D1 databases are provisioned in the maintainer’s Cloudflare account, and their non-secret IDs are committed in `wrangler.jsonc`. Deployment rejects placeholder IDs and shared databases. Checks run without credentials. [Development and release guide](deployment.md) documents the live environments, access controls, and ongoing release workflow.
+`wrangler.jsonc` owns binding declarations: the `DB` D1 database, the `FILES` R2 bucket (`valueiq-dev-files`, `valueiq-prod-files`, simulated locally), the `ValueIQAgent` Durable Object, and the `RUN_WORKFLOW` workflow (`valueiq-run`, `valueiq-dev-run`, `valueiq-prod-run`), plus each environment's `AUTH_ALLOWED_HOSTS` variable and required `BETTER_AUTH_SECRET` secret. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. The default configuration is local. Named `development` and `production` environments declare separate Workers, D1 databases, and Durable Object bindings. Their D1 databases are provisioned in the maintainer’s Cloudflare account, and their non-secret IDs are committed in `wrangler.jsonc`. Deployment rejects placeholder IDs and shared databases. Checks run without credentials. [Development and release guide](deployment.md) documents the live environments, access controls, and ongoing release workflow.
 
 There are no model secrets, outbound model calls, MCP integrations, queues, or separate backend. People sign up, create a team, and add teammates through the account pages.
 
