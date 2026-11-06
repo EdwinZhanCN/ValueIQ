@@ -21,7 +21,7 @@
     "test:smoke": "node scripts/smoke.mjs",
     "test:access": "node scripts/access-matrix.mjs",
     "fixtures:forms": "node --experimental-strip-types scripts/generate-form-fixtures.ts",
-    "test:forms": "node --experimental-strip-types --test scripts/form-fixtures.test.ts && node --experimental-strip-types scripts/generate-form-fixtures.ts --check",
+    "test:forms": "node --experimental-strip-types --test scripts/form-fixtures.test.ts scripts/form-wave2.test.ts && node --experimental-strip-types scripts/generate-form-fixtures.ts --check",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:forms && pnpm build && pnpm deploy:check",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply valueiq --local",
