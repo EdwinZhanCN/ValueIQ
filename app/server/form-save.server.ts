@@ -69,9 +69,7 @@ export async function handleFormSave(
         { status: 400 },
       );
     if (validateFormFile(json, context).length === 0) {
-      const canonical = { ...(json as Record<string, unknown>) };
-      delete canonical.intake_draft_version;
-      json = JSON.parse(serializeFormFile(canonical, context));
+      json = JSON.parse(serializeFormFile(json, context));
     }
   }
   // The version the editor loaded: "" means it loaded no saved form. Scripted

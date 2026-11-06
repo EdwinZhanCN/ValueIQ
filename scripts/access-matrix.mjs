@@ -448,7 +448,19 @@ try {
   const draftSaved = await call("owner", {
     path: `/projects/${projectId}`,
     method: "POST",
-    form: { formJson: JSON.stringify({ intake_draft_version: 1 }) },
+    form: {
+      formJson: JSON.stringify({
+        version: 1,
+        goals: [],
+        currency: "USD",
+        horizon_years: 0,
+        inputs: [],
+        file_descriptions: {},
+        other_notes: "",
+        measurement_plan: {},
+        asked: [],
+      }),
+    },
   });
   assert.equal(draftSaved.status, 200);
 

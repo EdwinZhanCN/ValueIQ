@@ -1,4 +1,3 @@
-import { StructuredIntake } from "../components/intake/structured-intake";
 import type { Route } from "./+types/workspace";
 import { ChatAppExample } from "../components/agents/chat-app-example";
 import { useSearchParams } from "react-router";
@@ -19,7 +18,6 @@ export const meta: Route.MetaFunction = () => [
  */
 export default function Workspace() {
   const [params] = useSearchParams();
-  if (params.get("view") === "intake") return <StructuredIntake />;
   return params.get("view") === "chat" ? (
     <ChatAppExample className="h-full rounded-none border-0" />
   ) : (

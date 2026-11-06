@@ -21,12 +21,6 @@ import { getProjectForm } from "./projects.server";
 
 /** The saved form must at least look like a form file; the engine validates the rest. */
 export function asFormFile(json: unknown): LegacyFormFile {
-  if (json && typeof json === "object" && "intake_draft_version" in json)
-    throw new OrchestratorError(
-      "BAD_INPUT",
-      "Complete and save the intake before starting a run.",
-      false,
-    );
   const f = json as Partial<LegacyFormFile> | null;
   if (
     !f ||

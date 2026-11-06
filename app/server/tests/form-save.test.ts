@@ -1,7 +1,8 @@
 import { beforeEach, expect, it } from "vitest";
 import { handleFormSave } from "../form-save.server";
 import { getProjectForm } from "../projects.server";
-import { blankIntake } from "../../lib/intake-draft";
+import { readFormDraft } from "../../lib/intake-form";
+const blankIntake = () => readFormDraft(null);
 import { env } from "./cf-workers-stub";
 import { createTestD1, seedTeams } from "./d1-shim";
 
