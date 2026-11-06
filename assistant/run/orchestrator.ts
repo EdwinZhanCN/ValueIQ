@@ -109,7 +109,7 @@ export function mapError(e: unknown): RunError {
   if (e instanceof GeminiHttpError)
     return {
       code: "MODEL_ERROR",
-      message: `Model request failed (HTTP ${e.status})`,
+      message: httpMessage(e.status),
       retryable: e.status === 429 || e.status >= 500,
     };
   if (e instanceof ModelMismatchError)
@@ -126,14 +126,27 @@ export function mapError(e: unknown): RunError {
   )
     return {
       code: "MODEL_TIMEOUT",
-      message: "Model request timed out",
+      message: "The AI service took too long to answer. Try again.",
       retryable: true,
     };
   return {
     code: "MODEL_ERROR",
-    message: e instanceof Error ? e.message : "Unknown error",
+    message:
+      e instanceof Error && e.message
+        ? e.message
+        : "Something went wrong while running the assessment.",
     retryable: false,
   };
+}
+
+/** Plain-language text for a failed model request; the code stays MODEL_ERROR. */
+function httpMessage(status: number): string {
+  if (status === 401 || status === 403)
+    return "The AI service rejected the key. Ask an admin to check it.";
+  if (status === 429) return "The AI service is busy. Try again in a minute.";
+  if (status >= 500)
+    return `The AI service had a problem (HTTP ${status}). Try again.`;
+  return `The AI service rejected the request (HTTP ${status}).`;
 }
 
 /** The idempotency key: the project's form (inputs sorted) plus the engine versions. */
