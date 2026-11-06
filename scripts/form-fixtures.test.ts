@@ -13,6 +13,39 @@ import { context, fixtureCases } from "./form-fixture-cases.ts";
 const cases = fixtureCases();
 const good = cases.find((item) => item.id === "sample-result")!.form;
 const gap = cases.find((item) => item.id === "sample-gap-list")!.form;
+await test("sample-result serializer output exactly matches Eli's independent GitHub reference", async () => {
+  const reference: unknown = JSON.parse(
+    await readFile(
+      new URL(
+        "../docs/research/samples/sample-result.form.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(JSON.parse(serializeFormFile(good, context)), reference);
+  assert.deepEqual(parseFormFile(JSON.stringify(reference), context), good);
+});
+
+await test("numeric settings stay in inputs and optional unit metadata is preserved", () => {
+  assert.ok(!Object.hasOwn(good, "discount_rate_pct"));
+  assert.ok(!Object.hasOwn(good, "adoption_by_year"));
+  assert.throws(
+    () => serializeFormFile({ ...good, discount_rate_pct: 10 }, context),
+    FormValidationError,
+  );
+  assert.throws(
+    () =>
+      serializeFormFile({ ...good, adoption_by_year: [50, 80, 90] }, context),
+    FormValidationError,
+  );
+  const draft = structuredClone(good);
+  draft.inputs.find((record) => record.id === "staff_affected")!.unit = "count";
+  assert.deepEqual(
+    parseFormFile(serializeFormFile(draft, context), context),
+    draft,
+  );
+});
 for (const fixture of cases) {
   await test(`${fixture.id}: actual form serializer and checked-in fixture agree`, async () => {
     const json = await readFile(
@@ -99,7 +132,7 @@ await test("backing flags match the requested six checks without adding evidence
   const typed = gap.inputs.find(
     (record) => record.id === "hours_saved_per_staff_week",
   )!;
-  assert.deepEqual(typed.backing, { source_date: "2026-10-01" });
+  assert.deepEqual(typed.backing, { source_date: "2026-09-30" });
   assert.equal(typed.tier, "estimate");
   assert.equal(typed.origin, "user");
   assert.ok(!good.inputs.some((record) => record.tier === "measured"));

@@ -4,15 +4,7 @@
     "projectId": "fixture-project",
     "files": [
       {
-        "id": "fixture-time",
-        "projectId": "fixture-project"
-      },
-      {
-        "id": "fixture-errors",
-        "projectId": "fixture-project"
-      },
-      {
-        "id": "fixture-risk",
+        "id": "f1",
         "projectId": "fixture-project"
       },
       {

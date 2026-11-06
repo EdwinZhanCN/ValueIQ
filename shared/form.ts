@@ -1,5 +1,5 @@
-/** Pre-integration form wire contract: 01a section 2 and engine/types.ts.
- * Adoption is an Input record; version remains the engine's existing field.
+/** Input-team form output contract: Eli's FORM-FILE-FORMAT.md and exact sample.
+ * Adoption and discount rate are Input records; unit metadata is optional.
  */
 export type Goal =
   "time_savings" | "data_quality" | "decision_speed" | "risk_reduction";
@@ -28,7 +28,7 @@ export interface Backing {
 export interface Input {
   id: string;
   value: InputValue;
-  unit: string;
+  unit?: string;
   period?: "per_year" | "per_week" | "per_event" | "one_time";
   tier: Tier;
   origin: Origin;
@@ -44,7 +44,6 @@ export interface FormFile {
   goals: Goal[];
   currency: string;
   horizon_years: number;
-  discount_rate_pct: number;
   inputs: Input[];
   file_descriptions: Record<string, string>;
   other_notes: string;

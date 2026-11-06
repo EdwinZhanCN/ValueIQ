@@ -9,143 +9,116 @@ import type {
 export const context: FormContext = {
   projectId: "fixture-project",
   files: [
-    { id: "fixture-time", projectId: "fixture-project" },
-    { id: "fixture-errors", projectId: "fixture-project" },
-    { id: "fixture-risk", projectId: "fixture-project" },
+    { id: "f1", projectId: "fixture-project" },
     { id: "foreign-project-file", projectId: "another-project" },
   ],
 };
 export const referenceDate = "2026-11-05T12:00:00.000Z";
-const recent = "2026-10-01";
+const recent = "2026-09-30";
 
 function input(
   id: string,
   value: InputValue,
-  unit: string,
-  metadata: Partial<Omit<Input, "id" | "value" | "unit">> = {},
+  metadata: Partial<Omit<Input, "id" | "value">> = {},
 ): Input {
-  return { id, value, unit, tier: "documented", origin: "user", ...metadata };
+  return { id, value, tier: "documented", origin: "user", ...metadata };
 }
-function effect(
-  id: string,
-  value: number,
-  unit: string,
-  backing: Backing,
-): Input {
-  return input(id, value, unit, {
-    tier: "documented",
-    origin: "file",
-    backing,
+function effect(id: string, value: number, backing: Backing): Input {
+  // A user-entered, documented value can cite a file without changing origin.
+  return input(id, value, { backing });
+}
+const adoption = () =>
+  input("adoption_by_year", [50, 80, 90], { tier: "estimate" });
+const recapture = () =>
+  input("recapture_pct", 50, {
+    tier: "benchmark",
+    origin: "default",
+    note: "Nucleus productivity correction factor 0.5",
   });
-}
+const discount = () =>
+  input("discount_rate_pct", 10, {
+    tier: "benchmark",
+    origin: "default",
+    note: "Forrester TEI convention (organizations typically 8-16%)",
+  });
+const vendorCost = () =>
+  input("cost_one_time_vendor_license", 30000, { basis: "quoted" });
+const runCost = () => input("cost_annual_run", 12000, { basis: "quoted" });
+
 function base(): FormFile {
   return {
     version: 1,
     goals: ["time_savings"],
     currency: "USD",
     horizon_years: 3,
-    discount_rate_pct: 10,
-    inputs: [
-      input("project_name", "Engine handoff fixture", "text"),
-      input(
-        "decision_statement",
-        "Should we fund the proposed operations improvement?",
-        "text",
-      ),
-      input("discount_rate_pct", 10, "percent", {
-        tier: "benchmark",
-        origin: "default",
-        note: "Default accepted for this test: Forrester TEI 10%, per case specification.",
-      }),
-      input("adoption_by_year", [50, 80, 90], "percent"),
-      input("staff_affected", 10, "count"),
-      input("weeks_per_year", 40, "weeks"),
-      input("loaded_hourly_cost", 50, "currency/h"),
-      input("recapture_pct", 50, "percent", {
-        tier: "benchmark",
-        origin: "default",
-        note: "Default specified by INPUT-TEST-CASES.md; Nucleus productivity factor.",
-      }),
-      input("cost_one_time_vendor_license", 30000, "currency", {
-        period: "one_time",
-        basis: "quoted",
-      }),
-      input("cost_annual_run", 12000, "currency/yr", {
-        period: "per_year",
-        basis: "quoted",
-      }),
-    ],
+    inputs: [],
     file_descriptions: {},
-    other_notes:
-      "Synthetic pre-integration fixture; no real project or file was uploaded.",
+    other_notes: "",
     measurement_plan: {},
     asked: [],
   } satisfies FormFile;
 }
 function gap(): FormFile {
   const form = base();
-  form.inputs.push(
-    input("hours_saved_per_staff_week", 5, "hours", {
-      period: "per_week",
+  form.inputs = [
+    adoption(),
+    input("staff_affected", 10),
+    input("weeks_per_year", 40),
+    input("loaded_hourly_cost", 50),
+    recapture(),
+    discount(),
+    vendorCost(),
+    runCost(),
+    input("hours_saved_per_staff_week", 5, {
       tier: "estimate",
-      origin: "user",
       backing: { source_date: recent },
     }),
-  );
+  ];
   return form;
 }
 function result(): FormFile {
   const form = base();
   form.goals = ["time_savings", "data_quality", "risk_reduction"];
-  form.file_descriptions = {
-    "fixture-time":
-      "Synthetic written time-saving assessment; verified by the process owner.",
-    "fixture-errors":
-      "Synthetic annual expedite/error analysis with a recent data date.",
-    "fixture-risk":
-      "Synthetic incident/loss analysis; verified by the risk owner.",
-  };
-  const time: Backing = { source_file_id: "fixture-time", verified: true };
-  const errors: Backing = {
-    source_file_id: "fixture-errors",
-    observations: 30,
+  form.file_descriptions = { f1: "test file" };
+  const verified: Backing = { source_file_id: "f1", verified: true };
+  const covered: Backing = {
+    source_file_id: "f1",
+    observations: 100,
     source_date: recent,
   };
-  const risk: Backing = { source_file_id: "fixture-risk", verified: true };
-  form.inputs.push(
+  form.inputs = [
+    adoption(),
+    input("staff_affected", 10),
+    effect("hours_saved_per_staff_week", 5, verified),
+    input("weeks_per_year", 40),
+    input("loaded_hourly_cost", 50),
+    recapture(),
+    discount(),
+    effect("error_count_before", 72, covered),
+    effect("error_count_after", 24, covered),
+    effect("cost_per_error", 690, covered),
+    input("cost_nature", "cash"),
+    effect("aro_before", 3, verified),
+    effect("aro_after", 1.5, verified),
     {
-      ...effect("hours_saved_per_staff_week", 5, "hours", time),
-      period: "per_week",
-    },
-    input("records_or_events_per_year", 600, "count", { period: "per_year" }),
-    {
-      ...effect("error_count_before", 72, "count", errors),
-      period: "per_year",
-    },
-    { ...effect("error_count_after", 24, "count", errors), period: "per_year" },
-    effect("cost_per_error", 690, "currency", errors),
-    input("cost_sources", ["expedite"], "enum list"),
-    input("cost_nature", "cash", "enum"),
-    input("event_type", "sustained outage", "text"),
-    { ...effect("aro_before", 3, "events/yr", risk), period: "per_year" },
-    { ...effect("aro_after", 1.5, "events/yr", risk), period: "per_year" },
-    {
-      ...effect("loss_per_event", 25000, "currency", {
-        ...risk,
-        observations: 30,
-        source_date: recent,
-      }),
+      ...effect("loss_per_event", 25000, { ...covered, verified: true }),
       low: 22500,
       high: 27500,
     },
-    input("cost_bearer", "organization", "enum"),
-    input("cost_training_change", 5000, "currency", {
-      period: "one_time",
-      basis: "estimated",
-      tier: "estimate",
-    }),
-    input("delay_months", 0, "months"),
-  );
+    vendorCost(),
+    input("cost_training_change", 5000, { basis: "estimated" }),
+    runCost(),
+  ];
+  form.measurement_plan = {
+    time_savings: {
+      metric: "Time study before and after launch",
+      baseline: "30 minutes per ticket",
+      baseline_source: "Ops time sample, Q3",
+      owner: "Ops lead",
+      frequency: "monthly",
+    },
+  };
+  form.asked = ["hours_saved_per_staff_week", "cost_per_error"];
   return form;
 }
 
@@ -169,8 +142,8 @@ function change(
   return { id, form, expected: "rejected", field, code };
 }
 
-/** These are form-state submissions, not JSON fixture literals. Every candidate
- * is exported by app/lib/intake-form.ts and round-tripped by the same parser.
+/** Independent typed form-state submissions, never loaded from the reference
+ * JSON. The equality test compares the real serializer output with Eli's file.
  */
 export function fixtureCases(): FixtureCase[] {
   const horizon0 = gap();
@@ -185,12 +158,12 @@ export function fixtureCases(): FixtureCase[] {
     (entry) => entry.id !== "hours_saved_per_staff_week",
   );
   after.inputs.push(
-    input("minutes_per_task_before", 30, "min"),
-    input("minutes_per_task_after", 40, "min"),
-    input("tasks_per_staff_week", 10, "count", { period: "per_week" }),
+    input("minutes_per_task_before", 30),
+    input("minutes_per_task_after", 40),
+    input("tasks_per_staff_week", 10),
   );
   const unknown = gap();
-  unknown.inputs.push(input("not_in_field_spec", 1, "count"));
+  unknown.inputs.push(input("not_in_field_spec", 1));
   const foreign = result();
   foreign.inputs.find(
     (entry) => entry.id === "hours_saved_per_staff_week",
@@ -199,6 +172,8 @@ export function fixtureCases(): FixtureCase[] {
   measured.inputs.find(
     (entry) => entry.id === "hours_saved_per_staff_week",
   )!.tier = "measured";
+  const delay = gap();
+  delay.inputs.push(input("delay_months", 241));
   return [
     { id: "sample-result", form: result(), expected: "accepted" },
     { id: "sample-gap-list", form: gap(), expected: "accepted" },
@@ -224,13 +199,9 @@ export function fixtureCases(): FixtureCase[] {
       field: "horizon_years",
       code: "HORIZON",
     },
-    // Delay is optional in sample-gap-list; add a valid record before changing it.
     {
       id: "invalid-delay-241",
-      form: {
-        ...gap(),
-        inputs: [...gap().inputs, input("delay_months", 241, "months")],
-      },
+      form: delay,
       expected: "rejected",
       field: "delay_months",
       code: "BOUNDS",

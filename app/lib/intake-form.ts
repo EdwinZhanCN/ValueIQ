@@ -68,12 +68,14 @@ export function validateFormFile(
     horizon > 20
   )
     add("HORIZON", "horizon_years", "Use an integer from 1 to 20.");
-  if (
-    !finite(candidate.discount_rate_pct) ||
-    candidate.discount_rate_pct < 0 ||
-    candidate.discount_rate_pct > 100
-  )
-    add("BOUNDS", "discount_rate_pct", "Use a percentage from 0 to 100.");
+  for (const id of ["discount_rate_pct", "adoption_by_year"]) {
+    if (Object.hasOwn(candidate, id))
+      add(
+        "SETTING_LOCATION",
+        id,
+        "Store this setting as an inputs[] record, not an envelope property.",
+      );
+  }
   if (
     !object(candidate.file_descriptions) ||
     Object.values(candidate.file_descriptions).some(
@@ -137,8 +139,11 @@ export function validateFormFile(
       add("TIER", id, "Unknown evidence tier.");
     if (typeof raw.origin !== "string" || !origins.includes(raw.origin))
       add("ORIGIN", id, "Unknown origin.");
-    if (typeof raw.unit !== "string" || !raw.unit.trim())
-      add("UNIT", id, "A unit is required.");
+    if (
+      raw.unit !== undefined &&
+      (typeof raw.unit !== "string" || !raw.unit.trim())
+    )
+      add("UNIT", id, "An optional unit must be non-empty text.");
     if (
       raw.period !== undefined &&
       (typeof raw.period !== "string" ||
@@ -328,7 +333,19 @@ export function validateFormFile(
       byId.get(id)?.tier === "user_unknown"
     )
       add("ESSENTIAL_COST", id, "Essential cost is missing or unknown.");
-  for (const id of ["currency", "horizon_years", "discount_rate_pct"])
+  for (const id of ["discount_rate_pct", "adoption_by_year"]) {
+    if (
+      !byId.has(id) ||
+      byId.get(id)?.value === null ||
+      byId.get(id)?.tier === "user_unknown"
+    )
+      add(
+        "MISSING_SETTING",
+        id,
+        "This setting is required as an inputs[] record.",
+      );
+  }
+  for (const id of ["currency", "horizon_years"])
     if (byId.has(id) && byId.get(id)?.value !== candidate[id])
       add(
         "SETTING_MISMATCH",
