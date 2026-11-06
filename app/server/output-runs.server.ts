@@ -53,4 +53,3 @@ export async function getLatestResult(
     .get();
   return row ? getRun(access, row.id) : null;
 }
-

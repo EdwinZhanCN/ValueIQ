@@ -12,11 +12,7 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 import { createDb } from "../../db/client";
 import { runEvents, runQuestions, runResults, runs } from "../../db/schema";
-import type {
-  Question,
-  RunMode,
-  StoredRunStatus,
-} from "../../shared/types";
+import type { Question, RunMode, StoredRunStatus } from "../../shared/types";
 
 import { parseRunOutput } from "../../shared/output";
 
@@ -37,7 +33,8 @@ export type NewRun = {
 };
 
 export async function createRun(input: NewRun): Promise<Run> {
-  if (input.id && !/^[\w-]{1,128}$/.test(input.id)) throw new Error("BAD_INPUT: invalid run id");
+  if (input.id && !/^[\w-]{1,128}$/.test(input.id))
+    throw new Error("BAD_INPUT: invalid run id");
   return createDb(env.DB)
     .insert(runs)
     .values({
@@ -153,25 +150,49 @@ export async function finishRun(
   if (!run || run.finishedAt !== null) return false;
   const now = Date.now();
   if (outcome.status === "failed" || outcome.status === "cancelled") {
-    const updated = await createDb(env.DB).update(runs).set({status: outcome.status, finishedAt: new Date(now)}).where(and(eq(runs.id,runId), isNull(runs.finishedAt))).returning({id:runs.id}).get();
+    const updated = await createDb(env.DB)
+      .update(runs)
+      .set({ status: outcome.status, finishedAt: new Date(now) })
+      .where(and(eq(runs.id, runId), isNull(runs.finishedAt)))
+      .returning({ id: runs.id })
+      .get();
     return Boolean(updated);
   }
-  const output = parseRunOutput(outcome.status === "released" ? outcome.result : outcome.gapList);
-  if (output.meta.run_id !== run.id || output.meta.mode !== run.mode ||
-      output.meta.contract_version !== run.contractVersion ||
-      output.meta.formula_version !== run.formulaVersion ||
-      output.meta.settings_version !== run.settingsVersion ||
-      (output.kind === "result" ? "released" : "gap_list") !== outcome.status)
+  const output = parseRunOutput(
+    "result" in outcome
+      ? outcome.result
+      : "gapList" in outcome
+        ? outcome.gapList
+        : undefined,
+  );
+  if (
+    output.meta.run_id !== run.id ||
+    output.meta.mode !== run.mode ||
+    output.meta.contract_version !== run.contractVersion ||
+    output.meta.formula_version !== run.formulaVersion ||
+    output.meta.settings_version !== run.settingsVersion ||
+    (output.kind === "result" ? "released" : "gap_list") !== outcome.status
+  )
     throw new Error("ENGINE_INTEGRITY: run metadata mismatch");
   const serialized = JSON.stringify(output);
   if (new TextEncoder().encode(serialized).length > 512 * 1024)
     throw new Error("ENGINE_INTEGRITY: output exceeds storage limit");
   const rows = await env.DB.batch([
-    env.DB.prepare(`INSERT INTO run_results (run_id,result_json,gap_list_json,created_at)
-      SELECT ?,?,?,? FROM runs WHERE id=? AND finished_at IS NULL`).bind(runId,output.kind === "result" ? serialized : null,output.kind === "gap_list" ? serialized : null,now,runId),
-    env.DB.prepare(`UPDATE runs SET status=?,finished_at=? WHERE id=? AND finished_at IS NULL AND EXISTS (SELECT 1 FROM run_results WHERE run_id=?)`).bind(outcome.status,now,runId,runId),
+    env.DB.prepare(
+      `INSERT INTO run_results (run_id,result_json,gap_list_json,created_at)
+      SELECT ?,?,?,? FROM runs WHERE id=? AND finished_at IS NULL`,
+    ).bind(
+      runId,
+      output.kind === "result" ? serialized : null,
+      output.kind === "gap_list" ? serialized : null,
+      now,
+      runId,
+    ),
+    env.DB.prepare(
+      `UPDATE runs SET status=?,finished_at=? WHERE id=? AND finished_at IS NULL AND EXISTS (SELECT 1 FROM run_results WHERE run_id=?)`,
+    ).bind(outcome.status, now, runId, runId),
   ]);
-  return rows.every(row => row.meta.changes === 1);
+  return rows.every((row) => row.meta.changes === 1);
 }
 
 export type LatestResult = {

@@ -1,6 +1,6 @@
 # Output: results, evidence, report builder and PDF
 
-Status: active - 2026-11-05. Supplied PR #123 samples drive the labeled `/workspace` preview. The local output-pipeline branch now implements authenticated persisted-result retrieval, saved opaque-intake round trips, shared version 1 validation, and fixed-template Worker PDF generation/private R2 persistence. Ryan confirmed the executable engine has not been pushed, so execution/new-run submission waits. Structured intake, customizable report choices, owner contract freeze, remote deployment and mockup acceptance remain open. See [the concrete handoff](../../../docs/output-pipeline.md).
+Status: active - 2026-11-05. Supplied PR #123 samples drive the labeled `/workspace` preview. The local output-pipeline branch now implements authenticated persisted-result retrieval, saved opaque-intake round trips, shared version 1 validation, and fixed-template Worker PDF generation/private R2 persistence. The pushed engine (`e452431`) is now included and tested against the consumer; Worker orchestration/new-run submission still waits. Structured intake, customizable report choices, owner contract freeze, remote deployment and mockup acceptance remain open. See [the concrete handoff](../../../docs/output-pipeline.md).
 
 Goal: a released run opens an auditable pre-funding estimate, a failed confidence gate opens an actionable gap list, and a user can arrange a report, choose fixed charts and download its stored PDF. All financial values come from the engine.
 
@@ -133,7 +133,7 @@ Exit: one agreed canonical output contract, complete valid fixtures, exact serve
 
 ### Phase 1 - Render fixture-backed output (O4)
 
-The fixture-backed slice and shared version 1 validator are implemented from the supplied sample contract. Align the shared definition with the engine owner before freeze. The follow-up pipeline proposes only the integration plan's runs/results/reports tables and the existing private FILES binding; agent methods remain absent.
+The fixture-backed slice and shared version 1 validator are implemented from the supplied sample contract. Align the shared definition with the engine owner before freeze. The pipeline preserves merged run/event/question tables and adds only report metadata and the existing private FILES binding; agent methods remain absent.
 
 - Build results, math, charts and gap-list components against that contract. Mount only through an agreed route; retain STUB labeling for fixture-driven pages.
 - Add formatting with half-up rounding (money to two decimals; displayed percentages to one); explain null metrics and use engine-provided payback text.
@@ -143,7 +143,7 @@ Exit: every required fixture renders without deriving metrics; accessible mockup
 
 ### Phase 2 - Connect saved results and intake return (O6)
 
-Local evidence: access-checked pinned/latest retrieval, pending/gap/invalid-state handling, saved JSON preservation/reload, target-key navigation and historical report identity pass the local integration/browser checks. The form service is based on the open project-foundation PR and needs owner reconciliation. Structured field navigation and starting a new calculation wait for their executable owners; O6 is therefore still partial.
+Local evidence: access-checked pinned/latest retrieval, pending/gap/invalid-state handling, saved JSON preservation/reload, target-key navigation and historical report identity pass the local integration/browser checks. The merged form service and file upload UI are preserved. Structured field navigation and starting a new calculation wait for their executable owners; O6 is therefore still partial.
 
 - After foundation/run APIs land, use access-checked server loading for a specific run or the agreed latest-result selection.
 - Connect saved-intake return and target-field focus for gaps. Show actual run progress through the shared run state; no simulated percentages.

@@ -77,7 +77,6 @@ for (const [name, mutate, message] of [
       (built.durable_objects.bindings[0].script_name = "valueiq-dev"),
     /deep-equal/,
   ],
-
 ]) {
   test(`rejects ${name}`, async () => {
     const result = await check("production", mutate);

@@ -15,9 +15,10 @@ const directory = await mkdtemp(join(tmpdir(), "valueiq-publisher-"));
 const entry = join(directory, "worker.mjs");
 await build({
   stdin: {
-    contents: `import {createRun,finishRun,getRun} from ${JSON.stringify(resolve("app/server/runs.server.ts"))};
+    contents: `import {createRun,finishRun} from ${JSON.stringify(resolve("app/server/runs.server.ts"))};
+import {getRun} from ${JSON.stringify(resolve("app/server/output-runs.server.ts"))};
 const access={userId:"publisher-user",teamId:"publisher-team",projectId:"publisher-project",role:"owner"};
-export default {async fetch(request){try{const body=await request.json();let result;switch(new URL(request.url).pathname){case "/create":result={id:await createRun(access,body)};break;case "/finish":result=await finishRun(access,body.id,body.output);break;case "/get":result=await getRun(access,body.id);break;default:return new Response(null,{status:404});}return Response.json(result);}catch(error){return new Response(error.message,{status:409});}}};`,
+export default {async fetch(request){try{const body=await request.json();let result;switch(new URL(request.url).pathname){case "/create":result=await createRun({...body,projectId:access.projectId,startedBy:access.userId,status:"running"});break;case "/finish":if(!await finishRun(body.id,{status:body.output.kind==="result"?"released":"gap_list",[body.output.kind==="result"?"result":"gapList"]:body.output}))return new Response("Terminal run",{status:409});result=body.output;break;case "/get":result=await getRun(access,body.id);break;default:return new Response(null,{status:404});}return Response.json(result);}catch(error){return new Response(error.message,{status:409});}}}`,
     resolveDir: process.cwd(),
     sourcefile: "publisher-test.ts",
     loader: "ts",
@@ -44,7 +45,8 @@ try {
   const db = await mf.getD1Database("DB");
   for (const file of [
     "drizzle/0000_auth_projects_files.sql",
-    "drizzle/0001_equal_riptide.sql",
+    "drizzle/0001_runs.sql",
+    "drizzle/0002_smart_korvac.sql",
   ]) {
     for (const statement of (await readFile(file, "utf8")).split(
       "--> statement-breakpoint",
@@ -118,7 +120,7 @@ try {
   );
   const cancelled = await create();
   await db
-    .prepare("UPDATE runs SET status='cancelled' WHERE id=?")
+    .prepare("UPDATE runs SET status='cancelled',finished_at=1 WHERE id=?")
     .bind(cancelled)
     .run();
   const cancelledOutput = structuredClone(source);

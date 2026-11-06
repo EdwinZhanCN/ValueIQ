@@ -41,11 +41,15 @@ jobs:
       - name: Prettier (advisory)
         run: pnpm format:check
         continue-on-error: true
+      - run: pnpm test:engine
+      - run: pnpm test:output
       - run: pnpm build
       - run: pnpm deploy:check
       - run: node --test scripts/check-deploy-target.test.mjs
       - name: Local session secret for the smoke test
         run: printf 'BETTER_AUTH_SECRET=%s\n' "$(openssl rand -base64 32)" > .dev.vars
+      - run: pnpm test:access
+      - run: pnpm test:output:runtime
       - run: pnpm test:smoke
         env:
           WRANGLER_SEND_METRICS: "false"

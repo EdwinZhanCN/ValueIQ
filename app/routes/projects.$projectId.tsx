@@ -123,7 +123,10 @@ export default function ProjectIntake({
         The executable engine is not connected yet. Saving the intake does not
         start or fabricate a calculation.
       </p>
-      <ProjectFiles projectId={loaderData.project.id} files={loaderData.files} />
+      <ProjectFiles
+        projectId={loaderData.project.id}
+        files={loaderData.files}
+      />
     </div>
   );
 }
