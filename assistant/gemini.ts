@@ -1,5 +1,18 @@
-// Minimal Gemini REST client with a tool-call loop. Plain fetch (injectable), no SDK.
-// The API key is held in a closure, sent only in the x-goog-api-key header, and never logged.
+// Gemini client on the Vercel AI SDK (`ai` + `@ai-sdk/google`), used only as a library inside the Worker.
+// The API key is held in the provider, sent only in the x-goog-api-key header, and never logged.
+// Same exported interface as before (runToolLoop, LoopOptions, LoopResult, events, errors).
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import {
+  APICallError,
+  generateText,
+  jsonSchema,
+  stepCountIs,
+  tool,
+  wrapLanguageModel,
+  type LanguageModelMiddleware,
+  type ModelMessage,
+  type ToolSet,
+} from "ai";
 import { toGeminiSchema } from "./schema";
 import { assertExactModelId, type ThinkingSetting } from "./models";
 import { NarrativeRejectedError, assertModelText } from "./narrative-guard";
@@ -45,15 +58,11 @@ export class MaxStepsError extends Error {
   }
 }
 
+/** A fetch with a simple signature; it must return a standard `Response`. Injectable for tests. */
 export type FetchLike = (
   url: string,
   init: { method: string; headers: Record<string, string>; body: string },
-) => Promise<{
-  ok: boolean;
-  status: number;
-  json: () => Promise<unknown>;
-  text: () => Promise<string>;
-}>;
+) => Promise<Response>;
 
 export interface GeminiEvent {
   type:
@@ -106,6 +115,8 @@ export interface LoopOptions {
   baseUrl?: string;
   /** Thinking for this call: a level (Gemini 3) or a token budget; unset = model default. */
   thinking?: ThinkingSetting;
+  /** Test double: use this language model (for example ai/test MockLanguageModelV4) instead of the Google provider. */
+  testModel?: Parameters<typeof wrapLanguageModel>[0]["model"];
   /** Checked before every model request; true ends the loop with RunCancelledError. */
   shouldStop?: () => boolean | Promise<boolean>;
 }
@@ -191,21 +202,42 @@ export function appendAnswer(contents: Content[], text: string): Content[] {
   return copy;
 }
 
-interface GeminiResponse {
-  modelVersion?: string;
-  candidates?: { content?: { parts?: Part[] } }[];
-  usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-    totalTokenCount?: number;
-    thoughtsTokenCount?: number;
+function toSdkFetch(f: FetchLike): typeof fetch {
+  return async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    return f(url, {
+      method: init?.method ?? "POST",
+      headers: Object.fromEntries(new Headers(init?.headers).entries()),
+      body: typeof init?.body === "string" ? init.body : "",
+    });
   };
+}
+
+function toMessages(contents: Content[]): ModelMessage[] {
+  return contents.map((c) => {
+    if (c.parts.some((p) => p.functionCall || p.functionResponse))
+      throw new Error("runToolLoop accepts text-only starting contents");
+    const text = c.parts.map((p) => p.text ?? "").join("");
+    return c.role === "model"
+      ? { role: "assistant", content: text }
+      : { role: "user", content: text };
+  });
+}
+
+interface RawUsage {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+  thoughtsTokenCount?: number;
 }
 
 export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
   assertExactModelId(o.model, "model");
-  const doFetch: FetchLike = o.fetch ?? ((url, init) => fetch(url, init));
-  const base = o.baseUrl ?? "https://generativelanguage.googleapis.com/v1beta";
   const maxSteps = o.maxSteps ?? 12;
   const events: GeminiEvent[] = [];
   const emit = (e: GeminiEvent) => {
@@ -213,129 +245,224 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
     o.log?.(e);
   };
   const usage = { prompt: 0, output: 0, thoughts: 0, total: 0 };
-  const contents: Content[] = structuredClone(o.contents);
+  let step = 0;
+  let paused = false;
+  const questions: unknown[] = [];
 
-  for (let step = 1; step <= maxSteps; step++) {
-    if (o.shouldStop && (await o.shouldStop())) throw new RunCancelledError();
-    const body = JSON.stringify(
-      buildRequest(o.system, contents, o.tools, o.thinking),
-    );
-    emit({ type: "request", model: o.model, step, args_hash: hashOf(body) });
-    const res = await doFetch(`${base}/models/${o.model}:generateContent`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-goog-api-key": o.apiKey,
-      },
-      body,
-    });
-    if (!res.ok) {
-      const raw = await res.text();
-      throw new GeminiHttpError(
-        res.status,
-        redact(raw.slice(0, 300), [o.apiKey]),
-      );
-    }
-    const data = (await res.json()) as GeminiResponse;
-    usage.prompt += data.usageMetadata?.promptTokenCount ?? 0;
-    usage.output += data.usageMetadata?.candidatesTokenCount ?? 0;
-    usage.thoughts += data.usageMetadata?.thoughtsTokenCount ?? 0;
-    usage.total += data.usageMetadata?.totalTokenCount ?? 0;
-    emit({
-      type: "response",
-      model: o.model,
-      step,
-      returned_model: data.modelVersion ?? null,
-      prompt_tokens: data.usageMetadata?.promptTokenCount ?? 0,
-      output_tokens: data.usageMetadata?.candidatesTokenCount ?? 0,
-      thought_tokens: data.usageMetadata?.thoughtsTokenCount ?? 0,
-      total_tokens: data.usageMetadata?.totalTokenCount ?? 0,
-    });
-    const returned = data.modelVersion ?? null;
-    if (returned !== o.model) {
+  const provider = createGoogleGenerativeAI({
+    apiKey: o.apiKey,
+    ...(o.baseUrl ? { baseURL: o.baseUrl } : {}),
+    ...(o.fetch ? { fetch: toSdkFetch(o.fetch) } : {}),
+  });
+
+  // one place sees every model call: cancellation, events, tokens and the strict modelVersion check
+  const middleware: LanguageModelMiddleware = {
+    specificationVersion: "v4",
+    wrapGenerate: async ({ doGenerate, params }) => {
+      if (o.shouldStop && (await o.shouldStop())) throw new RunCancelledError();
+      step += 1;
+      const n = step;
       emit({
-        type: "model_mismatch",
+        type: "request",
         model: o.model,
-        step,
+        step: n,
+        args_hash: hashOf(params.prompt),
+      });
+      const r = await doGenerate();
+      const raw = (r.usage.raw ?? {}) as RawUsage;
+      const prompt = raw.promptTokenCount ?? r.usage.inputTokens.total ?? 0;
+      const output = raw.candidatesTokenCount ?? r.usage.outputTokens.text ?? 0;
+      const thoughts =
+        raw.thoughtsTokenCount ?? r.usage.outputTokens.reasoning ?? 0;
+      const total = raw.totalTokenCount ?? prompt + output + thoughts;
+      usage.prompt += prompt;
+      usage.output += output;
+      usage.thoughts += thoughts;
+      usage.total += total;
+      // the API's own modelVersion (the SDK only echoes the requested id in response.modelId)
+      const body = r.response?.body as { modelVersion?: unknown } | undefined;
+      const returned =
+        typeof body?.modelVersion === "string" ? body.modelVersion : null;
+      emit({
+        type: "response",
+        model: o.model,
+        step: n,
         returned_model: returned,
+        prompt_tokens: prompt,
+        output_tokens: output,
+        thought_tokens: thoughts,
+        total_tokens: total,
       });
-      throw new ModelMismatchError(o.model, returned);
-    }
-    const parts = data.candidates?.[0]?.content?.parts ?? [];
-    const calls = parts.filter((p) => p.functionCall);
-    if (calls.length === 0) {
-      const text = parts
-        .filter((p) => p["thought"] !== true)
-        .map((p) => p.text ?? "")
-        .join("");
-      if (o.guardText !== false) {
+      if (returned !== o.model) {
+        emit({
+          type: "model_mismatch",
+          model: o.model,
+          step: n,
+          returned_model: returned,
+        });
+        throw new ModelMismatchError(o.model, returned);
+      }
+      return r;
+    },
+  };
+  const model = wrapLanguageModel({
+    model: o.testModel ?? provider(o.model),
+    middleware,
+  });
+
+  // only the declared tools exist; our own validation, error codes and pause signal run inside execute
+  const tools: ToolSet = {};
+  for (const t of o.tools) {
+    tools[t.name] = tool({
+      description: t.description,
+      inputSchema: jsonSchema(t.parameters as Parameters<typeof jsonSchema>[0]),
+      execute: (args: unknown): Record<string, unknown> => {
+        let response: Record<string, unknown>;
+        let code: string | undefined;
         try {
-          assertModelText(text, o.ctx.state.last, o.ctx.state.seen);
+          const out = callTool(t.name, args ?? {}, o.ctx);
+          response = { output: out };
+          const po = out as { pause?: boolean; questions?: unknown[] };
+          if (po && typeof po === "object" && po.pause === true) {
+            paused = true;
+            questions.push(...(po.questions ?? []));
+          }
         } catch (e) {
-          emit({
-            type: "text_rejected",
-            model: o.model,
-            step,
-            result_hash: hashOf(text),
-          });
-          if (e instanceof NarrativeRejectedError)
-            e.contents = [...contents, { role: "model", parts }];
-          throw e;
+          if (
+            e instanceof ToolArgError ||
+            e instanceof ToolRuntimeError ||
+            e instanceof UnknownToolError
+          ) {
+            code = (e as { code: string }).code;
+            response = {
+              error: { code, message: redact(e.message, [o.apiKey]) },
+            };
+          } else throw e;
         }
-      }
-      contents.push({ role: "model", parts });
-      emit({ type: "done", model: o.model, step, tokens: usage.total });
-      return { status: "done", text, contents, questions: [], events, usage };
-    }
-    contents.push({ role: "model", parts });
-    const responses: Part[] = [];
-    let paused = false;
-    const questions: unknown[] = [];
-    for (const p of calls) {
-      const fc = p.functionCall as {
-        name: string;
-        args?: Record<string, unknown>;
-      };
-      let response: Record<string, unknown>;
-      let code: string | undefined;
-      try {
-        if (!o.tools.some((t) => t.name === fc.name))
-          throw new UnknownToolError(fc.name);
-        const out = callTool(fc.name, fc.args ?? {}, o.ctx);
-        response = { output: out };
-        const po = out as { pause?: boolean; questions?: unknown[] };
-        if (po && typeof po === "object" && po.pause === true) {
-          paused = true;
-          questions.push(...(po.questions ?? []));
-        }
-      } catch (e) {
-        if (
-          e instanceof ToolArgError ||
-          e instanceof ToolRuntimeError ||
-          e instanceof UnknownToolError
-        ) {
-          code = (e as { code: string }).code;
-          response = {
-            error: { code, message: redact(e.message, [o.apiKey]) },
-          };
-        } else throw e;
-      }
+        emit({
+          type: "tool_call",
+          model: o.model,
+          step,
+          tool: t.name,
+          args_hash: hashOf(args ?? {}),
+          result_hash: hashOf(response),
+          ...(code ? { error_code: code } : {}),
+        });
+        return response;
+      },
+    });
+  }
+
+  const thinkingOptions =
+    o.thinking === undefined
+      ? {}
+      : {
+          providerOptions: {
+            google: {
+              thinkingConfig:
+                "level" in o.thinking
+                  ? { thinkingLevel: o.thinking.level }
+                  : { thinkingBudget: o.thinking.budget },
+            },
+          },
+        };
+
+  const result = await generateText({
+    model,
+    system: o.system,
+    messages: toMessages(o.contents),
+    tools,
+    toolChoice: "auto",
+    maxRetries: 0,
+    stopWhen: [stepCountIs(maxSteps), () => paused],
+    ...thinkingOptions,
+  }).catch((e: unknown) => {
+    if (APICallError.isInstance(e))
+      throw new GeminiHttpError(
+        e.statusCode ?? 0,
+        redact(e.message.slice(0, 300), [o.apiKey]),
+      );
+    throw e;
+  });
+
+  // refused calls (a tool that was not declared, or arguments the SDK could not parse)
+  for (const s of result.steps)
+    for (const part of s.content as {
+      type: string;
+      toolName?: string;
+      invalid?: boolean;
+    }[])
+      if (
+        part.type === "tool-error" &&
+        part.toolName &&
+        !o.tools.some((t) => t.name === part.toolName)
+      )
+        emit({
+          type: "tool_call",
+          model: o.model,
+          step,
+          tool: part.toolName,
+          error_code: "UNKNOWN_TOOL",
+        });
+
+  const contents = rebuildContents(o.contents, result.steps);
+  const last = result.steps[result.steps.length - 1];
+  if (paused) {
+    emit({ type: "paused", model: o.model, step });
+    return { status: "paused", text: "", contents, questions, events, usage };
+  }
+  if (last && last.finishReason === "tool-calls")
+    throw new MaxStepsError(maxSteps);
+
+  const text = result.text;
+  if (o.guardText !== false) {
+    try {
+      assertModelText(text, o.ctx.state.last, o.ctx.state.seen);
+    } catch (e) {
       emit({
-        type: "tool_call",
+        type: "text_rejected",
         model: o.model,
         step,
-        tool: fc.name,
-        args_hash: hashOf(fc.args ?? {}),
-        result_hash: hashOf(response),
-        ...(code ? { error_code: code } : {}),
+        result_hash: hashOf(text),
       });
-      responses.push({ functionResponse: { name: fc.name, response } });
-    }
-    contents.push({ role: "user", parts: responses });
-    if (paused) {
-      emit({ type: "paused", model: o.model, step });
-      return { status: "paused", text: "", contents, questions, events, usage };
+      if (e instanceof NarrativeRejectedError) e.contents = contents;
+      throw e;
     }
   }
-  throw new MaxStepsError(maxSteps);
+  emit({ type: "done", model: o.model, step, tokens: usage.total });
+  return { status: "done", text, contents, questions: [], events, usage };
+}
+
+/** Best-effort Gemini-shaped transcript of the run (for logs and a later resume). */
+type StepList = {
+  text: string;
+  toolCalls: { toolName: string; input: unknown }[];
+  toolResults: { toolName: string; output: unknown }[];
+}[];
+
+function rebuildContents(start: Content[], steps: StepList): Content[] {
+  const out: Content[] = structuredClone(start);
+  for (const s of steps) {
+    const modelParts: Part[] = [];
+    if (s.text) modelParts.push({ text: s.text });
+    for (const c of s.toolCalls)
+      modelParts.push({
+        functionCall: {
+          name: c.toolName,
+          args: c.input as Record<string, unknown>,
+        },
+      });
+    if (modelParts.length) out.push({ role: "model", parts: modelParts });
+    if (s.toolResults.length)
+      out.push({
+        role: "user",
+        parts: s.toolResults.map((r) => ({
+          functionResponse: {
+            name: r.toolName,
+            response: r.output as Record<string, unknown>,
+          },
+        })),
+      });
+  }
+  return out;
 }

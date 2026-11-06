@@ -74,8 +74,8 @@ describe("K16 ask_user is disabled by config for the model", () => {
       "ask_user",
     );
     const resp = calls[1]?.contents.at(-1)?.parts[0]?.functionResponse
-      ?.response as { error?: { code: string } };
-    expect(resp.error?.code).toBe("UNKNOWN_TOOL");
+      ?.response as { error?: string };
+    expect(resp.error).toContain("unavailable tool");
     expect(ctx.state.asked_this_run).toEqual([]);
   });
 });

@@ -35,7 +35,9 @@ export function fakeFetch(
       ...(r.modelVersion === null
         ? {}
         : { modelVersion: r.modelVersion ?? model }),
-      candidates: [{ content: { role: "model", parts: r.parts } }],
+      candidates: [
+        { content: { role: "model", parts: r.parts }, finishReason: "STOP" },
+      ],
       usageMetadata: {
         promptTokenCount: 10,
         candidatesTokenCount: 5,
@@ -43,12 +45,12 @@ export function fakeFetch(
         thoughtsTokenCount: 7,
       },
     };
-    return Promise.resolve({
-      ok: status < 400,
-      status,
-      json: () => Promise.resolve(data),
-      text: () => Promise.resolve(JSON.stringify(data)),
-    });
+    return Promise.resolve(
+      new Response(JSON.stringify(data), {
+        status,
+        headers: { "content-type": "application/json" },
+      }),
+    );
   };
 }
 
@@ -62,7 +64,13 @@ export const say = (text: string): Part => ({ text });
 export function toolOutput(contents: Content[], name: string): unknown {
   for (const c of contents)
     for (const p of c.parts)
-      if (p.functionResponse?.name === name)
-        return (p.functionResponse.response as { output?: unknown }).output;
+      if (p.functionResponse?.name === name) {
+        const resp = p.functionResponse.response as {
+          output?: unknown;
+          content?: { output?: unknown };
+        };
+        // the AI SDK wraps tool results as { name, content }
+        return resp.content?.output ?? resp.output;
+      }
   return undefined;
 }

@@ -672,8 +672,8 @@ describe("K16 Gemini client: model verification, logging and guards", () => {
     const r = await runToolLoop(base(ctxOf(), g));
     expect(r.status).toBe("done");
     const resp = calls[1]?.contents.at(-1)?.parts[0]?.functionResponse
-      ?.response as { error?: { code: string } };
-    expect(resp.error?.code).toBe("INVALID_ARGS");
+      ?.response as { content?: { error?: { code: string } } };
+    expect(resp.content?.error?.code).toBe("INVALID_ARGS");
   });
 
   it("stops at max steps", async () => {
