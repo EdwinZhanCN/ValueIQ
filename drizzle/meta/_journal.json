@@ -1,1 +1,27 @@
-{"version":"7","dialect":"sqlite","entries":[]}
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1793917016757,
+      "tag": "0000_auth_projects_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793925160035,
+      "tag": "0001_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793986576224,
+      "tag": "0002_smart_korvac",
+      "breakpoints": true
+    }
+  ]
+}

@@ -63,6 +63,12 @@ export function SiteHeader() {
             iconClassName="size-4"
           />
           <Link
+            to="/sign-in"
+            className="hidden rounded-[10px] px-3 py-2 text-[15px] text-foreground/80 transition-colors duration-300 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted hover:text-foreground sm:inline-flex"
+          >
+            Sign in
+          </Link>
+          <Link
             to="/workspace"
             className={cn(
               marketingButton({ tone: "primary" }),

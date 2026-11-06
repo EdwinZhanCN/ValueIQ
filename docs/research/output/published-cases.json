@@ -1,0 +1,185 @@
+{
+  "research_format_version": 1,
+  "reviewed_on": "2026-11-05",
+  "scope": "Published financial ledgers; engine adapters and gate evidence pending",
+  "conventions": {
+    "currency": "USD",
+    "cash_flow_years": [0, 1, 2, 3],
+    "cost_sign": "Positive expense amounts, subtracted when computing net flow",
+    "adjustments": "Rows are already risk-adjusted; do not adjust again",
+    "discount_timing": "Year zero undiscounted; subsequent flows at year end",
+    "roi_unit": "Ratio; multiply by 100 only for percentage display",
+    "nonzero_reference_relative_tolerance": 0.1,
+    "zero_reference_rule": null
+  },
+  "cases": [
+    {
+      "id": "salesloft-2022",
+      "source": {
+        "title": "Forrester TEI of Salesloft, September 2022",
+        "url": "https://assets.contentstack.io/v3/assets/blt48e9deb40787970b/bltbf1ed1dfe47155f0/660af9c804d34c6763bd9d97/Forrester-Total-Economic-Impact-of-Salesloft-2022-1.pdf",
+        "sha256": "bc4eece0735d62f0e31ce0a3af70b83ffcc622bcceda22f1c86544e3c9fceb39",
+        "benefits_pdf_page": 11,
+        "costs_pdf_page": 23,
+        "summary_pdf_page": 28,
+        "printed_to_pdf_page_offset": 2
+      },
+      "discount_rate": 0.1,
+      "benefits": [
+        {
+          "ref": "Atr",
+          "cash_flows": [0, 959766, 1439648, 1727578],
+          "risk_reduction_pct": 25,
+          "published_pv": 3360261
+        },
+        {
+          "ref": "Btr",
+          "cash_flows": [0, 1323105, 1984658, 2381590],
+          "risk_reduction_pct": 25,
+          "published_pv": 4632360
+        },
+        {
+          "ref": "Ctr",
+          "cash_flows": [0, 464063, 696094, 835313],
+          "risk_reduction_pct": 25,
+          "published_pv": 1624742
+        },
+        {
+          "ref": "Dtr",
+          "cash_flows": [0, 402714, 604071, 724885],
+          "risk_reduction_pct": 25,
+          "published_pv": 1409953
+        },
+        {
+          "ref": "Etr",
+          "cash_flows": [0, 95064, 142596, 171115],
+          "risk_reduction_pct": 15,
+          "published_pv": 332832
+        },
+        {
+          "ref": "Ftr",
+          "cash_flows": [0, 212500, 318750, 382500],
+          "risk_reduction_pct": 15,
+          "published_pv": 743989
+        }
+      ],
+      "costs": [
+        {
+          "ref": "Gtr",
+          "cash_flows": [85800, 429000, 644160, 772200],
+          "risk_uplift_pct": 10,
+          "published_pv": 1588329
+        },
+        {
+          "ref": "Htr",
+          "cash_flows": [219792, 143756, 124153, 69264],
+          "risk_uplift_pct": 15,
+          "published_pv": 505124
+        },
+        {
+          "ref": "Itr",
+          "cash_flows": [0, 142773, 142773, 142773],
+          "risk_uplift_pct": 15,
+          "published_pv": 355054
+        }
+      ],
+      "expected": {
+        "published_benefit_cash_flows": [0, 3457212, 5185818, 6222981],
+        "published_cost_cash_flows": [305592, 715529, 911086, 984237],
+        "benefits_pv": 12104137,
+        "costs_pv": 2448507,
+        "npv": 9655630,
+        "roi_pv": 3.94,
+        "roi_reported_decimal_places_pct": 0,
+        "payback_months": { "comparison": "less_than", "value": 6 }
+      }
+    },
+    {
+      "id": "sage-x3-cloud-2016",
+      "source": {
+        "title": "Forrester TEI of Sage X3, January 2016",
+        "url": "https://media.bitpipe.com/io_13x/io_137740/item_1540919/Forrester%20Report.pdf",
+        "sha256": "a64645e3a5ebdd1a82d4eca07fa84d579016a93166721db51c912001a0924ddb",
+        "benefits_pdf_page": 13,
+        "costs_pdf_page": 16,
+        "summary_pdf_page": 18,
+        "printed_to_pdf_page_offset": 0
+      },
+      "discount_rate": 0.1,
+      "benefits": [
+        {
+          "ref": "Atr",
+          "cash_flows": [0, 48000, 48000, 48000],
+          "risk_reduction_pct": 20,
+          "published_pv": 119369
+        },
+        {
+          "ref": "Btr",
+          "cash_flows": [0, 134400, 134400, 134400],
+          "risk_reduction_pct": 20,
+          "published_pv": 334233
+        },
+        {
+          "ref": "Ctr",
+          "cash_flows": [0, 198000, 198000, 198000],
+          "risk_reduction_pct": 10,
+          "published_pv": 492397
+        },
+        {
+          "ref": "Dtr",
+          "cash_flows": [0, 140000, 140000, 140000],
+          "risk_reduction_pct": 20,
+          "published_pv": 348159
+        },
+        {
+          "ref": "Etr",
+          "cash_flows": [0, 50614, 50614, 50614],
+          "risk_reduction_pct": 10,
+          "published_pv": 125870
+        },
+        {
+          "ref": "Ftr",
+          "cash_flows": [0, 121500, 121500, 121500],
+          "risk_reduction_pct": 10,
+          "published_pv": 302153
+        }
+      ],
+      "costs": [
+        {
+          "ref": "G1",
+          "cash_flows": [50000, 0, 0, 0],
+          "risk_uplift_pct": 0,
+          "published_pv": 50000
+        },
+        {
+          "ref": "G2",
+          "cash_flows": [0, 0, 0, 0],
+          "risk_uplift_pct": 0,
+          "published_pv": 0
+        },
+        {
+          "ref": "G3",
+          "cash_flows": [149611, 59395, 59395, 59395],
+          "risk_uplift_pct": 0,
+          "published_pv": 297316
+        },
+        {
+          "ref": "G4",
+          "cash_flows": [0, 110000, 110000, 110000],
+          "risk_uplift_pct": 0,
+          "published_pv": 273554
+        }
+      ],
+      "expected": {
+        "published_benefit_cash_flows": [0, 692514, 692514, 692514],
+        "published_cost_cash_flows": [199611, 169395, 169395, 169395],
+        "benefits_pv": 1722180,
+        "costs_pv": 620870,
+        "npv": 1101310,
+        "roi_pv": 1.77,
+        "roi_reported_decimal_places_pct": 0,
+        "payback_months": { "comparison": "approximately", "value": 5 }
+      }
+    }
+  ]
+}
