@@ -1,5 +1,5 @@
 import type { Route } from "./+types/workspace";
-import { ChatAppExample } from "../components/agents/chat-app-example";
+import { StructuredIntake } from "../components/intake/structured-intake";
 
 export const meta: Route.MetaFunction = () => [
   { title: "Workspace · ValueIQ" },
@@ -11,10 +11,9 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 /**
- * The workspace surface. It renders the interface skeleton only — no loader,
- * no action, and no project or assessment data. Connecting this view to the
- * agent and D1 backend is planned work, not wired here.
+ * Local structured intake editor. It uses the shared form serializer and
+ * validator, with JSON download. Storage, assistant and engine are not wired.
  */
 export default function Workspace() {
-  return <ChatAppExample className="h-full rounded-none border-0" />;
+  return <StructuredIntake />;
 }

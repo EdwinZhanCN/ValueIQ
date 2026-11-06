@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ is a technology-stack skeleton for a project value assessment product. What exists is the chosen stack, wired end to end, plus two interface surfaces. Identity and the first tables are in place (Better Auth, teams, projects, form files, uploads, team settings); the account and project pages use them. A shared form wire type and independent form serializer/validator support pre-integration engine fixtures; they are not connected to the intake UI or saved projects. There is still no agent state or agent tools. Nothing in the repository pretends otherwise.
+ValueIQ is a technology-stack skeleton for a project value assessment product. What exists is the chosen stack, wired end to end, plus two interface surfaces. Identity and the first tables are in place (Better Auth, teams, projects, form files, uploads, team settings); the account and project pages use them. A shared form wire type and independent form serializer/validator support pre-integration engine fixtures; the local /workspace intake editor uses them for JSON preview, copy and download. Saved projects remain separate. There is still no agent state or agent tools. Nothing in the repository pretends otherwise.
 
 ## Stack
 
@@ -20,14 +20,14 @@ ValueIQ is a technology-stack skeleton for a project value assessment product. W
 | Route                  | Layout                            | Contents                                                                                    |
 | ---------------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
 | `/`                    | `app/routes/site-layout.tsx`      | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
-| `/workspace`           | `app/routes/workspace-layout.tsx` | The interface skeleton from `app/components/agents/`, given the whole viewport              |
+| `/workspace`           | `app/routes/workspace-layout.tsx` | Local structured intake editor and validated JSON export, given the whole viewport          |
 | `/sign-up`, `/sign-in` | `app/routes/auth-layout.tsx`      | One centred form; `redirectTo` is honoured only for same-site paths                         |
 | `/teams/new`, `/team`  | `app/routes/app-layout.tsx`       | The signed-in shell: header with the current team, nav, and sign-out                        |
 | `/projects/*`          | `app/routes/app-layout.tsx`       | The current team's projects, a new-project form, and a project page with its form file      |
 
 `app/root.tsx` renders the document only: html/body, theme provider, tooltip provider, and the grain overlay. Page chrome belongs to the surface layouts, and error pages bring their own frame.
 
-Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders example content owned by vendored components; it is a mock interface, not a working assessment, and it calls nothing.
+Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders the local structured intake editor. Users enter goal-specific values, provenance, backing and measurement plans, then export through the shared validator/serializer. Sample data is explicitly labeled. It does not save, upload, call an assistant, or run calculations.
 
 ## Identity, data, and access
 
@@ -42,7 +42,7 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 
 ## Empty shells
 
-The Input team's pre-integration wire type is `shared/form.ts`. `app/lib/intake-form.ts` owns serialization, parsing, field/evidence validation and preserving accepted state on rejected edits; it imports no engine or storage code. `pnpm fixtures:forms` produces deterministic engine handoff files from typed form state, including explicit rejected candidates for negative tests. `pnpm test:forms` runs the boundary checks and detects stale generated fixtures. The existing project JSON placeholder and intake UI are not connected to this numerical form model yet. [Fixture handoff and compatibility notes](../engine/fixtures/forms/README.md) record differences from the old research skeleton and #127 proposal; these shared form types are the narrow exception to the remaining undecided domain contracts below.
+The Input team's pre-integration wire type is `shared/form.ts`. `app/lib/intake-form.ts` owns serialization, parsing, field/evidence validation and preserving accepted state on rejected edits; it imports no engine or storage code. `pnpm fixtures:forms` produces deterministic engine handoff files from typed form state, including explicit rejected candidates for negative tests. `pnpm test:forms` runs the boundary checks and detects stale generated fixtures. The local workspace editor imports this numerical form model. The saved-project JSON placeholder remains separate; no server or access-control behavior changes. [Fixture handoff and compatibility notes](../engine/fixtures/forms/README.md) record differences from the old research skeleton and #127 proposal; these shared form types are the narrow exception to the remaining undecided domain contracts below.
 
 - `agents/valueiq-agent.ts` — an empty `ValueIQAgent` Durable Object: no state shape, no tools, no RPC methods.
 - `app/context.server.ts` — typed Worker bindings for loaders and actions.

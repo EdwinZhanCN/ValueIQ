@@ -21,12 +21,12 @@ Human setup and deployment commands live in [README.md](README.md).
 
 ## Implementation boundaries
 
-- The marketing pages are `/` (landing) and `/workspace` (mock workspace), and neither has a loader or an action. `/api/auth/*` serves Better Auth.
+- The marketing pages are `/` (landing) and `/workspace` (local structured intake), and neither has a loader or an action. `/api/auth/*` serves Better Auth.
 - Account pages: `/sign-up`, `/sign-in`, `/sign-out` (`auth-layout`), and `/teams/new`, `/team` inside the signed-in shell `app/routes/app-layout.tsx`. `app/server/team.server.ts` gives loaders the signed-in user and current team (`requireUser`, `requireTeam`).
 - Project pages: `/projects`, `/projects/new`, and `/projects/:projectId`, also inside `app-layout`. `/projects/:projectId` holds a placeholder JSON form until the intake form replaces it.
 - Every loader, action, and resource route that touches a project calls `requireProjectAccess` first, and gets a row in `scripts/access-matrix.mjs`.
 - Keep the agent shell empty: do not add agent state, tools, skill conventions, or domain types until that design is actually decided. New tables follow the active exec plans.
-- The pre-integration Input form contract is `shared/form.ts`, with its serializer/validator in `app/lib/intake-form.ts` and field rules in `app/lib/intake-catalog.ts`. `pnpm fixtures:forms` generates the engine handoff; `pnpm test:forms` checks accepted and rejected cases. It does not wire the UI, assistant, engine or storage together; see `engine/fixtures/forms/README.md` for remaining spec/type mismatches.
+- The pre-integration Input form contract is `shared/form.ts`, with its serializer/validator in `app/lib/intake-form.ts` and field rules in `app/lib/intake-catalog.ts`. `pnpm fixtures:forms` generates the engine handoff; `pnpm test:forms` checks accepted and rejected cases. The local workspace UI uses this form model for JSON exports; assistant, engine and storage remain separate; see `engine/fixtures/forms/README.md` for remaining spec/type mismatches.
 - Never present mock or scripted behaviour as a working assessment.
 - `worker-configuration.d.ts` and `.react-router/types/` are generated and ignored; use `pnpm typegen` rather than hand-editing them.
 - Generate migrations from `db/schema.ts` with `pnpm db:generate`. Review generated SQL and retain applied migrations unchanged.

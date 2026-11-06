@@ -193,7 +193,16 @@ try {
   // Workspace surface: the interface owns the page, with no site chrome
   // wrapped around it.
   const workspace = await get("/workspace");
-  assert.match(workspace, /Agent workspace/, "Workspace interface missing");
+  assert.match(
+    workspace,
+    /Project intake/,
+    "Structured intake interface missing",
+  );
+  assert.match(
+    workspace,
+    /Download form JSON/,
+    "Intake lost structured export",
+  );
   assert(
     !workspace.includes('aria-label="Main"'),
     "Workspace still renders the site header",
