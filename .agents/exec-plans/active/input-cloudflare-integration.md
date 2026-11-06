@@ -1,6 +1,6 @@
 # Input form integration with Cloudflare
 
-Status: active proposal for Zihao's review, 2026-11-05. This document adds no implementation, migration, binding, or deployment. The decisions below are not approved contracts. Baseline: `develop` at `4d42532`; open pull requests are dependencies, not delivered functionality.
+Status: active, 2026-11-06. Zihao reviewed it and recorded the decisions below. This document adds no implementation, migration, binding, or deployment. Baseline: `develop` at `8dacc7b`; open pull requests are dependencies, not delivered functionality.
 
 Goal: a signed-in project member completes the structured intake form, saves an incomplete draft, uploads described evidence, reloads the project without losing accepted inputs, and submits a validated saved form to Eli's run flow on `valueiq-dev`. The engine receives the same canonical JSON produced by the input team's serializer.
 
@@ -8,16 +8,18 @@ Goal: a signed-in project member completes the structured intake form, saves an 
 
 Read against Zihao's [infrastructure plan](../../../docs/research/plans/05-infra-db.md), [foundation plan](interim-foundation.md), [integration contract](integration-contract.md), [architecture](../../../docs/architecture.md), and [deployment guide](../../../docs/deployment.md). The input contract comes from the [field spec](../../../docs/research/plans/01a-input-structure.md) and [form-file format](../../../docs/research/samples/FORM-FILE-FORMAT.md).
 
-| Area                                                                           | Observed implementation                                                                                                                 | Consequence for this plan                                                           |
-| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Project storage on `develop`                                                   | Authenticated project page saves opaque JSON through `getProjectForm` / `saveProjectForm`; placeholder editor; 256 KiB UTF-8 save limit | Replace the editor, preserve the access rule and existing stored drafts             |
-| Files on `develop`                                                             | Private `FILES` R2 bucket, D1 metadata, described uploads and authorized downloads; 10 MiB per file                                     | Reuse the Worker routes and returned file IDs                                       |
-| Input producer [#129](https://github.com/EdwinZhanCN/ValueIQ/pull/129)         | Canonical `shared/form.ts`, serializer, validator and minimum fixtures                                                                  | Integration depends on the producer landing; do not define another form type        |
-| Frontend [#130](https://github.com/EdwinZhanCN/ValueIQ/pull/130)               | Structured editor and export on `/workspace`, browser-local state and synthetic file IDs                                                | It does not yet persist a real project or upload evidence                           |
-| Wave-two fixtures [#132](https://github.com/EdwinZhanCN/ValueIQ/pull/132)      | Nineteen additional producer-generated cases                                                                                            | Preserve these alongside the minimum cases as integration regression inputs         |
-| Zihao's infrastructure [#131](https://github.com/EdwinZhanCN/ValueIQ/pull/131) | Proposed run tables/API, agent access gate and `RUN_WORKFLOW`; workflow body rejects execution and agent remains empty                  | Infrastructure availability does not mean `startRun` or the question flow works yet |
+| Area                                                                                                                                | Observed implementation                                                                                                                            | Consequence for this plan                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Project storage on `develop`                                                                                                        | Authenticated project page saves opaque JSON through `getProjectForm` / `saveProjectForm`; placeholder editor; 256 KiB UTF-8 save limit            | Replace the editor, preserve the access rule and existing stored drafts                        |
+| Files on `develop`                                                                                                                  | Private `FILES` R2 bucket, D1 metadata, described uploads and authorized downloads; 10 MiB per file                                                | Reuse the Worker routes and returned file IDs                                                  |
+| Input producer [#129](https://github.com/EdwinZhanCN/ValueIQ/pull/129)                                                              | Canonical `shared/form.ts`, serializer, validator and minimum fixtures                                                                             | Integration depends on the producer landing; do not define another form type                   |
+| Frontend [#130](https://github.com/EdwinZhanCN/ValueIQ/pull/130)                                                                    | Structured editor and export on `/workspace`, browser-local state and synthetic file IDs                                                           | It does not yet persist a real project or upload evidence                                      |
+| Wave-two fixtures [#132](https://github.com/EdwinZhanCN/ValueIQ/pull/132)                                                           | Nineteen additional producer-generated cases                                                                                                       | Preserve these alongside the minimum cases as integration regression inputs                    |
+| Run infrastructure [#131](https://github.com/EdwinZhanCN/ValueIQ/pull/131), [#138](https://github.com/EdwinZhanCN/ValueIQ/pull/138) | Merged. Run tables, agent gate, `RUN_WORKFLOW`, and a real agent: `preflight`, `startRun`, `cancelRun`. `answerQuestion` is tabled (no `ask_user`) | The run flow exists; the input team hands it a saved form and does not build run orchestration |
+| Engine [#137](https://github.com/EdwinZhanCN/ValueIQ/pull/137)                                                                      | Merged. `FormFile` is already defined in `engine/types.ts`                                                                                         | #129 reuses or replaces that type; there must be one definition                                |
+| Run UI [#139](https://github.com/EdwinZhanCN/ValueIQ/pull/139)                                                                      | Deli's Run assessment section on the project page                                                                                                  | The input team does not build run controls                                                     |
 
-Also reviewed `docs/research/cloudflare-integration-notes.md` on `feature/64-cloudflare-run-integration` at `c561124`. That branch contains a different run-store implementation and migration, with `answerQuestion` unsupported. Zihao and Eli must select/reconcile the implementation before the input team connects run controls. Do not combine both migrations or duplicate run APIs. Use #131 as the infrastructure review dependency here, not as an assertion that the other branch is approved or obsolete.
+`feature/64-cloudflare-run-integration` is superseded by #138; do not build on it.
 
 ## Non-goals
 
@@ -34,23 +36,21 @@ These are existing repository boundaries to preserve; proposed additions are lis
 - Zihao owns identity, access, tables, storage, deployment and secrets. Jonathan/Jeremiah own form UI, input serialization, draft hydration and upload interactions. Eli owns assistant/run orchestration; engine/output owners own their result contracts.
 - Every project loader/action/resource authorizes with `requireProjectAccess` before reads or writes. Existing server helpers do not authorize on the caller's behalf. Owner and member have project access; signed-out and other-team callers do not.
 - The engine form uses `version: 1`, `goals`, `currency`, `horizon_years`, `inputs`, `file_descriptions`, `other_notes`, `measurement_plan`, and `asked`. Discount and adoption are input records. Preserve `null` unknowns, tiers, provenance, ranges and per-cost basis without coercion.
-- `FormFile` remains defined in `shared/form.ts` from #129. A run-types module may re-export it, not create a second definition. The integration contract's generic `contract_version` wording must be reconciled with form `version`; do not add an unrecognized top-level field to the engine file.
+- `FormFile` remains defined in `shared/form.ts` from #129. A run-types module may re-export it, not create a second definition. Form `version` is the form-file format version inside the JSON. `runs.contract_version` is a separate value the run records about itself. Do not add a `contract_version` field to the form file.
 - `source_file_id` must resolve to a persisted file belonging to this project. A description or browser-supplied project ID is not ownership proof. Measured evidence still requires the quoted passage and user confirmation.
 - Existing deployment workflow: feature PR into `develop`, checks, then merge-triggered development deployment. Production uses a separate release PR into `main`. Contributors do not need Cloudflare credentials.
 
-## Decisions requested from Zihao
+## Decisions (Zihao, 2026-11-06)
 
-Record the selected answer and affected-owner acknowledgement in this plan or its PR before the corresponding implementation phase begins.
-
-| Decision                                    | Proposed approach                                                                                                                                                                                                                                                      | Review needed                                                                                        |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Incomplete drafts versus engine-ready forms | Keep draft saves in the existing opaque `project_forms.form_json`, with an explicitly versioned draft representation and structural/field validation. Convert to canonical `FormFile` only through the shared producer. No new SQL columns unless Zihao requests them. | Zihao + input team agree draft payload and legacy-row handling; Eli acknowledges the engine boundary |
-| Validation API                              | Add an explicit draft validator/hydrator in the input layer. Keep the current strict serializer/export validator for export and run submission. Do not bypass it with hand-built JSON.                                                                                 | Input team + Eli approve validation responsibilities                                                 |
-| Simultaneous editors                        | Prefer a server-enforced revision check using an agreed revision token; reject stale saves and let the user reload/compare while retaining local edits. `updatedAt` exists, but the current API has no conditional-write guarantee.                                    | Zihao defines an atomic comparison/write API or explicitly accepts a documented interim policy       |
-| Project goals                               | Keep `projects.goals` and the form goals consistent in an authorized server operation; agree which is authoritative and how existing conflicts are shown.                                                                                                              | Zihao + input team decide write semantics; no independent client updates                             |
-| Defaults                                    | Read the current team's sourced settings through Zihao's server API; apply once to a new draft as labeled proxies. Never overwrite saved choices on reload.                                                                                                            | Zihao identifies the read API and version identifier; Eli confirms run settings pinning              |
-| Run input snapshot                          | Validate the persisted form against current authorized file metadata, then pin immutable canonical input plus hash and versions before workflow execution. A hash alone cannot recover a form overwritten later.                                                       | Zihao + Eli choose snapshot storage and atomic save/start semantics; no new input-owned run table    |
-| Run implementation                          | Reconcile #131 with `feature/64-cloudflare-run-integration`; confirm callable response shapes and supported features.                                                                                                                                                  | Zihao + Eli select the implementation and acknowledge shared types                                   |
+| Decision             | Answer                                                                                                                                                                                                         | Follow-up                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Incomplete drafts    | As proposed: drafts stay in `project_forms.form_json` with a versioned draft shape; no new columns. Lenient while filling, strict at Start run (like a GitHub draft PR).                                       | Eli: `startRun` calls #129's strict validator instead of the current shape check, once #129 merges |
+| Validation API       | As proposed: draft validator/hydrator in the input layer; strict serializer/validator for export and Start run.                                                                                                | None                                                                                               |
+| Simultaneous editors | Edit-conflict check, like Wikipedia: a save carries the `updatedAt` it loaded; a stale save is rejected, and the editor keeps local edits and offers reload/compare. No automatic merge, no real-time editing. | Zihao adds the conditional write to `saveProjectForm`                                              |
+| Project goals        | The form is authoritative. The save action writes `projects.goals` from the form in the same batch.                                                                                                            | Zihao, with the conditional write                                                                  |
+| Defaults             | Deferred. Use the engine's built-in defaults, labeled as proxies. No team settings API this round.                                                                                                             | Revisit after the demo                                                                             |
+| Run input snapshot   | The form is copied onto the run row at Start run and the run reads only that copy, like a CI run pinned to a commit.                                                                                           | Done in [#142](https://github.com/EdwinZhanCN/ValueIQ/pull/142) (`runs.form_json`)                 |
+| Evidence upload      | As proposed: upload first, bind the file ID only after the upload succeeds (like dragging an image into a GitHub issue).                                                                                       | None                                                                                               |
 
 ## Execution phases
 
@@ -62,7 +62,7 @@ Owners: input team, with Zihao and Eli reviewing their boundaries.
 - Resolve the decisions above before adding persistence or run submission. Specify missing-row, legacy `{}`, supported draft, valid canonical form, malformed JSON and unsupported-version hydration behavior. Preserve recoverable old content; never silently replace it with an empty form.
 - Agree server save responses for success, field errors, oversize input, stale revision and unexpected failure. These are proposed response requirements, not existing error codes. Retain typed field paths so the editor can focus the relevant control.
 - Agree what draft data must survive: accepted input values, unknown selections, goals, notes, measurement plan, question history and persisted evidence links. Keep invalid in-progress text visible locally; decide explicitly whether it must also survive a reload. Browser `File` objects cannot be restored from JSON.
-- Exit: Zihao acknowledges storage/access/revision choices; Eli acknowledges the canonical handoff and snapshot choice; input team records the draft schema and compatibility rules.
+- Exit: decisions are recorded above (Zihao, 2026-11-06); Eli acknowledges the strict `startRun` check; input team records the draft schema and compatibility rules.
 
 ### Phase 1 - Save and reload a real project
 
@@ -90,15 +90,14 @@ Owner: input team for UI; Zihao for storage/access behavior.
 
 ### Phase 3 - Canonical export and Eli's run handoff
 
-Owners: input team for submission/UI; Eli for agent/workflow; Zihao for run persistence/access.
+Owners: input team for the saved form; Deli for run controls ([#139](https://github.com/EdwinZhanCN/ValueIQ/pull/139)); Eli for agent/workflow; Zihao for run persistence/access.
 
 - Export with the real shared producer using persisted file IDs. Preserve exact field IDs and structured unknown values. Do not calculate ROI in the frontend.
-- For Start run: finish pending uploads, save acknowledged edits, validate the accepted persisted revision, and establish the immutable snapshot agreed in Phase 0. A failed save/validation/conflict must stop submission. Re-check on the server; a disabled button is not enforcement.
-- Integrate only when Eli's `preflight` / `startRun` implementation is ready. Use the Agents SDK route `/agents/value-i-q-agent/{projectId}`. Do not create run rows from the browser or duplicate the workflow orchestration in the project action.
-- Respect #131's gate and trusted identity; agent mutating methods must re-check membership. No user identity, settings version or file ownership supplied by the browser is trusted.
-- Show `RunView` progress/errors and route to the output team's result view. Preserve the draft on disconnection/failure; reconnect retrieves durable run state. Editing after submission must not change the running snapshot.
-- First prove a visibly labeled `mode: "stub"` run. Add the question/answer path only when Eli supports it; the alternate branch currently returns unsupported. Real engine integration is a subsequent owner-led slice.
-- Exit: saved form -> stub run -> supported question round trip -> labeled stub result, with reload recovery and access checks. Then demonstrate a real engine handoff separately; never relabel a stub as real.
+- Before Start run: finish pending uploads and save acknowledged edits. The agent's `startRun` validates the saved form strictly on the server and pins a copy (#142); a disabled button is not enforcement.
+- The input team does not build run controls, create run rows from the browser, or duplicate the workflow. #139 owns the Start run button and progress view.
+- Preserve the draft on disconnection/failure. Edits after Start run reach the next run, not the running one.
+- Questions (`ask_user` / `answerQuestion`) are tabled; do not build a question UI.
+- Exit: an incomplete draft is refused by Start run with its missing fields; a complete saved form runs through #139 to a real result, with reload recovery and access checks.
 
 ### Phase 4 - Development rollout and handoff
 
@@ -124,11 +123,11 @@ This PR is documentation only: run `pnpm format:check`, verify relative links an
 
 ## Review checklist for Zihao
 
-- [ ] Confirm existing APIs/routes/limits are represented correctly and identify required server API additions.
-- [ ] Approve draft representation and legacy handling with the input team.
-- [ ] Resolve revision enforcement, goals consistency and sourced-default versioning.
-- [ ] Agree immutable run-input persistence and save/start ordering with Eli.
-- [ ] Reconcile the two run infrastructure branches and shared form/run version wording.
+- [x] Confirm existing APIs/routes/limits are represented correctly and identify required server API additions (conditional `saveProjectForm`, goals in the same batch).
+- [x] Approve draft representation and legacy handling with the input team.
+- [x] Resolve revision enforcement, goals consistency and sourced-default versioning (defaults deferred).
+- [x] Agree immutable run-input persistence and save/start ordering with Eli (#142).
+- [x] Reconcile the two run infrastructure branches and shared form/run version wording.
 - [ ] Confirm the staged PR order and development acceptance ownership.
 
-Review acknowledgement: pending. No owner approval is inferred from this plan.
+Review acknowledgement: Zihao, 2026-11-06. Eli still to acknowledge the strict `startRun` check and #142.
