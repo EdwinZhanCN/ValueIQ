@@ -22,6 +22,13 @@
       "when": 1793986576224,
       "tag": "0002_smart_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793993202486,
+      "tag": "0003_absent_sabretooth",
+      "breakpoints": true
     }
   ]
 }

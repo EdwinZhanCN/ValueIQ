@@ -1,0 +1,1 @@
+ALTER TABLE `runs` ADD `form_json` text;

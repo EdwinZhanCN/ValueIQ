@@ -27,6 +27,8 @@ export type NewRun = {
   contractVersion: string;
   formulaVersion: string;
   settingsVersion: string;
+  /** The form the run calculates: a copy taken at start, never re-read from project_forms. */
+  formJson: unknown;
   /** The connection's user id, never a method argument. */
   startedBy: string;
   status?: Extract<StoredRunStatus, "preflight" | "running">;
@@ -46,6 +48,7 @@ export async function createRun(input: NewRun): Promise<Run> {
       contractVersion: input.contractVersion,
       formulaVersion: input.formulaVersion,
       settingsVersion: input.settingsVersion,
+      formJson: input.formJson,
       startedBy: input.startedBy,
     })
     .returning()

@@ -1,4 +1,4 @@
-import type { RunOutput } from "../../engine";
+import type { FormFile, RunOutput } from "../../engine";
 import type {
   NewRun,
   QuestionRow,
@@ -17,10 +17,12 @@ export class MemoryRunStore implements RunStore {
   readonly events = new Map<string, RunEventRow[]>();
   readonly questions = new Map<string, QuestionRow>();
   readonly results = new Map<string, ResultRow>();
+  readonly forms = new Map<string, FormFile>();
 
-  createRun(r: NewRun): Promise<RunRecord> {
+  createRun({ form, ...r }: NewRun): Promise<RunRecord> {
     if (this.runs.has(r.id))
       return Promise.reject(new Error(`run ${r.id} exists`));
+    this.forms.set(r.id, clone(form));
     const rec: RunRecord = {
       ...r,
       status: "running",
@@ -35,6 +37,11 @@ export class MemoryRunStore implements RunStore {
   getRun(id: string): Promise<RunRecord | null> {
     const r = this.runs.get(id);
     return Promise.resolve(r ? clone(r) : null);
+  }
+
+  getRunForm(id: string): Promise<FormFile | null> {
+    const f = this.forms.get(id);
+    return Promise.resolve(f ? clone(f) : null);
   }
 
   findRunByFormHash(
