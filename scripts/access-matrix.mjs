@@ -308,7 +308,9 @@ try {
       `SELECT form_json, updated_by FROM project_forms WHERE project_id = '${projectId}'`,
     ).then((output) => output.slice(output.indexOf("["))),
   )[0].results[0];
-  assert.deepEqual(JSON.parse(saved.form_json), { marker: `${run}-owner-step` });
+  assert.deepEqual(JSON.parse(saved.form_json), {
+    marker: `${run}-owner-step`,
+  });
   assert.equal(saved.updated_by, users.owner);
 
   // Denied uploads left nothing behind either.
