@@ -112,9 +112,16 @@ const saved = await call(`/projects/${project}`, {
   body: new URLSearchParams({ formJson: JSON.stringify(form) }),
 });
 assert.equal(saved.status, 200, await saved.text());
-const stored = await call(
+// A numeric field link on Intake hands off to its Clarify card.
+const handoff = await call(
   `/projects/${project}?input=hours_saved_per_staff_week`,
 );
+assert.equal(handoff.status, 302);
+assert.match(
+  handoff.headers.get("location") ?? "",
+  /\/clarify\?input=hours_saved_per_staff_week$/,
+);
+const stored = await call(`/projects/${project}`);
 assert((await stored.text()).includes("Preserve this answer"));
 const source = JSON.parse(
   await readFile("docs/research/samples/sample-result.json", "utf8"),
