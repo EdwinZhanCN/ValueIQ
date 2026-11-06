@@ -8,7 +8,9 @@
  * half-up) through the engine's own `present` helpers.
  */
 import { formatMoney, formatPct } from "../../engine/present";
+import type { FormIssue } from "../../shared/form";
 import type { RunError, RunStatus, RunView } from "../../shared/types";
+import { GOAL_LABELS, LABELS } from "./intake-fields";
 
 // ---------- connection ----------
 
@@ -62,6 +64,66 @@ export function checklistItems(view: RunView): StepItem[] {
     state: c.state,
     text: STEP_STATE_TEXT[c.state],
   }));
+}
+
+/**
+ * The Process screen's short step list (mock UI 05). Each row stands for the
+ * orchestrator checklist labels it groups, and its state is derived from
+ * theirs only: nothing here advances on a timer. A label the orchestrator
+ * reports that no row claims is shown as its own row, so a renamed or new step
+ * is never hidden.
+ */
+export const PHASES: readonly { label: string; members: readonly string[] }[] =
+  [
+    { label: "Reading files and data", members: ["Files read"] },
+    {
+      label: "Calculating ROI",
+      members: ["Haircuts", "Drivers", "Project", "Scenarios"],
+    },
+    { label: "Checking confidence", members: ["Confidence", "Gate"] },
+    { label: "Writing the summary", members: ["Narrative"] },
+  ];
+
+export type PhaseItem = StepItem & {
+  /** Reported checklist steps behind this row, and how many of them are done. */
+  total: number;
+  done: number;
+};
+
+function groupState(states: StepState[]): StepState {
+  if (states.includes("error")) return "error";
+  if (states.every((s) => s === "done")) return "done";
+  if (states.includes("doing") || states.includes("done")) return "doing";
+  return "todo";
+}
+
+export function phaseItems(view: RunView): PhaseItem[] {
+  const out: (PhaseItem & { states: StepState[] })[] = [];
+  const byPhase = new Map<string, PhaseItem & { states: StepState[] }>();
+  for (const c of view.checklist) {
+    const phase = PHASES.find((p) => p.members.includes(c.label));
+    const key = phase?.label ?? `step:${c.label}`;
+    let row = byPhase.get(key);
+    if (!row) {
+      row = {
+        label: phase?.label ?? c.label,
+        state: "todo",
+        text: "",
+        total: 0,
+        done: 0,
+        states: [],
+      };
+      byPhase.set(key, row);
+      out.push(row);
+    }
+    row.states.push(c.state);
+    row.total += 1;
+    if (c.state === "done") row.done += 1;
+  }
+  return out.map(({ states, ...row }) => {
+    const state = groupState(states);
+    return { ...row, state, text: STEP_STATE_TEXT[state] };
+  });
 }
 
 /** Percent for a progress bar: whole number, clamped to 0-100, NaN counts as 0. */
@@ -191,6 +253,138 @@ export function callErrorText(error: RunError): string {
     default:
       return error.message;
   }
+}
+
+// ---------- Process screen (mock UI 05) ----------
+
+export interface MissingInput {
+  field: string;
+  label: string;
+  message: string;
+}
+
+function fieldLabel(field: string): string {
+  if (field === "$") return "Saved form";
+  const [head, goal] = field.split(".");
+  if (head === "measurement_plan" && goal)
+    return `Measurement plan: ${GOAL_LABELS[goal as keyof typeof GOAL_LABELS] ?? goal}`;
+  if (LABELS[field]) return LABELS[field];
+  const words = field.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * What blocks a run, from the strict form validator's issues: one row per
+ * field, in the validator's order, with its first message.
+ */
+export function missingInputs(issues: readonly FormIssue[]): MissingInput[] {
+  const seen = new Map<string, MissingInput>();
+  for (const issue of issues)
+    if (!seen.has(issue.field))
+      seen.set(issue.field, {
+        field: issue.field,
+        label: fieldLabel(issue.field),
+        message: issue.message,
+      });
+  return [...seen.values()];
+}
+
+/**
+ * The view the Process screen shows. The agent's own state wins; when it is
+ * idle but the project has a saved outcome (for example before the socket
+ * opens), that finished run is shown instead, as finished.
+ */
+export function shownView(
+  view: RunView,
+  latest: LatestOutcome | null,
+): RunView {
+  if (view.status !== "idle" || !latest) return view;
+  return {
+    ...view,
+    run_id: latest.runId,
+    status: latest.status,
+    step: null,
+    progress_pct: 100,
+    checklist: view.checklist.map((c) => ({ ...c, state: "done" as const })),
+    mode: latest.summary?.stub ? "stub" : view.mode,
+  };
+}
+
+/** The one primary button of the Process card. */
+export type ProcessAction =
+  | { kind: "start"; label: string; enabled: boolean }
+  | { kind: "fix"; label: string; href: string }
+  | { kind: "results"; label: string; href: string }
+  | { kind: "waiting"; label: string }
+  | { kind: "cancel"; label: string; enabled: boolean };
+
+export function processAction(args: {
+  projectId: string;
+  view: RunView;
+  connection: ConnectionState;
+  hasForm: boolean;
+  /** Fields the strict validator rejects; a run starts only when this is empty. */
+  missing: readonly MissingInput[];
+  busy: boolean;
+  cancelling?: boolean;
+}): ProcessAction {
+  const { projectId, view, connection, hasForm, missing, busy } = args;
+  const connected = connection === "open";
+  if (view.status === "blocked_on_question")
+    return {
+      kind: "cancel",
+      label: "Cancel run",
+      enabled: connected && !args.cancelling,
+    };
+  if (isActive(view.status)) return { kind: "waiting", label: "View results" };
+  if ((view.status === "released" || view.status === "gap_list") && view.run_id)
+    return {
+      kind: "results",
+      label: view.status === "released" ? "View results" : "See what to add",
+      href: resultsHref(projectId, view.run_id),
+    };
+  if (!hasForm)
+    return {
+      kind: "fix",
+      label: "Go to Intake",
+      href: `/projects/${projectId}`,
+    };
+  if (missing.length > 0)
+    return {
+      kind: "fix",
+      label: "Go to Clarify",
+      href: clarifyHref(projectId),
+    };
+  const label =
+    view.status === "failed"
+      ? view.error?.retryable
+        ? "Retry"
+        : "Start new run"
+      : view.status === "cancelled"
+        ? "Run again"
+        : "Start run";
+  return { kind: "start", label, enabled: connected && !busy };
+}
+
+/** A finished run whose inputs were saved again since: offer a fresh run. */
+export function canRerun(args: {
+  view: RunView;
+  latest: LatestOutcome | null;
+  hasForm: boolean;
+  missing: readonly MissingInput[];
+}): boolean {
+  const { view, latest, hasForm, missing } = args;
+  return (
+    (view.status === "released" || view.status === "gap_list") &&
+    latest?.runId === view.run_id &&
+    latest.formChangedSince &&
+    hasForm &&
+    missing.length === 0
+  );
+}
+
+export function clarifyHref(projectId: string): string {
+  return `/projects/${projectId}/clarify`;
 }
 
 // ---------- numbers (format only) ----------
@@ -449,14 +643,10 @@ export type LatestOutcome = {
 
 // ---------- links ----------
 
-/**
- * Target of "View full results". Null until the results page exists (Ryan's
- * output track): the summary then says the full view is not built yet. Set this
- * to e.g. `(projectId) => `/projects/${projectId}/results`` when it lands.
- */
-export const resultsHref:
-  ((projectId: string, runId: string) => string) | null = (projectId, runId) =>
-  `/projects/${projectId}/results?run=${encodeURIComponent(runId)}`;
+/** The Review step for one run. */
+export function resultsHref(projectId: string, runId: string): string {
+  return `/projects/${projectId}/results?run=${encodeURIComponent(runId)}`;
+}
 
 /** Where "what to add" sends the user: the input on the Intake step. */
 export function intakeHref(projectId: string, inputId: string | null): string {
