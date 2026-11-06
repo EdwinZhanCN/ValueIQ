@@ -102,11 +102,28 @@ try {
   assert(projectId, "create project");
   log(`project ${projectId}`);
 
+  // The fixtures cite file "f1"; upload a real file and point them at it.
+  const upload = new FormData();
+  upload.set("file", new Blob(["e2e evidence"]), "e2e.txt");
+  upload.set("description", "test file");
+  const uploaded = await fetch(`${origin}/projects/${projectId}/files`, {
+    method: "POST",
+    headers: { origin, cookie },
+    body: upload,
+  });
+  assert.equal(uploaded.status, 201, "upload evidence file");
+  const fileId = (await uploaded.json()).file.id;
+
   const saveForm = async (form) => {
     const r = await post(
       `/projects/${projectId}`,
       cookie,
-      { formJson: JSON.stringify(form) },
+      {
+        formJson: JSON.stringify(form).replaceAll(
+          '"f1"',
+          JSON.stringify(fileId),
+        ),
+      },
       false,
     );
     assert.equal(r.status, 200, "save form");
