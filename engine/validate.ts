@@ -1,6 +1,6 @@
 import { BEFORE_AFTER, CATALOG, ESSENTIAL_COSTS } from "./catalog";
 import type {
-  FormFile,
+  LegacyFormFile,
   Input,
   ValidationIssue,
   ValidationReport,
@@ -48,7 +48,7 @@ function finite(v: unknown): v is number {
 }
 
 /** Pure validation. Errors make the form unusable, except MISSING_ESSENTIAL_COST which blocks the headline. */
-export function validateInputs(form: FormFile): ValidationReport {
+export function validateInputs(form: LegacyFormFile): ValidationReport {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
   const err = (code: string, message: string, input_id?: string) =>
@@ -228,6 +228,7 @@ export function validateInputs(form: FormFile): ValidationReport {
 
   // after > before
   for (const [b, a] of BEFORE_AFTER) {
+    if (isUnknown(byId.get(b)) || isUnknown(byId.get(a))) continue;
     const vb = byId.get(b)?.value;
     const va = byId.get(a)?.value;
     if (finite(vb) && finite(va) && va > vb)

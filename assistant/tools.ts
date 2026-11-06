@@ -15,7 +15,7 @@ import {
   validateInputs,
   type DriverId,
   type EngineConfig,
-  type FormFile,
+  type LegacyFormFile,
   type Input,
   type Override,
   type RunOutput,
@@ -69,7 +69,7 @@ export interface ToolState {
   seen: unknown[];
 }
 export interface ToolContext {
-  readonly form: FormFile; // deep-frozen
+  readonly form: LegacyFormFile; // deep-frozen
   readonly run_id: string;
   readonly now: string; // ISO, pure "now" for the engine
   readonly mode: "real" | "stub";
@@ -95,7 +95,7 @@ export function frozenCopy<T>(x: T): T {
 }
 
 export function createContext(
-  form: FormFile,
+  form: LegacyFormFile,
   o: {
     run_id: string;
     now: string;
@@ -128,7 +128,7 @@ const RELAXED: Partial<EngineConfig> = {
 
 function runEngine(
   ctx: ToolContext,
-  form: FormFile = ctx.form,
+  form: LegacyFormFile = ctx.form,
   config?: Partial<EngineConfig>,
 ): RunOutput {
   const merged = { ...(ctx.config ?? {}), ...(config ?? {}) };
@@ -141,7 +141,7 @@ function runEngine(
 }
 function safeRun(
   ctx: ToolContext,
-  form?: FormFile,
+  form?: LegacyFormFile,
   config?: Partial<EngineConfig>,
 ): RunOutput | null {
   try {
@@ -204,7 +204,7 @@ const INPUT_DRIVERS: Record<string, DriverId[]> = {
   asset_value: ["risk_reduction"],
   exposure_factor_pct: ["risk_reduction"],
 };
-function affectsOf(id: string, form: FormFile): string[] {
+function affectsOf(id: string, form: LegacyFormFile): string[] {
   const d = INPUT_DRIVERS[id];
   if (!d) return [...form.goals];
   return d.filter((x) => form.goals.includes(x));
@@ -812,14 +812,14 @@ export function triggerCheck(
 ): { ask: boolean; why: string } {
   const def = defaultFor(inputId);
   if (!def) return { ask: false, why: "" };
-  const withProxy: FormFile = {
+  const withProxy: LegacyFormFile = {
     ...ctx.form,
     inputs: [
       ...ctx.form.inputs.filter((i) => i.id !== inputId),
       { id: inputId, value: def.value, tier: def.tier, origin: "default" },
     ],
   };
-  const without: FormFile = {
+  const without: LegacyFormFile = {
     ...ctx.form,
     inputs: ctx.form.inputs.filter((i) => i.id !== inputId),
   };
@@ -950,10 +950,10 @@ export interface Acceptance {
 }
 /** Apply a proposal to the form only if the user accepted. Returns a new form; never mutates. */
 export function applyProposal(
-  form: FormFile,
+  form: LegacyFormFile,
   proposal: Record<string, unknown>,
   acceptance: Acceptance,
-): FormFile {
+): LegacyFormFile {
   if (!acceptance.accepted)
     throw new ToolRuntimeError(
       "NOT_ACCEPTED",

@@ -12,7 +12,7 @@ import {
   computeFormHash,
 } from "../../assistant/run/orchestrator";
 import { resolveModels, resolveThinking } from "../../assistant/models";
-import type { FormFile } from "../../engine/types";
+import type { LegacyFormFile } from "../../engine/types";
 import type { RunView } from "../../shared/types";
 import { D1RunStore } from "./run-store.server";
 import type { RunRecord } from "../../assistant/run/types";
@@ -20,8 +20,8 @@ import { DEFAULT_CONFIG } from "../../engine/config";
 import { getProjectForm } from "./projects.server";
 
 /** The saved form must at least look like a form file; the engine validates the rest. */
-export function asFormFile(json: unknown): FormFile {
-  const f = json as Partial<FormFile> | null;
+export function asFormFile(json: unknown): LegacyFormFile {
+  const f = json as Partial<LegacyFormFile> | null;
   if (
     !f ||
     typeof f !== "object" ||
@@ -33,10 +33,10 @@ export function asFormFile(json: unknown): FormFile {
       "The saved form is missing goals or inputs",
       false,
     );
-  return f as FormFile;
+  return f as LegacyFormFile;
 }
 
-export async function loadForm(projectId: string): Promise<FormFile> {
+export async function loadForm(projectId: string): Promise<LegacyFormFile> {
   const saved = await getProjectForm(projectId);
   if (!saved)
     throw new OrchestratorError("BAD_INPUT", "No form has been saved", false);
@@ -95,7 +95,7 @@ export function runStoreFor(caller: {
  */
 export async function startRunRecord(
   caller: { userId: string; projectId: string },
-  form: FormFile,
+  form: LegacyFormFile,
 ): Promise<{ run: RunRecord; created: boolean }> {
   const s = runStoreFor(caller);
   const form_hash = computeFormHash(form);

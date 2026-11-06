@@ -3,7 +3,7 @@ import { dryFetch } from "../../../assistant/dry-fetch";
 import { resolveModels } from "../../../assistant/models";
 import { RunOrchestrator } from "../../../assistant/run/orchestrator";
 import { DEFAULT_CONFIG } from "../../../engine/config";
-import type { FormFile } from "../../../engine/types";
+import type { LegacyFormFile } from "../../../engine/types";
 import {
   NOW,
   goldenGapForm,
@@ -25,7 +25,8 @@ beforeEach(() => {
 
 function orchestrator(
   userId: string,
-  getForm: () => Promise<FormFile> = () => Promise.resolve(goldenResultForm()),
+  getForm: () => Promise<LegacyFormFile> = () =>
+    Promise.resolve(goldenResultForm()),
 ) {
   const store = new D1RunStore({ projectId: ids.projectId, userId });
   let n = 0;
@@ -80,7 +81,7 @@ describe("RunOrchestrator on the D1 store", () => {
     expect(again.run_id).toBe("run-1");
   });
 
-  const pinnedRun = (store: D1RunStore, id: string, form?: FormFile) =>
+  const pinnedRun = (store: D1RunStore, id: string, form?: LegacyFormFile) =>
     store.createRun({
       id,
       project_id: ids.projectId,

@@ -1,4 +1,10 @@
-import type { Backing, CostBasis, FormFile, Input, InputTier } from "../types";
+import type {
+  Backing,
+  CostBasis,
+  LegacyFormFile,
+  Input,
+  InputTier,
+} from "../types";
 
 export const NOW = "2026-11-05T12:00:00Z";
 export const OPTS = {
@@ -36,7 +42,7 @@ export function backing(...names: (keyof typeof BACK)[]): Backing {
 export const FILES = { f1: "test file" };
 
 /** The form behind engine/fixtures/sample-result.json. */
-export function goldenResultForm(): FormFile {
+export function goldenResultForm(): LegacyFormFile {
   const b3 = backing("source", "verified");
   const dq = backing("source", "coverage", "recent");
   const full = backing("source", "coverage", "recent", "verified");
@@ -78,7 +84,7 @@ export function goldenResultForm(): FormFile {
 }
 
 /** The form behind engine/fixtures/sample-gap-list.json. */
-export function goldenGapForm(): FormFile {
+export function goldenGapForm(): LegacyFormFile {
   return {
     goals: ["time_savings"],
     currency: "USD",
@@ -102,9 +108,9 @@ export function goldenGapForm(): FormFile {
 
 /** Minimal valid time-savings form. */
 export function simpleForm(
-  over: Partial<FormFile> = {},
+  over: Partial<LegacyFormFile> = {},
   extra: Input[] = [],
-): FormFile {
+): LegacyFormFile {
   const base = goldenResultForm();
   const keep = new Set([
     "discount_rate_pct",

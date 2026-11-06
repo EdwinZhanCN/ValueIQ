@@ -3,7 +3,7 @@
 // does pre-flight, the calculation model does the engine tools and writes the narrative, with the
 // narrative guard ON. Logs carry ids and hashes only. The key is never printed or stored.
 import { readFileSync } from "node:fs";
-import { CATALOG, type FormFile, type RunOutput } from "../engine";
+import { CATALOG, type LegacyFormFile, type RunOutput } from "../engine";
 import { goldenGapForm, goldenResultForm } from "../engine/tests/forms";
 import { dryFetch } from "./dry-fetch";
 import {
@@ -94,7 +94,7 @@ function cmp(name: string, actual: unknown, expected: unknown): Check {
   };
 }
 
-function effectIds(form: FormFile): string[] {
+function effectIds(form: LegacyFormFile): string[] {
   return form.inputs
     .filter((i) => CATALOG[i.id]?.role === "effect" && i.value !== null)
     .map((i) => i.id);
@@ -197,7 +197,7 @@ export async function runLive(o: LiveOptions): Promise<RunReport> {
 
   async function scenario(
     name: string,
-    form: FormFile,
+    form: LegacyFormFile,
     fixtureFile: string,
     expectKind: "result" | "gap_list",
   ): Promise<void> {

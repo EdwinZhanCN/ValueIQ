@@ -42,7 +42,7 @@ import type {
   Driver,
   DriverId,
   EngineConfig,
-  FormFile,
+  LegacyFormFile,
   GapItem,
   GapList,
   Headline,
@@ -201,7 +201,10 @@ function letter(i: number): string {
   return String.fromCharCode(65 + i);
 }
 
-export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
+export function computeProject(
+  form: LegacyFormFile,
+  opts: RunOptions,
+): RunOutput {
   const cfg = mergeConfig(opts.config);
   const report = validateInputs(form);
   const fatal = report.errors.filter((e) => !BLOCKING_CODES.includes(e.code));

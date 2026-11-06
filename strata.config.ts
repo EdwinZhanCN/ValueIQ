@@ -8,7 +8,9 @@ export default defineConfig({
   tsconfig: "tsconfig.json",
   groups: {
     engine: {
-      summary: "",
+      summary:
+        "Deterministic calculations consume the canonical shared form contract.",
+      uses: ["shared"],
       modules: ["engine", "engine/*"],
       deps: {
         engine: [],
