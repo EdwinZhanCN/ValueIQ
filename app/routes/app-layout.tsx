@@ -6,7 +6,7 @@ import {
   useLocation,
   useSubmit,
 } from "react-router";
-import { LogOut } from "lucide-react";
+import { Folder, LogOut, Users } from "lucide-react";
 import { BrandMark } from "~/components/brand";
 import { ThemeToggle } from "~/components/motion/theme-toggle";
 import { Button } from "~/components/ui/button";
@@ -16,8 +16,8 @@ import { homeFor } from "~/lib/redirect";
 import type { Route } from "./+types/app-layout";
 
 /**
- * The signed-in application shell: a header with the current team and
- * sign-out, then the page. Every child is signed in; a child that needs a team
+ * The signed-in application shell (mock UI): a left sidebar with the team,
+ * navigation and account, then the page; a top bar on narrow screens. Every child is signed in; a child that needs a team
  * calls `requireTeam` in its own loader (layout and child loaders run in
  * parallel, so the layout cannot guard for them).
  *
@@ -30,71 +30,94 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 const NAV = [
-  { to: "/projects", label: "Projects" },
-  { to: "/team", label: "Team" },
+  { to: "/projects", label: "Projects", icon: Folder },
+  { to: "/team", label: "Team", icon: Users },
 ];
 
 export default function AppLayout({ loaderData }: Route.ComponentProps) {
   const { user, team, teams } = loaderData;
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur-md">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4">
+    <div className="flex min-h-dvh flex-col md:flex-row">
+      <aside className="flex flex-col gap-4 border-b border-border/70 bg-muted/40 px-4 py-3 md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:gap-6 md:border-r md:border-b-0 md:px-3.5 md:py-5">
+        <div className="flex items-center gap-3 md:flex-col md:items-stretch md:gap-6">
           <Link
             to={homeFor(team)}
-            aria-label="ValueIQ"
-            className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="flex items-center gap-2.5 rounded-md px-2 text-lg font-semibold tracking-tight outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            <BrandMark size={24} />
+            <BrandMark size={28} />
+            <span className="hidden sm:inline">ValueIQ</span>
           </Link>
           {team ? <TeamSwitcher current={team.id} teams={teams} /> : null}
-          {team ? (
-            <nav aria-label="App" className="ml-2 flex items-center gap-0.5">
-              {NAV.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      "rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                      isActive && "bg-muted text-foreground",
-                    )
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
-          ) : null}
-          <div className="ml-auto flex items-center gap-1">
-            <span
-              className="hidden max-w-48 truncate px-2 text-sm text-muted-foreground sm:block"
-              title={user.email}
-            >
-              {user.name}
-            </span>
-            <ThemeToggle
-              className="size-8 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              iconClassName="size-4"
-            />
-            <Form method="post" action="/sign-out">
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                aria-label="Sign out"
-                title="Sign out"
-              >
-                <LogOut />
-              </Button>
-            </Form>
+          <div className="ml-auto flex items-center gap-1 md:hidden">
+            <AccountActions />
           </div>
         </div>
-      </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        <Outlet />
+        {team ? (
+          <nav aria-label="App">
+            <ul className="flex gap-0.5 md:flex-col">
+              {NAV.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                        isActive && "bg-primary/10 font-medium text-primary",
+                      )
+                    }
+                  >
+                    <item.icon className="size-4.5" aria-hidden="true" />
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
+        <div className="mt-auto hidden items-center gap-2.5 px-2 md:flex">
+          <span
+            aria-hidden="true"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+          >
+            {(user.name || user.email).slice(0, 1).toUpperCase()}
+          </span>
+          <span
+            className="min-w-0 flex-1 truncate text-sm font-medium"
+            title={user.email}
+          >
+            {user.name}
+          </span>
+          <AccountActions />
+        </div>
+      </aside>
+      <main className="w-full min-w-0 flex-1 px-4 py-8 md:px-10">
+        <div className="mx-auto w-full max-w-6xl">
+          <Outlet />
+        </div>
       </main>
     </div>
+  );
+}
+
+function AccountActions() {
+  return (
+    <>
+      <ThemeToggle
+        className="size-8 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        iconClassName="size-4"
+      />
+      <Form method="post" action="/sign-out">
+        <Button
+          type="submit"
+          variant="ghost"
+          size="icon"
+          aria-label="Sign out"
+          title="Sign out"
+        >
+          <LogOut />
+        </Button>
+      </Form>
+    </>
   );
 }
 
@@ -111,7 +134,9 @@ function TeamSwitcher({
   const name = teams.find((t) => t.id === current)?.name;
   if (teams.length < 2) {
     return (
-      <span className="max-w-48 truncate text-sm font-medium">{name}</span>
+      <span className="flex min-h-10 max-w-48 items-center truncate rounded-lg border bg-background px-3 text-sm font-medium md:max-w-none">
+        {name}
+      </span>
     );
   }
   return (
@@ -122,7 +147,7 @@ function TeamSwitcher({
         aria-label="Team"
         defaultValue={current}
         onChange={(event) => void submit(event.currentTarget.form)}
-        className="h-8 max-w-48 truncate rounded-lg border border-transparent bg-transparent px-1.5 text-sm font-medium outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="h-10 w-full max-w-48 truncate rounded-lg border bg-background px-2.5 text-sm font-medium outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:max-w-none"
       >
         {teams.map((t) => (
           <option key={t.id} value={t.id}>
