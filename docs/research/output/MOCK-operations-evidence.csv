@@ -1,0 +1,18 @@
+data_status,input_id,value,unit,period,note
+SYNTHETIC_DEMO_ONLY,adoption_by_year,"[50, 80, 90]",,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,staff_affected,10,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,hours_saved_per_staff_week,5,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,weeks_per_year,40,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,loaded_hourly_cost,50,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,recapture_pct,50,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,discount_rate_pct,10,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,error_count_before,72,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,error_count_after,24,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,cost_per_error,690,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,cost_nature,"""cash""",,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,aro_before,3,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,aro_after,1.5,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,loss_per_event,25000,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,cost_one_time_vendor_license,30000,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,cost_training_change,5000,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
+SYNTHETIC_DEMO_ONLY,cost_annual_run,12000,,,Fictional mock upload for UI/storage demonstration; not verified business evidence.
