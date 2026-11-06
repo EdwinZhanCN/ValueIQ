@@ -7,6 +7,7 @@ import {
   serializeFormFile,
 } from "../app/lib/intake-form.ts";
 import { context, fixtureCases, referenceDate } from "./form-fixture-cases.ts";
+import { wave2Cases, WAVE2_REFERENCE_COMMIT } from "./form-wave2-cases.ts";
 
 const directory = new URL("../engine/fixtures/forms/", import.meta.url);
 const check = process.argv.includes("--check");
@@ -16,6 +17,10 @@ const manifest: {
   expected: string;
   issues: { code: string; field: string; message: string }[];
 }[] = [];
+const wave2Manifest: typeof manifest = [];
+const minimum = fixtureCases();
+const secondWave = wave2Cases();
+const secondWaveIds = new Set(secondWave.map((item) => item.id));
 async function output(name: string, text: string) {
   const formatted = await format(text, { parser: "json" });
   if (check)
@@ -26,7 +31,7 @@ async function output(name: string, text: string) {
     );
   else await writeFile(new URL(name, directory), formatted);
 }
-for (const fixture of fixtureCases()) {
+for (const fixture of [...minimum, ...secondWave]) {
   let json: string;
   let issues: { code: string; field: string; message: string }[] = [];
   try {
@@ -57,7 +62,8 @@ for (const fixture of fixtureCases()) {
     issues = error.issues;
   }
   await output(`${fixture.id}.form.json`, json);
-  manifest.push({ id: fixture.id, expected: fixture.expected, issues });
+  const target = secondWaveIds.has(fixture.id) ? wave2Manifest : manifest;
+  target.push({ id: fixture.id, expected: fixture.expected, issues });
 }
 await output(
   "validation.json",
@@ -65,4 +71,11 @@ await output(
 );
 console.log(
   `${check ? "Checked" : "Generated"} ${manifest.length} forms: 2 accepted, 12 rejected (11 requested cases plus horizon 21).`,
+);
+await output(
+  "validation-wave2.json",
+  `${JSON.stringify({ reference_commit: WAVE2_REFERENCE_COMMIT, reference_date: referenceDate, context, cases: wave2Manifest }, null, 2)}\n`,
+);
+console.log(
+  `${check ? "Checked" : "Generated"} ${wave2Manifest.length} second-wave forms: all accepted by the form validator; outcomes belong to the engine.`,
 );

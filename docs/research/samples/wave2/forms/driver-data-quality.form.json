@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "goals": ["data_quality"],
+  "currency": "USD",
+  "horizon_years": 3,
+  "inputs": [
+    {
+      "id": "adoption_by_year",
+      "value": [50, 80, 90],
+      "tier": "estimate",
+      "origin": "user"
+    },
+    {
+      "id": "discount_rate_pct",
+      "value": 10,
+      "tier": "benchmark",
+      "origin": "default",
+      "note": "Forrester TEI convention (organizations typically 8-16%)"
+    },
+    {
+      "id": "error_count_before",
+      "value": 72,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30"
+      }
+    },
+    {
+      "id": "error_count_after",
+      "value": 24,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30"
+      }
+    },
+    {
+      "id": "cost_per_error",
+      "value": 690,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30"
+      }
+    },
+    {
+      "id": "cost_nature",
+      "value": "cash",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "cost_one_time_vendor_license",
+      "value": 30000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "quoted"
+    },
+    {
+      "id": "cost_training_change",
+      "value": 5000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "estimated"
+    },
+    {
+      "id": "cost_annual_run",
+      "value": 12000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "quoted"
+    }
+  ],
+  "file_descriptions": {
+    "f1": "test file"
+  },
+  "other_notes": "",
+  "measurement_plan": {},
+  "asked": []
+}

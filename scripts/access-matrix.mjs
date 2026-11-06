@@ -533,10 +533,11 @@ try {
   // it as MODEL_ERROR, and the run row, event and agent state say so. Nothing
   // is faked. Delete the key from .dev.vars to run this block.
   if (!/^GEMINI_API_KEY=/m.test(readFileSync(".dev.vars", "utf8"))) {
+    // The sample cites file "f1"; point it at this project's real upload.
     const form = readFileSync(
       "docs/research/samples/sample-result.form.json",
       "utf8",
-    );
+    ).replaceAll('"f1"', JSON.stringify(fx.fileId));
     const saved = await call("owner", {
       path: `/projects/${projectId}`,
       method: "POST",
@@ -544,6 +545,23 @@ try {
     });
     assert.equal(saved.status, 200, "save sample form");
     const live = await openAgentSocket(origin, agentPath, cookies.owner, {});
+    // A saved draft is refused at the run boundary, before any run row.
+    const draft = { ...JSON.parse(form), inputs: [] };
+    const draftSaved = await call("owner", {
+      path: `/projects/${projectId}`,
+      method: "POST",
+      form: { formJson: JSON.stringify(draft) },
+    });
+    assert.equal(draftSaved.status, 200, "save draft form");
+    const refused = await live.rpc("startRun", []);
+    assert.equal(refused.ok, false, JSON.stringify(refused));
+    assert.equal(refused.error.code, "BAD_INPUT", JSON.stringify(refused));
+    const resaved = await call("owner", {
+      path: `/projects/${projectId}`,
+      method: "POST",
+      form: { formJson: form },
+    });
+    assert.equal(resaved.status, 200, "save sample form again");
     const start = await live.rpc("startRun", []);
     assert.equal(start.ok, true, JSON.stringify(start));
     const runId = start.value.run_id;

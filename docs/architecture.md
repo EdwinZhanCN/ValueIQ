@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; a user-facing Start Run control is still pending. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work. The Input team's form wire type and serializer/validator (`shared/form.ts`, `app/lib/intake-form.ts`) produce engine fixtures; they are not connected to the intake UI or saved projects yet.
+ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; the Process step supplies the user-facing Start Run control. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work. The Input team's form wire type and serializer/validator (`shared/form.ts`, `app/lib/intake-form.ts`) produce engine fixtures; they are not connected to the intake UI or saved projects yet.
 
 ## Stack
 
@@ -38,9 +38,10 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 - `app/server/projects.server.ts` — the project API for other tracks (`getProjectForm`, `saveProjectForm`, plus list/create/get). It checks nothing; callers authorize first.
 - `app/server/files.server.ts` — uploads in the private `FILES` R2 bucket under `teams/{teamId}/projects/{projectId}/files/{fileId}`, with their `files` rows; 10 MB per file. `/projects/:projectId/files` (upload action) and `/projects/:projectId/files/:fileId` (download) stream through the Worker after the access check; there is no public bucket URL. `app/components/files/project-files.tsx` is the upload form and file list a project page mounts.
 
-`/projects/:projectId` shows the saved form file as plain JSON, labelled as a placeholder until the Input team's intake form mounts there.
+The project step flow collects context/uploads on Intake, numeric values and evidence on Clarify, then starts the saved assessment on Process. Both editors use the shared, authorized form-save action and real project file IDs. Drafts are leniently saved; the merged agent validates the complete canonical form and project-owned evidence before creating a run.
 
 The engine re-exports the canonical `FormFile` from `shared/form.ts`; a compile-time equality assertion prevents drift. Existing engine/orchestration compatibility uses an explicit `LegacyFormFile` derived from that schema.
+The fixture generator also covers the 19 second-wave input cases. `scripts/form-wave2-cases.ts` constructs typed submissions independently of the pinned reference forms; `scripts/form-wave2.test.ts` compares complete serializer output against each reference. This adds input coverage without changing runtime/UI behavior.
 
 ## Runs and the agent gate
 

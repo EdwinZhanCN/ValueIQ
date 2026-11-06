@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "goals": ["time_savings", "data_quality", "risk_reduction"],
+  "currency": "USD",
+  "horizon_years": 3,
+  "inputs": [
+    {
+      "id": "adoption_by_year",
+      "value": [50, 80, 90],
+      "tier": "estimate",
+      "origin": "user"
+    },
+    {
+      "id": "staff_affected",
+      "value": 10,
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "hours_saved_per_staff_week",
+      "value": 5,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "verified": true
+      }
+    },
+    {
+      "id": "weeks_per_year",
+      "value": 40,
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "loaded_hourly_cost",
+      "value": 50,
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "recapture_pct",
+      "value": 50,
+      "tier": "benchmark",
+      "origin": "default",
+      "note": "Nucleus productivity correction factor 0.5"
+    },
+    {
+      "id": "discount_rate_pct",
+      "value": 10,
+      "tier": "benchmark",
+      "origin": "default",
+      "note": "Forrester TEI convention (organizations typically 8-16%)"
+    },
+    {
+      "id": "error_count_before",
+      "value": 72,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30"
+      }
+    },
+    {
+      "id": "error_count_after",
+      "value": 24,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30"
+      }
+    },
+    {
+      "id": "cost_per_error",
+      "value": 690,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30"
+      }
+    },
+    {
+      "id": "cost_nature",
+      "value": "cash",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "aro_before",
+      "value": 3,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "verified": true
+      }
+    },
+    {
+      "id": "aro_after",
+      "value": 1.5,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "verified": true
+      }
+    },
+    {
+      "id": "loss_per_event",
+      "value": 25000,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30",
+        "verified": true
+      },
+      "low": 22500,
+      "high": 27500
+    },
+    {
+      "id": "cost_one_time_vendor_license",
+      "value": 30000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "quoted"
+    },
+    {
+      "id": "cost_training_change",
+      "value": 5000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "estimated"
+    },
+    {
+      "id": "cost_annual_run",
+      "value": 12000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "quoted"
+    }
+  ],
+  "file_descriptions": {
+    "f1": "test file"
+  },
+  "other_notes": "",
+  "measurement_plan": {},
+  "asked": []
+}
