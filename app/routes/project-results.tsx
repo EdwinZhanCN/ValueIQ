@@ -2,7 +2,7 @@ import { Link, useRevalidator } from "react-router";
 import { useEffect } from "react";
 import { requireProjectAccess } from "../server/access.server";
 import { getProject } from "../server/projects.server";
-import { getLatestResult, getRun } from "../server/runs.server";
+import { getLatestResult, getRun } from "../server/output-runs.server";
 import { listRunReports } from "../server/reports.server";
 import { OutputWorkspace } from "../components/output/output-workspace";
 import type { Route } from "./+types/project-results";

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "8488b3f1-7033-4716-a89a-ce0efc7464b6",
+  "id": "65ced5e1-077e-45c8-80ba-1d3fe18717bc",
   "prevId": "4d2929bd-5be8-4f01-851a-f395ccd05a92",
   "tables": {
     "files": {
@@ -292,8 +292,83 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "run_reports": {
-      "name": "run_reports",
+    "run_events": {
+      "name": "run_events",
+      "columns": {
+        "run_id": {
+          "name": "run_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seq": {
+          "name": "seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "step": {
+          "name": "step",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "payload_json": {
+          "name": "payload_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "run_events_run_id_runs_id_fk": {
+          "name": "run_events_run_id_runs_id_fk",
+          "tableFrom": "run_events",
+          "tableTo": "runs",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "run_events_run_id_seq_pk": {
+          "columns": [
+            "run_id",
+            "seq"
+          ],
+          "name": "run_events_run_id_seq_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "run_questions": {
+      "name": "run_questions",
       "columns": {
         "id": {
           "name": "id",
@@ -309,39 +384,46 @@
           "notNull": true,
           "autoincrement": false
         },
-        "r2_key": {
-          "name": "r2_key",
+        "payload_json": {
+          "name": "payload_json",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "created_by": {
-          "name": "created_by",
+        "answer_json": {
+          "name": "answer_json",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
-        "created_at": {
-          "name": "created_at",
+        "answered_by": {
+          "name": "answered_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "asked_at": {
+          "name": "asked_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
           "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "answered_at": {
+          "name": "answered_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
-        "run_reports_r2_key_unique": {
-          "name": "run_reports_r2_key_unique",
-          "columns": [
-            "r2_key"
-          ],
-          "isUnique": true
-        },
-        "run_reports_run_idx": {
-          "name": "run_reports_run_idx",
+        "run_questions_run_id_idx": {
+          "name": "run_questions_run_id_idx",
           "columns": [
             "run_id"
           ],
@@ -349,9 +431,9 @@
         }
       },
       "foreignKeys": {
-        "run_reports_run_id_runs_id_fk": {
-          "name": "run_reports_run_id_runs_id_fk",
-          "tableFrom": "run_reports",
+        "run_questions_run_id_runs_id_fk": {
+          "name": "run_questions_run_id_runs_id_fk",
+          "tableFrom": "run_questions",
           "tableTo": "runs",
           "columnsFrom": [
             "run_id"
@@ -362,12 +444,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "run_reports_created_by_user_id_fk": {
-          "name": "run_reports_created_by_user_id_fk",
-          "tableFrom": "run_reports",
+        "run_questions_answered_by_user_id_fk": {
+          "name": "run_questions_answered_by_user_id_fk",
+          "tableFrom": "run_questions",
           "tableTo": "user",
           "columnsFrom": [
-            "created_by"
+            "answered_by"
           ],
           "columnsTo": [
             "id"
@@ -434,7 +516,7 @@
       "checkConstraints": {
         "run_results_exactly_one": {
           "name": "run_results_exactly_one",
-          "value": "(\"run_results\".\"result_json\" is null) != (\"run_results\".\"gap_list_json\" is null)"
+          "value": "(\"run_results\".\"result_json\" is null) <> (\"run_results\".\"gap_list_json\" is null)"
         }
       }
     },
@@ -563,11 +645,11 @@
       "checkConstraints": {
         "runs_status_valid": {
           "name": "runs_status_valid",
-          "value": "\"runs\".\"status\" in ('idle','preflight','running','blocked_on_question','released','gap_list','failed','cancelled')"
+          "value": "\"runs\".\"status\" in ('preflight', 'running', 'blocked_on_question', 'released', 'gap_list', 'failed', 'cancelled')"
         },
         "runs_mode_valid": {
           "name": "runs_mode_valid",
-          "value": "\"runs\".\"mode\" in ('real','stub')"
+          "value": "\"runs\".\"mode\" in ('real', 'stub')"
         }
       }
     },

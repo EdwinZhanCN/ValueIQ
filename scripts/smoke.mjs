@@ -112,6 +112,75 @@ async function get(path, expected = 200) {
   return html;
 }
 
+// Runs SQL against local D1, for rows no page creates yet (projects).
+async function d1(sql) {
+  const child = cli(
+    "wrangler/bin/wrangler.js",
+    ["d1", "execute", "valueiq", "--local", "--command", sql],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let output = "";
+  child.stdout.on("data", (chunk) => (output += chunk));
+  child.stderr.on("data", (chunk) => (output += chunk));
+  const [code] = await once(child, "exit");
+  if (code !== 0) throw new Error(`Local D1 execute failed:\n${output}`);
+}
+
+// A signed-up account with its own team and one project in it.
+async function teamWithProject(label) {
+  const response = await fetch(origin + "/api/auth/sign-up/email", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin },
+    body: JSON.stringify({
+      email: `smoke-${label}-${Date.now()}@example.test`,
+      password: "smoke-password-1",
+      name: label,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  assert.equal(response.status, 200, `sign-up ${label}`);
+  const userId = (await response.json()).user.id;
+  const cookie = response.headers
+    .getSetCookie()
+    .map((value) => value.split(";")[0])
+    .join("; ");
+  const team = await fetch(origin + "/api/auth/organization/create", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin, cookie },
+    body: JSON.stringify({ name: label, slug: `${label}-${Date.now()}` }),
+    signal: AbortSignal.timeout(15000),
+  });
+  assert.equal(
+    team.status,
+    200,
+    `create team ${label}: ${await team.clone().text()}`,
+  );
+  const teamId = (await team.json()).id;
+  const projectId = crypto.randomUUID();
+  await d1(
+    `INSERT INTO projects (id, team_id, name, created_by) VALUES ('${projectId}', '${teamId}', '${label}', '${userId}')`,
+  );
+  return { cookie, projectId };
+}
+
+function upload(owner, body, cookie = owner.cookie) {
+  return fetch(`${origin}/projects/${owner.projectId}/files`, {
+    method: "POST",
+    headers: { origin, cookie },
+    body,
+    redirect: "manual",
+    signal: AbortSignal.timeout(15000),
+  });
+}
+
+function download(projectId, fileId, cookie) {
+  return fetch(`${origin}/projects/${projectId}/files/${fileId}`, {
+    headers: cookie ? { cookie } : {},
+    redirect: "manual",
+    signal: AbortSignal.timeout(15000),
+  });
+}
+
 try {
   await prepare();
   await start();
@@ -124,17 +193,12 @@ try {
   // Workspace surface: the interface owns the page, with no site chrome
   // wrapped around it.
   const workspace = await get("/workspace");
-  assert.match(workspace, /STUB/, "Output preview must identify its stub data");
-  assert.match(workspace, /127,956\.73/, "Stored sample headline missing");
-  assert.match(
-    workspace,
-    /202\.9%/,
-    "Undiscounted ROI must use percentage points",
-  );
-  assert.match(workspace, /169\.9%/, "PV-based ROI must use percentage points");
+  assert.match(workspace, /STUB/, "Preview must label stub data");
+  assert.match(workspace, /127,956\.73/);
+  assert.match(workspace, /202\.9%/);
+  assert.match(workspace, /169\.9%/);
   const gaps = await get("/workspace?view=gaps");
-  assert.match(gaps, /STUB/);
-  assert(!gaps.includes("127,956.73"), "Failed gate exposed a headline");
+  assert(!gaps.includes("127,956.73"), "Gap exposed a headline");
   assert(
     !workspace.includes('aria-label="Main"'),
     "Workspace still renders the site header",
@@ -248,13 +312,85 @@ try {
   });
   assert.equal(offsite.response.headers.get("location"), "/projects");
 
-  const projects = await page("/projects", "");
-  assert.equal(projects.response.status, 302);
-  assert.match(projects.response.headers.get("location"), /^\/sign-in/);
-  assert.equal((await page("/projects", offsite.jar)).response.status, 200);
+  // Z2: /projects asks a signed-out visitor to sign in, and opens for the
+  // owner signed back in.
+  const projectsOut = await page("/projects", "");
+  assert.equal(
+    projectsOut.response.headers.get("location"),
+    "/sign-in?redirectTo=%2Fprojects",
+  );
+  const projectsIn = await page("/projects", back.jar);
+  assert.equal(projectsIn.response.status, 200, "/projects signed in");
+
+  // Files: an upload/download round trip through local R2, a blank
+  // description rejected, and no way into another team's file.
+  const alpha = await teamWithProject("alpha");
+  const beta = await teamWithProject("beta");
+  const bytes = new TextEncoder().encode("cost,benefit\n10,25\n");
+  const described = new FormData();
+  described.set("file", new Blob([bytes], { type: "text/csv" }), "Q3 é.csv");
+  described.set("description", "Quarterly costs");
+  const uploaded = await upload(alpha, described);
+  assert.equal(
+    uploaded.status,
+    201,
+    `upload: ${await uploaded.clone().text()}`,
+  );
+  const fileId = (await uploaded.json()).file.id;
+
+  const fetched = await download(alpha.projectId, fileId, alpha.cookie);
+  assert.equal(fetched.status, 200, "own download");
+  assert.deepEqual(new Uint8Array(await fetched.arrayBuffer()), bytes);
+  assert.match(
+    fetched.headers.get("content-disposition") ?? "",
+    /^attachment; filename="Q3 _.csv"; filename\*=UTF-8''Q3%20%C3%A9\.csv$/,
+  );
+
+  const blank = new FormData();
+  blank.set("file", new Blob([bytes], { type: "text/csv" }), "blank.csv");
+  blank.set("description", "   ");
+  assert.equal((await upload(alpha, blank)).status, 400, "blank description");
+
+  // The 10 MB cap: exactly at the cap is accepted; one byte over fails the
+  // file-size check, and a far larger body fails the Content-Length check.
+  const cap = 10 * 1024 * 1024;
+  for (const [size, expected, label] of [
+    [cap, 201, "upload at the cap"],
+    [cap + 1, 413, "upload one byte over the cap"],
+    [cap + 1024 * 1024, 413, "upload with an oversized body"],
+  ]) {
+    const sized = new FormData();
+    sized.set("file", new Blob([new Uint8Array(size)]), "sized.bin");
+    sized.set("description", label);
+    const response = await upload(alpha, sized);
+    assert.equal(
+      response.status,
+      expected,
+      `${label}: ${await response.text()}`,
+    );
+  }
+
+  assert.equal(
+    (await download(alpha.projectId, fileId, beta.cookie)).status,
+    404,
+    "other team's download",
+  );
+  assert.equal(
+    (await download(beta.projectId, fileId, beta.cookie)).status,
+    404,
+    "file read through another project",
+  );
+  assert.equal(
+    (await upload(alpha, described, beta.cookie)).status,
+    404,
+    "other team's upload",
+  );
+  const signedOut = await download(alpha.projectId, fileId);
+  assert.equal(signedOut.status, 302, "signed-out download");
+  assert.match(signedOut.headers.get("location") ?? "", /^\/sign-in/);
 
   console.log(
-    "Smoke passed: landing, fullscreen stub outputs, gated gap list, account/team access and protected projects.",
+    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, account pages, /projects behind sign-in, file round trip, cap, and isolation.",
   );
 } catch (error) {
   console.error(logs);

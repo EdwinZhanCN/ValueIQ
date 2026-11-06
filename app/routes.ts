@@ -34,6 +34,8 @@ export default [
     route("projects", "routes/projects.tsx"),
     route("projects/new", "routes/projects.new.tsx"),
     route("projects/:projectId", "routes/projects.$projectId.tsx"),
+    route("projects/:projectId/files", "routes/projects.files.ts"),
+    route("projects/:projectId/files/:fileId", "routes/projects.files.download.ts"),
   ]),
   route("projects/:projectId/runs/:runId/reports", "routes/project-reports.ts"),
   route(

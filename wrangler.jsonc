@@ -22,6 +22,13 @@
   ],
   // Private upload bucket; local runs keep objects under .wrangler/state/.
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "valueiq-files" }],
+  "workflows": [
+    {
+      "name": "valueiq-run",
+      "binding": "RUN_WORKFLOW",
+      "class_name": "CalculationRun",
+    },
+  ],
   "env": {
     "development": {
       "name": "valueiq-dev",
@@ -41,6 +48,13 @@
       ],
       "r2_buckets": [
         { "binding": "FILES", "bucket_name": "valueiq-dev-files" },
+      ],
+      "workflows": [
+        {
+          "name": "valueiq-dev-run",
+          "binding": "RUN_WORKFLOW",
+          "class_name": "CalculationRun",
+        },
       ],
     },
     "production": {
@@ -62,6 +76,13 @@
       ],
       "r2_buckets": [
         { "binding": "FILES", "bucket_name": "valueiq-prod-files" },
+      ],
+      "workflows": [
+        {
+          "name": "valueiq-prod-run",
+          "binding": "RUN_WORKFLOW",
+          "class_name": "CalculationRun",
+        },
       ],
     },
   },

@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { createDb } from "../../db/client";
 import { runReports, runs } from "../../db/schema";
 import type { ProjectAccess } from "./access.server";
-import { getRun } from "./runs.server";
+import { getRun } from "./output-runs.server";
 import { renderReport } from "./report-renderer.server";
 
 export async function listRunReports(access: ProjectAccess, runId: string) {

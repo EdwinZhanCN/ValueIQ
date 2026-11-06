@@ -1,3 +1,5 @@
+import { ProjectFiles } from "../components/files/project-files";
+import { listProjectFiles } from "../server/files.server";
 import { readSmallForm } from "../server/form-body.server";
 import { useEffect, useRef } from "react";
 import { data, Form, Link } from "react-router";
@@ -12,15 +14,17 @@ import type { Route } from "./+types/projects.$projectId";
 const MAX_BYTES = 256 * 1024;
 export async function loader({ request, params }: Route.LoaderArgs) {
   await requireProjectAccess(request, params.projectId);
-  const [project, form] = await Promise.all([
+  const [project, form, files] = await Promise.all([
     getProject(params.projectId),
     getProjectForm(params.projectId),
+    listProjectFiles(params.projectId),
   ]);
   if (!project) throw new Response("Not found", { status: 404 });
   const url = new URL(request.url);
   const run = url.searchParams.get("run");
   return {
     project,
+    files,
     formText: JSON.stringify(form ? form.formJson : {}, null, 2),
     savedAt: form?.updatedAt.toISOString() ?? null,
     target: url.searchParams.get("input"),
@@ -119,6 +123,7 @@ export default function ProjectIntake({
         The executable engine is not connected yet. Saving the intake does not
         start or fabricate a calculation.
       </p>
+      <ProjectFiles projectId={loaderData.project.id} files={loaderData.files} />
     </div>
   );
 }

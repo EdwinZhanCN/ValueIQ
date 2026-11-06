@@ -62,16 +62,22 @@ for (const [name, mutate, message] of [
     /different D1 databases/,
   ],
   [
+    "another environment's bucket",
+    (_, built) => (built.r2_buckets[0].bucket_name = "valueiq-dev-files"),
+    /wrong R2 bucket/,
+  ],
+  [
+    "another environment's workflow",
+    (_, built) => (built.workflows[0].name = "valueiq-dev-run"),
+    /wrong workflow/,
+  ],
+  [
     "cross-Worker Durable Object",
     (_, built) =>
       (built.durable_objects.bindings[0].script_name = "valueiq-dev"),
     /deep-equal/,
   ],
-  [
-    "cross-environment R2 bucket",
-    (_, built) => (built.r2_buckets[0].bucket_name = "valueiq-dev-files"),
-    /wrong private R2 bucket/,
-  ],
+
 ]) {
   test(`rejects ${name}`, async () => {
     const result = await check("production", mutate);

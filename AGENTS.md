@@ -12,11 +12,11 @@ Human setup and deployment commands live in [README.md](README.md).
 ## Repository map
 
 - `app/`: React Router routes, the two surface layouts, and the UI under `components/`.
-- `workers/app.ts`: Worker entry and the `ValueIQAgent` Durable Object export.
-- `agents/valueiq-agent.ts`: empty agent shell — no state, no tools, no methods.
+- `workers/app.ts`: Worker entry: routes `/agents/*` through the agent gate, then hands everything else to React Router. Exports `ValueIQAgent` and the `CalculationRun` workflow.
+- `agents/`: `valueiq-agent.ts` (empty agent shell: no state, no tools, no methods) and `calculation-run.ts` (placeholder workflow behind `RUN_WORKFLOW`; it refuses to run). Both are Eli's to fill in.
+- `shared/types.ts`: the cross-track types from the integration contract (run states, `RunView`, `Question`).
 - `db/`, `drizzle/`: Drizzle client, Better Auth tables (`auth-schema.ts`, generated from `auth.cli.ts`), application tables (`schema.ts`), and their migrations.
-- `app/server/`: identity/access, saved project forms, validated run snapshots and private R2 report storage. See [output pipeline](docs/output-pipeline.md) for server interfaces.
-- `shared/output.ts`: version 1 engine-output validation and inferred types, based on the supplied engine samples.
+- `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), the signed-in user and current team (`team.server.ts`), the project API (`projects.server.ts`), project files in R2 (`files.server.ts`), calculation runs (`runs.server.ts`), and the agent gate (`agent-gate.server.ts`).
 - `docs/`: [architecture](docs/architecture.md) and [core beliefs](docs/core-beliefs.md).
 - `.agents/`: coding-agent procedures and durable project memory.
 
@@ -24,10 +24,10 @@ Human setup and deployment commands live in [README.md](README.md).
 
 - The marketing pages are `/` (landing) and `/workspace` (mock workspace), and neither has a loader or an action. `/api/auth/*` serves Better Auth.
 - Account pages: `/sign-up`, `/sign-in`, `/sign-out` (`auth-layout`), and `/teams/new`, `/team` inside the signed-in shell `app/routes/app-layout.tsx`. `app/server/team.server.ts` gives loaders the signed-in user and current team (`requireUser`, `requireTeam`).
-- Every loader, action, and resource route that touches a project calls `requireProjectAccess` first.
-- `/projects`, `/projects/new`, `/projects/:projectId`, and `/projects/:projectId/results` use persisted data. The project editor currently preserves opaque JSON; the structured intake UI and executable engine are pending their owners' implementations. Report resources are private and project-scoped.
-- Only trusted server engine/workflow code calls `createRun`/`finishRun`; never add a browser endpoint accepting result numbers. Results and reports pin run identity; intake edits do not rewrite prior outputs.
-- Keep the agent shell empty: do not add agent state, tools or skill conventions until their design is implemented. New tables follow the active exec plans; the output slice proposes `runs`, `run_results` and `run_reports` in one generated migration for infrastructure review.
+- Project pages: `/projects`, `/projects/new`, and `/projects/:projectId`, also inside `app-layout`. `/projects/:projectId` holds a placeholder JSON form until the intake form replaces it.
+- Every loader, action, and resource route that touches a project calls `requireProjectAccess` first, and gets a row in `scripts/access-matrix.mjs`.
+- Agent routes (`/agents/value-i-q-agent/{projectId}`) pass `agentGate` first: 401 signed out, 404 other team or missing project, 403 cross-site; on success the agent reads the caller from `x-valueiq-user-id`, never from the client. They are covered in `scripts/access-matrix.mjs`.
+- Cross-track types live in `shared/types.ts` and change only through a pull request to the integration contract. Agent state, tools, and skill conventions follow that contract; nothing in the agent or workflow may present a stub as a real assessment. New tables follow the active exec plans.
 - Never present mock or scripted behaviour as a working assessment.
 - `worker-configuration.d.ts` and `.react-router/types/` are generated and ignored; use `pnpm typegen` rather than hand-editing them.
 - Generate migrations from `db/schema.ts` with `pnpm db:generate`. Review generated SQL and retain applied migrations unchanged.

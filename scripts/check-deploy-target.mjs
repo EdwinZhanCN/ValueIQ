@@ -53,6 +53,17 @@ assert.deepEqual(config.durable_objects.bindings, [
 assert.deepEqual(
   config.r2_buckets,
   [{ binding: "FILES", bucket_name: `${worker}-files` }],
-  "Build targets the wrong private R2 bucket",
+  "Build targets the wrong R2 bucket",
+);
+assert.deepEqual(
+  config.workflows,
+  [
+    {
+      name: `${worker}-run`,
+      binding: "RUN_WORKFLOW",
+      class_name: "CalculationRun",
+    },
+  ],
+  "Build targets the wrong workflow",
 );
 console.log(`Deployment target verified: ${worker}`);
