@@ -37,7 +37,7 @@ Not covered:
 - T17 and T14 are partial: the insurance saving and the reconciliation cost are added by the test outside the engine, with the same risk adjustment.
 - Every effect input is tagged `benchmark`, `estimate` or `assumption` (never `measured`); the studies give composite, interview-based numbers.
 
-## Rejected or unusable (details in SOURCES.md section L)
+## Rejected or unusable (details in SOURCES.md section M)
 
 Celigo (label contradicts text), Black Swan Farming / Maersk (only inequalities, chart is an image), Emergn VFQ (rate conversion only), Wikipedia cost of delay (its example is investment interest), WSU risk worksheet (no answers), Adjusters International / FEMA BCAR (secondary; life and rate unstated), Mississippi workbook (blank). Not accessible: ObservePoint (404), AWS modern data strategy (unreachable), InventiveHQ ALE pages (403; not worked around). Leads not opened: Ataccama full tables, Cornerstone, iCIMS, Pega 7, Nucleus case studies.
 
