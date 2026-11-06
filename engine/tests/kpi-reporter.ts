@@ -17,6 +17,7 @@ const NAMES: Record<string, string> = {
   K14: "Agreement with Python oracle",
   K15: "Performance",
   K16: "Tool contracts",
+  F1: "File evidence (verified quotes)",
 };
 
 interface Count {
@@ -33,7 +34,7 @@ export default class KpiReporter implements Reporter {
     for (const m of modules) {
       for (const t of m.children.allTests()) {
         const state = t.result().state;
-        const key = /\bK\d+\b/.exec(t.fullName)?.[0];
+        const key = /\b(?:K\d+|F1)\b/.exec(t.fullName)?.[0];
         let bucket: Count | undefined;
         if (key) {
           bucket = stat.get(key) ?? { pass: 0, fail: 0, skip: 0 };
@@ -59,6 +60,12 @@ export default class KpiReporter implements Reporter {
       const s = stat.get(key);
       lines.push(
         `${key.padEnd(5)}${verdict(s).padEnd(16)}${(NAMES[key] ?? "").padEnd(36)}${counts(s)}`,
+      );
+    }
+    {
+      const s = stat.get("F1");
+      lines.push(
+        `${"F1".padEnd(5)}${verdict(s).padEnd(16)}${(NAMES["F1"] ?? "").padEnd(36)}${counts(s)}`,
       );
     }
     lines.push(
