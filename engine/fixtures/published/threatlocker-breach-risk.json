@@ -1,0 +1,77 @@
+{
+  "id": "threatlocker-breach-risk",
+  "case_ref": "T17",
+  "kind": "driver",
+  "driver": "risk_reduction",
+  "tests": "driver formulas (risk reduction: (ARO before - ARO after) x loss per event); PARTIAL: cyber-insurance saving added outside the engine",
+  "source": {
+    "title": "The Total Economic Impact of ThreatLocker Cybersecurity Solutions",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "February 2025",
+    "url": "https://tei.forrester.com/go/ThreatLocker/CybersecuritySolutions/?lang=en-us",
+    "status": "READ",
+    "how_opened": "page HTML fetched with curl and text-extracted; table 'Reduced Risk Of Data Breach' (Ref A1-A8, At, Atr)",
+    "table": "Reduced Risk Of Data Breach",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Forrester uses the annual likelihood of one or more breaches (68%) as the expected number of events per year. Strictly that is a probability, not a Poisson rate; the engine treats ARO the same way, so the arithmetic matches.",
+    "aro_before = 68% x 81% (breaches from internal or external attack on the organization) = 0.5508. A 99% reduction gives aro_after = 0.5508 x 1% = 0.005508. Loss per event = $3,010,000 mean cumulative cost of breaches (Forrester research).",
+    "PARTIAL: the printed benefit also includes a cyber-insurance saving of $2,800,000 x 10% = $280,000 per year, which is not a risk-reduction driver. The test adds 280,000 x (1 - 15%) outside the engine.",
+    "Published A5 is $1,641,329; exact arithmetic gives $1,641,328.92 (difference under $1)."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.15,
+    "published_risk_adjustment": "15% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "breach risk",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [100, 100, 100],
+          "tier": "estimate",
+          "published_as": "constant effect in all three years"
+        },
+        {
+          "id": "aro_before",
+          "value": 0.5508,
+          "tier": "benchmark",
+          "published_as": "A1 68% likelihood x A2 81% addressable (Forrester security survey 2024)",
+          "vendor_supplied": false
+        },
+        {
+          "id": "aro_after",
+          "value": 0.005508,
+          "tier": "estimate",
+          "published_as": "A3 99% reduction, from vendor customers' interviews",
+          "vendor_supplied": true
+        },
+        {
+          "id": "loss_per_event",
+          "value": 3010000,
+          "tier": "benchmark",
+          "published_as": "A4 mean cumulative cost of breaches (Forrester research)"
+        }
+      ]
+    }
+  ],
+  "combine": "concat",
+  "outside_engine_by_year": [238000.0, 238000.0, 238000.0],
+  "outside_engine_note": "A8 cyber insurance saving $2,800,000 x 10% = $280,000, x (1 - 15% risk adjustment); not a risk-reduction effect",
+  "expected": {
+    "annual_benefit": [1633130, 1633130, 1633130],
+    "pv": 4061352,
+    "published_total": 4899389,
+    "rounding": "whole dollars"
+  },
+  "tolerance": {
+    "annual_abs": 1,
+    "pv_abs": 1.5,
+    "why": "whole-dollar rounding of A5"
+  }
+}

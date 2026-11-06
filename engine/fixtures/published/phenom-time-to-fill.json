@@ -1,0 +1,170 @@
+{
+  "id": "phenom-time-to-fill",
+  "case_ref": "T16",
+  "kind": "driver",
+  "driver": "decision_speed",
+  "tests": "driver formulas (decision speed / cost of delay on a per-hire basis, wage rate changing each year)",
+  "source": {
+    "title": "The Total Economic Impact of the Phenom Intelligent Talent Experience Platform",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "November 2022",
+    "url": "https://go.phenom.com/hubfs/02_Assets/ebook/The%20TEI%20Of%20Phenom.pdf",
+    "status": "READ",
+    "how_opened": "PDF downloaded and text-extracted; table 'Cost Reduction From Decreasing Time To Fill' (Ref A1-A9, At, Atr), p.11",
+    "table": "Cost Reduction From Decreasing Time To Fill",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Each hire is a 'decision'; days to fill is cycle time. Cost of delay is the weekly cost of a vacancy (150% of wages x 40 hours) divided by 7. This is a cost-of-vacancy proxy, an assumption in the study (source: Assumption), not a measured value.",
+    "Only 30% of the shortened time is attributed to the vendor (A9). We fold that into days_to_decide_after (days saved = 70 x reduction x 30%) because the engine has no attribution input; the product is the same.",
+    "The wage rate changes each year ($23.15 / $23.84 / $24.56), so each year is a separate single-year run, concatenated.",
+    "The study prints weekly vacancy cost rounded to whole dollars (1,389 / 1,430 / 1,473) and the benefit from unrounded wages, so our result differs from the printed benefit by up to 0.015%; tolerance is relative."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.2,
+    "published_risk_adjustment": "20% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "Year 1",
+      "horizon_years": 1,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [100],
+          "tier": "estimate",
+          "published_as": "single-year run"
+        },
+        {
+          "id": "decisions_per_year",
+          "value": 11000,
+          "tier": "estimate",
+          "published_as": "A1 hires per year"
+        },
+        {
+          "id": "days_to_decide_before",
+          "value": 70,
+          "tier": "estimate",
+          "published_as": "A2 10 weeks to fill x 7 days"
+        },
+        {
+          "id": "days_to_decide_after",
+          "value": 67.9,
+          "tier": "estimate",
+          "published_as": "A2 x A3 10% x A9 30% attributable to the vendor, taken off 70 days"
+        },
+        {
+          "id": "cost_of_delay_per_day",
+          "value": 198.42857142857142,
+          "tier": "estimate",
+          "published_as": "A8: 150% x 40 hours x $23.15 per hour, per week, divided by 7"
+        },
+        {
+          "id": "cost_of_delay_basis",
+          "value": "cost_continuing",
+          "tier": "estimate",
+          "published_as": "cost of a vacancy (overtime, contractors)"
+        }
+      ]
+    },
+    {
+      "name": "Year 2",
+      "horizon_years": 1,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [100],
+          "tier": "estimate",
+          "published_as": "single-year run"
+        },
+        {
+          "id": "decisions_per_year",
+          "value": 11000,
+          "tier": "estimate",
+          "published_as": "A1 hires per year"
+        },
+        {
+          "id": "days_to_decide_before",
+          "value": 70,
+          "tier": "estimate",
+          "published_as": "A2 10 weeks to fill x 7 days"
+        },
+        {
+          "id": "days_to_decide_after",
+          "value": 65.8,
+          "tier": "estimate",
+          "published_as": "A2 x A3 20% x A9 30% attributable to the vendor, taken off 70 days"
+        },
+        {
+          "id": "cost_of_delay_per_day",
+          "value": 204.34285714285716,
+          "tier": "estimate",
+          "published_as": "A8: 150% x 40 hours x $23.84 per hour, per week, divided by 7"
+        },
+        {
+          "id": "cost_of_delay_basis",
+          "value": "cost_continuing",
+          "tier": "estimate",
+          "published_as": "cost of a vacancy (overtime, contractors)"
+        }
+      ]
+    },
+    {
+      "name": "Year 3",
+      "horizon_years": 1,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [100],
+          "tier": "estimate",
+          "published_as": "single-year run"
+        },
+        {
+          "id": "decisions_per_year",
+          "value": 11000,
+          "tier": "estimate",
+          "published_as": "A1 hires per year"
+        },
+        {
+          "id": "days_to_decide_before",
+          "value": 70,
+          "tier": "estimate",
+          "published_as": "A2 10 weeks to fill x 7 days"
+        },
+        {
+          "id": "days_to_decide_after",
+          "value": 64.75,
+          "tier": "estimate",
+          "published_as": "A2 x A3 25% x A9 30% attributable to the vendor, taken off 70 days"
+        },
+        {
+          "id": "cost_of_delay_per_day",
+          "value": 210.5142857142857,
+          "tier": "estimate",
+          "published_as": "A8: 150% x 40 hours x $24.56 per hour, per week, divided by 7"
+        },
+        {
+          "id": "cost_of_delay_basis",
+          "value": "cost_continuing",
+          "tier": "estimate",
+          "published_as": "cost of a vacancy (overtime, contractors)"
+        }
+      ]
+    }
+  ],
+  "combine": "concat",
+  "outside_engine_by_year": null,
+  "expected": {
+    "annual_benefit": [3666465, 7552918, 9724382],
+    "pv": 16881302,
+    "published_total": 20943764,
+    "rounding": "whole dollars computed by Forrester from unrounded wages"
+  },
+  "tolerance": {
+    "annual_rel": 0.0005,
+    "pv_rel": 0.0005,
+    "why": "printed inputs are rounded; measured difference is at most 0.015% (recompute.py)"
+  }
+}

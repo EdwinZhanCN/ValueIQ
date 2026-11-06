@@ -1,0 +1,84 @@
+{
+  "id": "semarchy-business-user-efficiency",
+  "case_ref": "T10",
+  "kind": "driver",
+  "driver": "time_savings",
+  "tests": "driver formulas (time savings with a user-count ramp and 50% recapture)",
+  "source": {
+    "title": "The Total Economic Impact of Semarchy Data Platform",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "May 2025",
+    "url": "https://tei.forrester.com/go/semarchy/dataplatform",
+    "status": "READ",
+    "how_opened": "page HTML fetched with curl and text-extracted; table 'Business User Efficiencies' (Ref B1-B6, Bt, Btr)",
+    "table": "Business User Efficiencies",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Users who consult master data ramp 1,500 / 3,000 / 4,500; staff_affected is the Year 3 count and adoption_by_year = users / 4,500 = 33.33 / 66.67 / 100.",
+    "Hours consulting master data per user is 48 per year, saved share 60%, so 28.8 hours per user per year. We set weeks_per_year = 48 and hours saved per week = 0.6 (48 x 0.6 = 28.8)."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.1,
+    "published_risk_adjustment": "10% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "business user efficiencies",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [33.333333333333336, 66.66666666666667, 100],
+          "tier": "estimate",
+          "published_as": "B2 1,500 / 3,000 / 4,500 users divided by 4,500"
+        },
+        {
+          "id": "staff_affected",
+          "value": 4500,
+          "tier": "estimate",
+          "published_as": "B2 business users in Year 3 (composite)"
+        },
+        {
+          "id": "hours_saved_per_staff_week",
+          "value": 0.6,
+          "tier": "estimate",
+          "published_as": "B3 48 hours x B4 60% efficiency = 28.8 hours per year, over 48 weeks"
+        },
+        {
+          "id": "weeks_per_year",
+          "value": 48,
+          "tier": "estimate",
+          "published_as": "our convention so 48 hours of master-data work maps to 1 hour per week"
+        },
+        {
+          "id": "loaded_hourly_cost",
+          "value": 44,
+          "tier": "estimate",
+          "published_as": "B5 fully burdened hourly salary $44"
+        },
+        {
+          "id": "recapture_pct",
+          "value": 50,
+          "tier": "benchmark",
+          "published_as": "B6 productivity recapture 50% (TEI methodology)"
+        }
+      ]
+    }
+  ],
+  "combine": "concat",
+  "outside_engine_by_year": null,
+  "expected": {
+    "annual_benefit": [855360, 1710720, 2566080],
+    "pv": 4119352,
+    "published_total": 5132160,
+    "rounding": "whole dollars"
+  },
+  "tolerance": {
+    "annual_abs": 0.5,
+    "pv_abs": 1.5,
+    "why": "whole-dollar rounding; arithmetic exact"
+  }
+}

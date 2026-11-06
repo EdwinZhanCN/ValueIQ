@@ -1,0 +1,80 @@
+{
+  "id": "thomson-reuters-invoice-error-impact",
+  "case_ref": "T14",
+  "kind": "driver",
+  "driver": "data_quality",
+  "tests": "driver formulas (data quality, rate path on a dollar base); PARTIAL: reconciliation cost is added outside the engine",
+  "source": {
+    "title": "The Total Economic Impact of Thomson Reuters ONESOURCE Indirect Tax",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "June 2022",
+    "url": "https://tei.forrester.com/go/thomsonreuters/onesource_idt/docs/TEI_of_Thomson_Reuters_IDT.pdf",
+    "status": "READ",
+    "how_opened": "PDF downloaded and text-extracted; table 'Reduction In Annual Error Impact' (Ref A1-A15, At, Atr), p.11",
+    "table": "Reduction In Annual Error Impact",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Unusual unit mapping: the 'record' is one dollar of tax under management ($774,000,000 = $5.0 billion x 15.48%), and one erroneous dollar costs $1. This only exists to exercise the rate path (records x rate x cost); it is not a natural data-quality case.",
+    "Error rate after reconciliation = 3% x (1 - 90% reconciliation success) = 0.3%; error_rate_after = 0 (the study assumes errors are eliminated when invoices run through the tax engine).",
+    "PARTIAL: the published benefit also includes $194,400 of reconciliation effort (A11, internal $64,800 + outsourced $129,600), which is a cost saving, not an error-rate effect. The test adds 194,400 x adoption x (1 - 15%) outside the engine; only the error-impact part (A13 = $2,322,000) goes through the engine."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.15,
+    "published_risk_adjustment": "15% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "invoice error impact",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [20, 50, 80],
+          "tier": "estimate",
+          "published_as": "A15 share of sales leveraging the tax engine 20% / 50% / 80%"
+        },
+        {
+          "id": "records_or_events_per_year",
+          "value": 774000000,
+          "tier": "benchmark",
+          "published_as": "A3 annual tax under management: $5.0 billion x 15.48% (KPMG average rate)"
+        },
+        {
+          "id": "error_rate_before",
+          "value": 0.3,
+          "tier": "estimate",
+          "published_as": "A4 error rate 3% x (1 - A12 reconciliation success 90%)"
+        },
+        {
+          "id": "error_rate_after",
+          "value": 0,
+          "tier": "estimate",
+          "published_as": "study assumes no residual error once invoices pass through the engine"
+        },
+        {
+          "id": "cost_per_error",
+          "value": 1,
+          "tier": "estimate",
+          "published_as": "one erroneous dollar of tax costs one dollar"
+        }
+      ]
+    }
+  ],
+  "combine": "concat",
+  "outside_engine_by_year": [33048.0, 82620.0, 132192.0],
+  "outside_engine_note": "A11 reconciliation effort 194,400 x A15 adoption x (1 - 15% risk adjustment); not an error-rate effect",
+  "expected": {
+    "annual_benefit": [427788, 1069470, 1711152],
+    "pv": 2558372,
+    "published_total": 3208410,
+    "rounding": "whole dollars"
+  },
+  "tolerance": {
+    "annual_abs": 1,
+    "pv_abs": 1.5,
+    "why": "whole-dollar rounding; arithmetic exact"
+  }
+}
