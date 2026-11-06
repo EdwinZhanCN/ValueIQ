@@ -3,7 +3,7 @@ import { scanNarrative, findUncitedNumbers, collectRefs } from "../narrative";
 import { computeProject } from "../project";
 import { checkRunOutput } from "../schema";
 import { sum } from "../finance";
-import type { FormFile, Input, Result, RunOutput } from "../types";
+import type { LegacyFormFile, Input, Result, RunOutput } from "../types";
 import { genForm, genStrongForm } from "./gen";
 import {
   OPTS,
@@ -16,7 +16,7 @@ import {
 import { rng } from "./rng";
 
 const run = (
-  f: FormFile,
+  f: LegacyFormFile,
   config?: Parameters<typeof computeProject>[1]["config"],
 ): RunOutput => computeProject(f, { ...OPTS, ...(config ? { config } : {}) });
 const relaxed = {

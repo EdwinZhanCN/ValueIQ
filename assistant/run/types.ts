@@ -1,6 +1,6 @@
 // Run types shared with the integration contract (section 3). blocked_on_question stays in the type
 // for the contract but is NOT implemented: ask_user is tabled until after the demo.
-import type { FormFile, RunOutput } from "../../engine";
+import type { LegacyFormFile, RunOutput } from "../../engine";
 import type { RunError, RunStatus } from "../../shared/types";
 
 export type {
@@ -47,7 +47,7 @@ export interface NewRun {
   started_by: string;
   started_at: string;
   /** The form as it was when the run started; the run reads only this, never the live form. */
-  form: FormFile;
+  form: LegacyFormFile;
 }
 export interface RunEventRow {
   run_id: string;
@@ -81,7 +81,7 @@ export interface RunStore {
   createRun(r: NewRun): Promise<RunRecord>;
   getRun(id: string): Promise<RunRecord | null>;
   /** The form pinned when the run was created; null for an unknown run or one created before snapshots. */
-  getRunForm(id: string): Promise<FormFile | null>;
+  getRunForm(id: string): Promise<LegacyFormFile | null>;
   findRunByFormHash(
     project_id: string,
     form_hash: string,

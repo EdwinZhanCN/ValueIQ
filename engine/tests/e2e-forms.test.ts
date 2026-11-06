@@ -1,14 +1,14 @@
 // The forms scripts/e2e-run.mjs saves are valid and give the outputs the script expects.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { computeProject, validateInputs, type FormFile } from "../index";
+import { computeProject, validateInputs, type LegacyFormFile } from "../index";
 import { OPTS } from "./forms";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8")) as unknown;
 const sampleForm = read(
   "docs/research/samples/sample-result.form.json",
-) as FormFile;
-const gapForm = read("scripts/e2e-gap.form.json") as FormFile;
+) as LegacyFormFile;
+const gapForm = read("scripts/e2e-gap.form.json") as LegacyFormFile;
 const sample = read("docs/research/samples/sample-result.json") as {
   result: { headline: { npv: { hard: number } } };
 };

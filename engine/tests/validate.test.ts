@@ -1,24 +1,49 @@
 import { describe, expect, it } from "vitest";
 import { computeProject, EngineValidationError } from "../project";
 import { validateInputs } from "../validate";
-import type { FormFile, Input } from "../types";
+import type { LegacyFormFile, Input } from "../types";
 import { OPTS, cost, goldenResultForm, inp, simpleForm } from "./forms";
 
-const setVal = (f: FormFile, id: string, value: Input["value"]): FormFile => ({
+const setVal = (
+  f: LegacyFormFile,
+  id: string,
+  value: Input["value"],
+): LegacyFormFile => ({
   ...f,
   inputs: f.inputs.map((i) => (i.id === id ? { ...i, value } : i)),
 });
-const add = (f: FormFile, ...extra: Input[]): FormFile => ({
+const add = (f: LegacyFormFile, ...extra: Input[]): LegacyFormFile => ({
   ...f,
   inputs: [...f.inputs, ...extra],
 });
-const drop = (f: FormFile, id: string): FormFile => ({
+const drop = (f: LegacyFormFile, id: string): LegacyFormFile => ({
   ...f,
   inputs: f.inputs.filter((i) => i.id !== id),
 });
-const codes = (f: FormFile) => validateInputs(f).errors.map((e) => e.code);
+const codes = (f: LegacyFormFile) =>
+  validateInputs(f).errors.map((e) => e.code);
 
 describe("K8 validation: invalid-input suite (F5, F6)", () => {
+  it("ignores retained numeric values of unknown-tier before/after inputs", () => {
+    for (const id of ["error_count_before", "error_count_after"]) {
+      const form = goldenResultForm();
+      form.inputs.find((input) => input.id === "error_count_before")!.value = 5;
+      form.inputs.find((input) => input.id === "error_count_after")!.value = 24;
+      form.inputs.find((input) => input.id === id)!.tier = "user_unknown";
+      expect(
+        validateInputs(form).errors.some(
+          (error) => error.code === "AFTER_GT_BEFORE",
+        ),
+      ).toBe(false);
+    }
+    const known = goldenResultForm();
+    known.inputs.find((input) => input.id === "error_count_before")!.value = 5;
+    expect(
+      validateInputs(known).errors.some(
+        (error) => error.code === "AFTER_GT_BEFORE",
+      ),
+    ).toBe(true);
+  });
   const ok = () => simpleForm();
 
   it("the baseline form is valid", () => {
@@ -26,7 +51,7 @@ describe("K8 validation: invalid-input suite (F5, F6)", () => {
     expect(validateInputs(ok()).errors).toEqual([]);
   });
 
-  const cases: [string, () => FormFile, string][] = [
+  const cases: [string, () => LegacyFormFile, string][] = [
     [
       "percent over 100",
       () => setVal(ok(), "recapture_pct", 105),

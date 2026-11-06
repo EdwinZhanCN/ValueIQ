@@ -13,6 +13,43 @@ import { context, fixtureCases } from "./form-fixture-cases.ts";
 const cases = fixtureCases();
 const good = cases.find((item) => item.id === "sample-result")!.form;
 const gap = cases.find((item) => item.id === "sample-gap-list")!.form;
+await test("unknown-tier before/after values do not impose a numeric ordering", () => {
+  for (const id of ["error_count_before", "error_count_after"]) {
+    const draft = structuredClone(good);
+    const before = draft.inputs.find(
+      (input) => input.id === "error_count_before",
+    )!;
+    const after = draft.inputs.find(
+      (input) => input.id === "error_count_after",
+    )!;
+    before.value = 5;
+    after.value = 24;
+    draft.inputs.find((input) => input.id === id)!.tier = "user_unknown";
+    assert.equal(
+      validateFormFile(draft, context).some(
+        (issue) => issue.code === "AFTER_BEFORE",
+      ),
+      false,
+    );
+    assert.doesNotThrow(() => serializeFormFile(draft, context));
+  }
+  const known = structuredClone(good);
+  known.inputs.find((input) => input.id === "error_count_before")!.value = 5;
+  assert.equal(
+    validateFormFile(known, context).some(
+      (issue) => issue.code === "AFTER_BEFORE",
+    ),
+    true,
+  );
+});
+await test("non-JSON edits retain accepted state and report a validation issue", () => {
+  for (const value of [NaN, Infinity, -Infinity, undefined, 1n]) {
+    const draft: unknown = { ...structuredClone(good), other_notes: value };
+    const result = applyFormEdit(good, draft, context);
+    assert.equal(result.form, good);
+    assert.equal(result.issues[0]?.code, "JSON_VALUE");
+  }
+});
 await test("sample-result serializer output exactly matches Eli's independent GitHub reference", async () => {
   const reference: unknown = JSON.parse(
     await readFile(

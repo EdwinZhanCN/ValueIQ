@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import sample from "../../../docs/research/samples/sample-result.form.json";
 import {
   blankIntake,
@@ -13,6 +13,9 @@ import type { FormFile as EngineFormFile } from "../../../engine/types";
 
 const context = { projectId: "p1", files: [{ id: "f1", projectId: "p1" }] };
 describe("project intake handoff", () => {
+  it("uses exactly the same canonical form type in engine and input code", () => {
+    expectTypeOf<FormFile>().toEqualTypeOf<EngineFormFile>();
+  });
   it("saves incomplete drafts without weakening strict exports or allowing runs", () => {
     const draft = { ...blankIntake(), intake_draft_version: 1 };
     expect(validateIntakeDraft(draft, context)).toEqual([]);

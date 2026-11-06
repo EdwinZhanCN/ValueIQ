@@ -39,6 +39,13 @@ export interface Input {
   vendor_supplied?: boolean;
   note?: string;
 }
+export interface MeasurementPlanEntry {
+  metric: string;
+  baseline: string;
+  baseline_source: string;
+  owner: string;
+  frequency: string;
+}
 export interface FormFile {
   version: 1;
   goals: Goal[];
@@ -47,18 +54,7 @@ export interface FormFile {
   inputs: Input[];
   file_descriptions: Record<string, string>;
   other_notes: string;
-  measurement_plan: Partial<
-    Record<
-      Goal,
-      {
-        metric: string;
-        baseline: string;
-        baseline_source: string;
-        owner: string;
-        frequency: string;
-      }
-    >
-  >;
+  measurement_plan: Partial<Record<Goal, MeasurementPlanEntry>>;
   asked: string[];
 }
 /** Trusted caller-supplied ownership data, not fields accepted from form JSON. */

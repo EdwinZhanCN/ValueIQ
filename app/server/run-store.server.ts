@@ -14,7 +14,7 @@ import { env } from "cloudflare:workers";
 import { createDb } from "../../db/client";
 import { runEvents, runs } from "../../db/schema";
 import { checkRunOutput } from "../../engine/schema";
-import type { FormFile, RunOutput } from "../../engine/types";
+import type { LegacyFormFile, RunOutput } from "../../engine/types";
 import type {
   NewRun,
   QuestionRow,
@@ -138,10 +138,10 @@ export class D1RunStore implements RunStore {
     return row ? this.toRecord(row) : null;
   }
 
-  async getRunForm(id: string): Promise<FormFile | null> {
+  async getRunForm(id: string): Promise<LegacyFormFile | null> {
     const row = await this.own(id);
     // Checked with asFormFile before the run row was written.
-    return row?.formJson == null ? null : (row.formJson as FormFile);
+    return row?.formJson == null ? null : (row.formJson as LegacyFormFile);
   }
 
   async findRunByFormHash(
