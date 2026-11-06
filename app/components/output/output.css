@@ -191,23 +191,6 @@
   font-size: 10px;
   font-family: var(--font-mono);
 }
-.output-page-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  margin: 9px 0 7px;
-}
-.output-page-heading h1 {
-  margin: 8px 0 11px;
-}
-.output-eyebrow {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--primary);
-}
 .output-muted {
   color: var(--muted-foreground);
   font-size: 12px;
@@ -263,64 +246,6 @@
   flex-direction: column;
   gap: 22px;
   min-width: 0;
-}
-.output-overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 22px;
-  align-items: start;
-}
-.output-headlines,
-.output-two-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
-}
-.output-headline {
-  padding: 24px 22px;
-  gap: 7px;
-  border-top: 3px solid var(--primary);
-}
-.output-headline-capacity_inclusive {
-  border-top-color: var(--chart-3);
-}
-.output-big-number {
-  font-size: clamp(25px, 2.5vw, 37px);
-  line-height: 1.2;
-  letter-spacing: -0.05em;
-  font-weight: 550;
-  font-variant-numeric: tabular-nums;
-  margin: 7px 0 14px;
-  white-space: nowrap;
-}
-.output-headline-rule {
-  height: 1px;
-  background: var(--border);
-  margin-bottom: 8px;
-}
-.output-headline > p:last-child {
-  font-size: 11px;
-  min-height: 34px;
-}
-.output-confidence {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--primary);
-  padding: 7px 0;
-}
-.output-confidence strong {
-  font-size: 30px;
-  letter-spacing: -0.04em;
-  font-weight: 500;
-  display: block;
-  line-height: 1.2;
-}
-.output-confidence span {
-  font-size: 10px;
-  color: var(--muted-foreground);
-  display: block;
-  margin-top: 7px;
 }
 .output-tier-counts {
   display: flex;
@@ -467,9 +392,6 @@
   font-weight: 500;
   margin-left: 4px;
 }
-.output-subheading {
-  margin-top: 6px !important;
-}
 .output-list {
   padding-left: 17px;
   list-style: disc;
@@ -479,12 +401,6 @@
   font-size: 12px;
   color: var(--muted-foreground);
   line-height: 1.7;
-}
-.output-text-item {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  font-size: 12px;
 }
 .output-proxy {
   display: flex;
@@ -501,17 +417,6 @@
   font-family: var(--font-mono);
   font-weight: 400;
   font-size: 11px;
-}
-.output-backing-strip {
-  background: var(--accent);
-  padding: 13px 17px;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 11px;
-  color: var(--accent-foreground);
 }
 .output-chart {
   gap: 15px;
@@ -609,38 +514,6 @@
 }
 .output-dot-capacity {
   background: var(--chart-3);
-}
-.output-field {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  font-size: 12px;
-}
-.output-field select {
-  padding: 8px 30px 8px 11px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.output-notice {
-  display: flex;
-  gap: 13px;
-  padding: 17px;
-  background: var(--accent);
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--accent-foreground);
-}
-.output-notice svg {
-  flex-shrink: 0;
-  margin-top: 3px;
-}
-.output-notice p {
-  margin-top: 7px;
-  line-height: 1.8;
-}
-.output-mobile-tabs {
-  display: none;
 }
 .output-footer {
   border-top: 1px solid var(--border);
@@ -752,12 +625,6 @@
   .output-content {
     padding: 25px;
   }
-  .output-overview {
-    grid-template-columns: 1fr;
-  }
-  .output-big-number {
-    font-size: 34px;
-  }
 }
 @media (max-width: 760px) {
   .output-sidebar {
@@ -775,45 +642,12 @@
     font-size: 8px;
     flex-wrap: wrap;
   }
-  .output-page-heading {
-    align-items: start;
-    flex-direction: column;
-    gap: 15px;
-  }
   .output-root h1 {
     font-size: 28px;
-  }
-  .output-headlines,
-  .output-two-columns {
-    grid-template-columns: 1fr;
-  }
-  .output-headline {
-    padding: 20px;
   }
   .output-card {
     padding: 18px;
     gap: 14px;
-  }
-  .output-big-number {
-    font-size: 35px;
-  }
-  .output-headline > p:last-child {
-    min-height: 0;
-  }
-  .output-mobile-tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid var(--border);
-    overflow-x: auto;
-    font-size: 11px;
-    white-space: nowrap;
-  }
-  .output-mobile-tabs a {
-    padding: 12px 9px;
-  }
-  .output-mobile-tabs a[aria-current] {
-    color: var(--primary);
-    border-bottom: 2px solid var(--primary);
   }
   .output-chart {
     overflow: hidden;
@@ -873,4 +707,19 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   white-space: nowrap;
+}
+
+/* Inside the project shell: no own chrome, flows with the page. */
+.output-root.output-embedded {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: auto;
+  min-height: 0;
+  background: transparent;
+}
+.output-root.output-embedded .output-gap-intro h2 {
+  margin-bottom: 15px;
+  font-size: clamp(22px, 2.2vw, 28px);
+  letter-spacing: -0.03em;
 }
