@@ -38,6 +38,7 @@ interface Input {
   tier: Tier;
   origin: "user" | "file" | "default" | "proxy_accepted" | "assistant_accepted";
   basis?: "quoted" | "estimated" | "assumed"; // COST inputs only (sets the uplift)
+  vendor_supplied?: boolean; // true if the figure came from the vendor (feeds the vendor-numbers guardrail)
   backing?: Backing; // effect inputs only
   note?: string;
 }
@@ -132,30 +133,32 @@ Each cost line is an `Input` with `role: cost` and its own `basis`. The engine m
 `avoided_events = events_before - events_after` (or rate x volume)
 `benefit_t = avoided_events x cost_per_error x adoption_t x (1 - H)`; if only the unit cost is known, `cost_per_error = cost_per_clean_unit x (error_cost_multiplier - 1)`.
 
-| id                                                                   | Label                                                      | Role       | Unit      | Level | Default                      | Notes                                                |
-| -------------------------------------------------------------------- | ---------------------------------------------------------- | ---------- | --------- | ----- | ---------------------------- | ---------------------------------------------------- |
-| `records_or_events_per_year`                                         | Records or events per year                                 | known      | count     | E     | none                         | integer                                              |
-| `error_rate_before` / `error_rate_after`                             | Error rate today / with the project                        | **effect** | percent   | E     | none                         | 0-100; after <= before                               |
-| `error_count_before` / `error_count_after`                           | Alternative: error counts per year                         | **effect** | count     | O     | none                         | use instead of rates (Priya: 72 to 24)               |
-| `cost_per_error`                                                     | Cost of one error                                          | **effect** | currency  | E     | none                         | Priya: $690 per expedited shipment                   |
-| `cost_per_clean_unit`                                                | Cost of one clean unit                                     | known      | currency  | O     | none                         | with the multiplier when `cost_per_error` is unknown |
-| `error_cost_multiplier`                                              | Rule of Ten multiplier                                     | known      | x         | O     | **10** (Redman; `benchmark`) | >= 1                                                 |
-| `stages_downstream`                                                  | Stages that re-handle a bad record                         | known      | int       | O     | none                         |                                                      |
-| `cost_sources[]`                                                     | Which costs: rework, escalation, expedite, customer credit | context    | enum list | R     | none                         | double-count check against time savings              |
+| id                                                                   | Label                                                      | Role       | Unit      | Level | Default                       | Notes                                                                                             |
+| -------------------------------------------------------------------- | ---------------------------------------------------------- | ---------- | --------- | ----- | ----------------------------- | ------------------------------------------------------------------------------------------------- |
+| `records_or_events_per_year`                                         | Records or events per year                                 | known      | count     | E     | none                          | integer                                                                                           |
+| `error_rate_before` / `error_rate_after`                             | Error rate today / with the project                        | **effect** | percent   | E     | none                          | 0-100; after <= before                                                                            |
+| `error_count_before` / `error_count_after`                           | Alternative: error counts per year                         | **effect** | count     | O     | none                          | use instead of rates (Priya: 72 to 24)                                                            |
+| `cost_per_error`                                                     | Cost of one error                                          | **effect** | currency  | E     | none                          | Priya: $690 per expedited shipment                                                                |
+| `cost_per_clean_unit`                                                | Cost of one clean unit                                     | known      | currency  | O     | none                          | with the multiplier when `cost_per_error` is unknown                                              |
+| `error_cost_multiplier`                                              | Rule of Ten multiplier                                     | known      | x         | O     | **10** (Redman; `benchmark`)  | >= 1                                                                                              |
+| `stages_downstream`                                                  | Stages that re-handle a bad record                         | known      | int       | O     | none                          |                                                                                                   |
+| `cost_sources[]`                                                     | Which costs: rework, escalation, expedite, customer credit | context    | enum list | R     | none                          | double-count check; include `rework` if the same rework hours are also counted under time savings |
+| `cost_nature`                                                        | Is the cost a cash expense or time? (cash / capacity)      | context    | enum      | R     | capacity (never assumed cash) | `cash` makes the data quality benefit **hard savings**; otherwise it is capacity value            |
 | Backing prompts: error log or QA report (file), period, sample size. |
 
 ### 4.3 Decision speed (time value, labeled by basis)
 
 `benefit_t = decisions_per_year x (days_to_decide_before - days_to_decide_after) x cost_of_delay_per_day x adoption_t x (1 - H)`
 
-| id                      | Label                                                                 | Role       | Unit           | Level | Default                | Notes                                                 |
-| ----------------------- | --------------------------------------------------------------------- | ---------- | -------------- | ----- | ---------------------- | ----------------------------------------------------- |
-| `decisions_per_year`    | Decisions of this kind per year                                       | known      | count          | E     | none                   | integer                                               |
-| `days_to_decide_before` | Days to decide today                                                  | **effect** | days           | E     | none                   | > 0                                                   |
-| `days_to_decide_after`  | Days to decide with the project                                       | **effect** | days           | E     | none                   | 0 <= after < before                                   |
-| `cost_of_delay_per_day` | What one day of delay costs                                           | **effect** | currency / day | E     | **none, never invent** | hardest input; warn when tier is `estimate` or weaker |
-| `cost_of_delay_basis`   | revenue deferred / cost continuing / risk exposure / opportunity lost | context    | enum           | E     | none                   | sets the label                                        |
-| `example_decision`      | A dated example decision                                              | context    | text           | R     | none                   | goal-specific required backing (ROI.md 12.2)          |
+| id                      | Label                                                                 | Role       | Unit           | Level | Default                       | Notes                                                                                |
+| ----------------------- | --------------------------------------------------------------------- | ---------- | -------------- | ----- | ----------------------------- | ------------------------------------------------------------------------------------ |
+| `decisions_per_year`    | Decisions of this kind per year                                       | known      | count          | E     | none                          | integer                                                                              |
+| `days_to_decide_before` | Days to decide today                                                  | **effect** | days           | E     | none                          | > 0                                                                                  |
+| `days_to_decide_after`  | Days to decide with the project                                       | **effect** | days           | E     | none                          | 0 <= after < before                                                                  |
+| `cost_of_delay_per_day` | What one day of delay costs                                           | **effect** | currency / day | E     | **none, never invent**        | hardest input; warn when tier is `estimate` or weaker                                |
+| `cost_of_delay_basis`   | revenue deferred / cost continuing / risk exposure / opportunity lost | context    | enum           | E     | none                          | sets the label                                                                       |
+| `cost_nature`           | Is the cost of delay cash or capacity? (cash / capacity)              | context    | enum           | R     | capacity (never assumed cash) | `cash` makes the decision speed benefit **hard savings**; same id as in data quality |
+| `example_decision`      | A dated example decision                                              | context    | text           | R     | none                          | goal-specific required backing (ROI.md 12.2)                                         |
 
 ### 4.4 Risk reduction (avoided loss; customer-borne separate)
 

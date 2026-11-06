@@ -20,6 +20,15 @@
       "migrations_dir": "drizzle",
     },
   ],
+  // Private upload bucket; local runs keep objects under .wrangler/state/.
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "valueiq-files" }],
+  "workflows": [
+    {
+      "name": "valueiq-run",
+      "binding": "RUN_WORKFLOW",
+      "class_name": "CalculationRun",
+    },
+  ],
   "env": {
     "development": {
       "name": "valueiq-dev",
@@ -35,6 +44,16 @@
           "database_name": "valueiq-dev",
           "database_id": "b286e047-2af8-46c3-8d46-2d2270478d5c",
           "migrations_dir": "drizzle",
+        },
+      ],
+      "r2_buckets": [
+        { "binding": "FILES", "bucket_name": "valueiq-dev-files" },
+      ],
+      "workflows": [
+        {
+          "name": "valueiq-dev-run",
+          "binding": "RUN_WORKFLOW",
+          "class_name": "CalculationRun",
         },
       ],
     },
@@ -53,6 +72,16 @@
           // Use a different database from development.
           "database_id": "61439cc5-a8ce-4d2b-ab15-53652cac10ea",
           "migrations_dir": "drizzle",
+        },
+      ],
+      "r2_buckets": [
+        { "binding": "FILES", "bucket_name": "valueiq-prod-files" },
+      ],
+      "workflows": [
+        {
+          "name": "valueiq-prod-run",
+          "binding": "RUN_WORKFLOW",
+          "class_name": "CalculationRun",
         },
       ],
     },

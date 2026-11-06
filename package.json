@@ -19,6 +19,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:smoke": "node scripts/smoke.mjs",
+    "test:access": "node scripts/access-matrix.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm build && pnpm deploy:check",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply valueiq --local",
