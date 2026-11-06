@@ -53,7 +53,36 @@ export async function action({ request, params }: Route.ActionArgs) {
   } catch {
     return data({ error: "Enter valid JSON.", saved: false }, { status: 400 });
   }
-  await saveProjectForm(params.projectId, json, access.userId);
+  // The version the editor loaded: "" means it loaded no saved form. Scripted
+  // clients that omit the field overwrite unconditionally.
+  const baseField = form.get("baseUpdatedAt");
+  const base =
+    typeof baseField !== "string"
+      ? undefined
+      : baseField === ""
+        ? null
+        : new Date(baseField);
+  if (base && Number.isNaN(base.getTime()))
+    return data(
+      { error: "Reload and try again.", saved: false },
+      { status: 400 },
+    );
+  const saved = await saveProjectForm(
+    params.projectId,
+    json,
+    access.userId,
+    base,
+  );
+  if (!saved.ok)
+    return data(
+      {
+        error:
+          "Someone else saved this form after you opened it. Your edits are still here: copy them, then reload to see the latest version.",
+        saved: false,
+        conflict: true,
+      },
+      { status: 409 },
+    );
   return { error: null, saved: true };
 }
 export default function ProjectIntake({
@@ -102,7 +131,21 @@ export default function ProjectIntake({
             spellCheck={false}
             className="w-full rounded-lg border bg-background p-4 font-mono text-xs"
           />
-          {actionData?.error && <p role="alert">{actionData.error}</p>}
+          <input
+            type="hidden"
+            name="baseUpdatedAt"
+            value={loaderData.savedAt ?? ""}
+          />
+          {actionData?.error && (
+            <p role="alert">
+              {actionData.error}{" "}
+              {"conflict" in actionData && (
+                <Link reloadDocument to=".">
+                  Reload latest
+                </Link>
+              )}
+            </p>
+          )}
           {actionData?.saved && (
             <p role="status">
               Intake saved. Existing results remain tied to their original run.
