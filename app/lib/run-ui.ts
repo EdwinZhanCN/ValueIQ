@@ -458,11 +458,7 @@ export const resultsHref:
   ((projectId: string, runId: string) => string) | null = (projectId, runId) =>
   `/projects/${projectId}/results?run=${encodeURIComponent(runId)}`;
 
-/**
- * Where "what to add" sends the user. The intake form (I4) is not built; until
- * then it is the placeholder form section on the project page, which takes the
- * input id as `?input=` so the real intake form can pick it up.
- */
+/** Where "what to add" sends the user: the input on the Intake step. */
 export function intakeHref(projectId: string, inputId: string | null): string {
   const query = inputId ? `?input=${encodeURIComponent(inputId)}` : "";
   return `/projects/${projectId}${query}#intake`;

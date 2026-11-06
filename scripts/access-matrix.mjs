@@ -43,6 +43,30 @@ const TARGETS = [
     },
   },
   {
+    name: "clarify step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/clarify` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
+    name: "process step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/process` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
+    name: "report step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/report` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
     name: "persisted result page",
     setup: async (fx) => {
       const output = JSON.parse(
@@ -104,6 +128,22 @@ const TARGETS = [
       // The round trip: the owner loads what this actor saved.
       const page = await call("owner", { path: `/projects/${fx.projectId}` });
       assert(page.body.includes(`${fx.run}-${actor}`), "Saved form not loaded");
+    },
+  },
+  {
+    name: "form save resource",
+    request: (fx, actor) => ({
+      path: `/projects/${fx.projectId}/form`,
+      method: "POST",
+      form: { formJson: JSON.stringify({ marker: `${fx.run}-${actor}-step` }) },
+    }),
+    allowed: async (result, fx, actor, call) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      const page = await call("owner", { path: `/projects/${fx.projectId}` });
+      assert(
+        page.body.includes(`${fx.run}-${actor}-step`),
+        "Saved form not loaded",
+      );
     },
   },
   {
@@ -268,7 +308,7 @@ try {
       `SELECT form_json, updated_by FROM project_forms WHERE project_id = '${projectId}'`,
     ).then((output) => output.slice(output.indexOf("["))),
   )[0].results[0];
-  assert.deepEqual(JSON.parse(saved.form_json), { marker: `${run}-owner` });
+  assert.deepEqual(JSON.parse(saved.form_json), { marker: `${run}-owner-step` });
   assert.equal(saved.updated_by, users.owner);
 
   // Denied uploads left nothing behind either.

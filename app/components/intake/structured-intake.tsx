@@ -436,7 +436,7 @@ export function StructuredIntake({
     form.inputs = form.inputs.filter((record) => !hasNaN(record.value));
     void saver.submit(
       { formJson: JSON.stringify(form), baseUpdatedAt: savedAt ?? "" },
-      { method: "post" },
+      { method: "post", action: `/projects/${projectId}/form` },
     );
   }
   function check() {

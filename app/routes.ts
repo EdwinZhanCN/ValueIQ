@@ -19,7 +19,6 @@ export default [
   layout("routes/site-layout.tsx", [index("routes/home.tsx")]),
   layout("routes/workspace-layout.tsx", [
     route("workspace", "routes/workspace.tsx"),
-    route("projects/:projectId/results", "routes/project-results.tsx"),
   ]),
   // Z1: accounts and teams. `app-layout` is the signed-in shell.
   layout("routes/auth-layout.tsx", [
@@ -33,13 +32,21 @@ export default [
     route("team", "routes/team.tsx"),
     route("projects", "routes/projects.tsx"),
     route("projects/new", "routes/projects.new.tsx"),
-    route("projects/:projectId", "routes/projects.$projectId.tsx"),
+    // The assessment flow (mock UI 03–07): one shell, one route per step.
+    layout("routes/project-layout.tsx", [
+      route("projects/:projectId", "routes/projects.$projectId.tsx"),
+      route("projects/:projectId/clarify", "routes/projects.clarify.tsx"),
+      route("projects/:projectId/process", "routes/projects.process.tsx"),
+      route("projects/:projectId/results", "routes/project-results.tsx"),
+      route("projects/:projectId/report", "routes/projects.report.tsx"),
+    ]),
     route("projects/:projectId/files", "routes/projects.files.ts"),
     route(
       "projects/:projectId/files/:fileId",
       "routes/projects.files.download.ts",
     ),
   ]),
+  route("projects/:projectId/form", "routes/projects.form.ts"),
   route("projects/:projectId/runs/:runId/reports", "routes/project-reports.ts"),
   route(
     "projects/:projectId/runs/:runId/reports/:reportId",
