@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "valueiq",
   "main": "workers/app.ts",
@@ -8,10 +8,18 @@
   // Hosts Better Auth may build its base URL from, comma-separated.
   "vars": { "AUTH_ALLOWED_HOSTS": "localhost:*,127.0.0.1:*" },
   // Set locally in .dev.vars; per environment with `wrangler secret put`.
-  "secrets": { "required": ["BETTER_AUTH_SECRET"] },
+  "secrets": { "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY"] },
   "durable_objects": {
     "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
   },
+  // The calculation run (contract section 1). The instance id is the run id.
+  "workflows": [
+    {
+      "name": "valueiq-run",
+      "binding": "RUN_WORKFLOW",
+      "class_name": "CalculationRun",
+    },
+  ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ValueIQAgent"] }],
   "d1_databases": [
     {
@@ -27,10 +35,17 @@
       "name": "valueiq-dev",
       "workers_dev": true,
       "vars": { "AUTH_ALLOWED_HOSTS": "valueiq-dev.zhanz.workers.dev" },
-      "secrets": { "required": ["BETTER_AUTH_SECRET"] },
+      "secrets": { "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY"] },
       "durable_objects": {
         "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
       },
+      "workflows": [
+        {
+          "name": "valueiq-dev-run",
+          "binding": "RUN_WORKFLOW",
+          "class_name": "CalculationRun",
+        },
+      ],
       "d1_databases": [
         {
           "binding": "DB",
@@ -51,6 +66,13 @@
       "durable_objects": {
         "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
       },
+      "workflows": [
+        {
+          "name": "valueiq-prod-run",
+          "binding": "RUN_WORKFLOW",
+          "class_name": "CalculationRun",
+        },
+      ],
       "d1_databases": [
         {
           "binding": "DB",
