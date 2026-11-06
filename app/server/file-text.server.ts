@@ -132,7 +132,7 @@ export async function getExtractedText(
   const hit = await env.FILES.get(cacheKey);
   if (hit) {
     try {
-      const c = (await hit.json()) as CacheEntry;
+      const c = await hit.json<CacheEntry>();
       if (
         c.v === EXTRACTOR_VERSION &&
         c.etag === head.etag &&
@@ -242,17 +242,16 @@ export function makeFileHost(
   complete: FileEvidenceHost["complete"],
   log?: (e: FileEvent | EvidenceEvent) => void,
 ): FileEvidenceHost {
-  const fileLog = log as ((e: FileEvent) => void) | undefined;
   return {
     readForModel: async (fileId, req) => {
-      const r = await readProjectFileForModel(scope, fileId, req, fileLog);
+      const r = await readProjectFileForModel(scope, fileId, req, log);
       return r;
     },
     extractedText: async (fileId) => {
-      const r = await getExtractedText(scope, fileId, fileLog);
+      const r = await getExtractedText(scope, fileId, log);
       return r.ok ? { ok: true, text: r.text, name: r.name } : r;
     },
     complete,
-    ...(log ? { log: log as (e: EvidenceEvent) => void } : {}),
+    ...(log ? { log } : {}),
   };
 }

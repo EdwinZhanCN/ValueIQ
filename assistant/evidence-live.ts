@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await -- async stand-ins for host and bucket calls */
 // Manual live check of file evidence (Eli runs assistant/scripts/live-evidence.mjs). It builds a sample
 // Word memo and a sample Excel workbook, extracts them, runs find_evidence through the real tool,
 // and prints the verified candidates, the rejected count and the token cost.

@@ -570,7 +570,7 @@ export async function generateStructured(
             },
           },
         };
-  let value: unknown = null;
+  let value: unknown;
   let problem: StructuredResult["problem"];
   try {
     const result = await generateText({
@@ -597,10 +597,10 @@ export async function generateStructured(
     )
       throw e;
     // no parsable object (the SDK's NoObjectGeneratedError and similar)
-    value = null;
     problem = "no_object";
   }
-  if (value !== null && validateSchema(o.schema, value).length > 0) {
+  if (value === undefined || value === null) value = null;
+  else if (validateSchema(o.schema, value).length > 0) {
     value = null;
     problem = "schema_mismatch";
   }

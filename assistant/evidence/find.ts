@@ -449,8 +449,8 @@ export function verifyCandidate(
   if (nv.length === 0 || nv.length > 40 || !/\d/.test(nv) || !nq.includes(nv))
     return { ok: false, reason: "value_not_in_quote" };
 
-  const home =
-    segs.find((s) => normalizeWs(s.text).includes(nq)) ?? (segs[0] as Segment);
+  const home = segs.find((s) => normalizeWs(s.text).includes(nq)) ?? segs[0];
+  if (!home) return { ok: false, reason: "location_not_found" };
   const location = refineLocation(home, nq);
   const parsed = parseNumber(nv);
   const unverified: string[] = [];
@@ -500,8 +500,9 @@ export function verifyCandidate(
   }
   if (typeof raw.note === "string") {
     // one short plain line; the note is the model's words, shown as such
-    const note = raw.note
-      .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    const note = [...raw.note]
+      .map((c) => (c < " " || c === "\u007f" ? " " : c))
+      .join("")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 160);

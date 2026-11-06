@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await -- async stand-ins for host and bucket calls */
 // An in-memory R2 bucket for unit tests: only the calls the file modules make.
 type Body = string | ArrayBuffer | ArrayBufferView | Blob;
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await -- async stand-ins for host and bucket calls */
 // F1 file evidence: prompt-injection resilience. A file is untrusted data. These tests drive the real
 // tool loop (the guarded one) through the real AI SDK client with a scripted fake model, and show
 // that text planted in a file cannot reach the system prompt, cannot add tool calls by itself, and
@@ -13,6 +14,7 @@ import { runGuarded } from "../guarded-loop";
 import { DEFAULT_MODEL_ASSISTANT } from "../models";
 import { EVIDENCE_SYSTEM, EVIDENCE_TOOLS } from "../prompts";
 import { MODEL_TOOLS, createContext, type ToolContext } from "../tools";
+import { type EvOut } from "./evidence-fixtures";
 import { call, fakeFetch, say, toolOutput, type FakeCall } from "./fake";
 
 const KEY = "AIzaSyFAKE_KEY_FOR_TESTS_0123456789abcdef";
@@ -251,15 +253,12 @@ describe("F1 injection: text in a file cannot change what the assistant does", (
       ),
     });
     expect(names(events)).toEqual(["find_evidence"]);
-    const out = toolOutput(calls[1]?.contents ?? [], "find_evidence") as Record<
-      string,
-      any
-    >;
+    const out = toolOutput(calls[1]?.contents ?? [], "find_evidence") as EvOut;
     expect(out["rejected"].count).toBe(1); // the invented quote
     expect(out["candidates"]).toHaveLength(1);
     const c = out["candidates"][0];
-    expect(c.proposal).toBeNull(); // 999999 is not the form's 5: never proposed as backing
-    expect(c.note).not.toContain("\n");
+    expect(c?.proposal).toBeNull(); // 999999 is not the form's 5: never proposed as backing
+    expect(c?.note).not.toContain("\n");
     expect(out["untrusted_fields"]).toContain("note");
     expect(JSON.stringify(ctx.form)).toBe(JSON.stringify(FORM));
   });

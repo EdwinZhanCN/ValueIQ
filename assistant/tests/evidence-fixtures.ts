@@ -211,3 +211,30 @@ export function lieAboutSize(zip: Uint8Array, declared: number): Uint8Array {
 }
 
 export const bytesOf = (s: string) => strToU8(s);
+
+// ---------- shapes of the file tools' outputs, for assertions ----------
+export interface EvCand {
+  id: string;
+  quote: string;
+  location: string;
+  value_in_quote: string;
+  parsed_value: number | null;
+  form_check: string;
+  unverified_fields: string[];
+  dropped_fields: string[];
+  note?: string;
+  proposal: {
+    kind: string;
+    status: string;
+    backing: Record<string, unknown>;
+  } | null;
+  proposal_error?: string;
+}
+export interface EvOut {
+  kind: string;
+  requires_user_confirmation: boolean;
+  candidates: EvCand[];
+  rejected: { count: number; reasons: Record<string, number> };
+  extractor_problem?: string;
+  untrusted_fields: string[];
+}

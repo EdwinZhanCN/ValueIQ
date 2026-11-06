@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await -- async stand-ins for host and bucket calls */
 // F1 file evidence: the server layer (access, project scoping, size limit, cache) on the real
 // Drizzle queries and migrations over the D1 shim, with an in-memory R2 bucket.
 import { beforeEach, describe, expect, it } from "vitest";

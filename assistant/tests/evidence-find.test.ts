@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await -- async stand-ins for host and bucket calls */
 // F1 file evidence: the extractor's code-side verification, the two file tools, and the proposal
 // path. The cheap model is a scripted stand-in; no key, no network.
 import { describe, expect, it } from "vitest";
@@ -14,7 +15,7 @@ import {
 } from "../evidence/find";
 import type { FileEvidenceHost, StructuredCompleter } from "../evidence/host";
 import { READ_EXCERPT_CHARS } from "../evidence/limits";
-import { buildExcerpt } from "../evidence/text";
+import { buildExcerpt, type Excerpt } from "../evidence/text";
 import { geminiCompleter } from "../evidence/completer";
 import { DEFAULT_MODEL_ASSISTANT } from "../models";
 import {
@@ -27,10 +28,24 @@ import {
   type ToolContext,
 } from "../tools";
 import { validateSchema } from "../schema";
-import { buildDocx, buildXlsx } from "./evidence-fixtures";
+import {
+  buildDocx,
+  buildXlsx,
+  type EvCand,
+  type EvOut,
+} from "./evidence-fixtures";
 import { fakeFetch, say, type FakeCall } from "./fake";
 
 const KEY = "AIzaSyFAKE_KEY_FOR_TESTS_0123456789abcdef";
+const firstOf = (o: EvOut): EvCand => {
+  const c = o.candidates[0];
+  if (!c) throw new Error("expected a candidate");
+  return c;
+};
+const propOf = (c: EvCand) => {
+  if (!c.proposal) throw new Error("expected a proposal");
+  return c.proposal;
+};
 const tool = (name: string) => {
   const t = TOOLS.find((x) => x.name === name);
   if (!t) throw new Error(name);
@@ -371,17 +386,17 @@ describe("F1 find_evidence tool", () => {
       "find_evidence",
       { file_id: "file-1", input_id: "hours_saved_per_staff_week" },
       ctx,
-    )) as Record<string, any>;
+    )) as EvOut;
     expect(out["kind"]).toBe("evidence_candidates");
     expect(out["requires_user_confirmation"]).toBe(true);
     expect(out["candidates"]).toHaveLength(1);
-    const c = out["candidates"][0];
+    const c = firstOf(out);
     expect(c.location).toBe("Pilot!B2:C2");
-    expect(c.proposal.kind).toBe("backing");
-    expect(c.proposal.status).toBe("proposed");
-    expect(c.proposal.backing.source_file_id).toBe("file-1");
-    expect(c.proposal.backing.quote_confirmed).toBe(false);
-    expect(c.proposal.backing.observations).toBe(1240);
+    expect(propOf(c).kind).toBe("backing");
+    expect(propOf(c).status).toBe("proposed");
+    expect(propOf(c).backing.source_file_id).toBe("file-1");
+    expect(propOf(c).backing.quote_confirmed).toBe(false);
+    expect(propOf(c).backing.observations).toBe(1240);
     expect(out["rejected"]).toEqual({
       count: 2,
       reasons: { quote_not_at_location: 1, duplicate: 1 },
@@ -392,9 +407,9 @@ describe("F1 find_evidence tool", () => {
     expect(ctx.state.seen).toHaveLength(0);
     // only after the user accepts AND confirms the quote does a copy of the form change
     expect(() =>
-      applyProposal(ctx.form, c.proposal, { accepted: false }),
+      applyProposal(ctx.form, propOf(c), { accepted: false }),
     ).toThrow(ToolRuntimeError);
-    const accepted = applyProposal(ctx.form, c.proposal, {
+    const accepted = applyProposal(ctx.form, propOf(c), {
       accepted: true,
       quote_confirmed: true,
     });
@@ -427,10 +442,10 @@ describe("F1 find_evidence tool", () => {
       "find_evidence",
       { file_id: "file-2", input_id: "hours_saved_per_staff_week" },
       ctxFor(host),
-    )) as Record<string, any>;
-    expect(out["candidates"][0].form_check).toBe("differs");
-    expect(out["candidates"][0].proposal).toBeNull();
-    expect(out["candidates"][0].proposal_error).toBe("VALUE_DIFFERS_FROM_FORM");
+    )) as EvOut;
+    expect(firstOf(out).form_check).toBe("differs");
+    expect(firstOf(out).proposal).toBeNull();
+    expect(firstOf(out).proposal_error).toBe("VALUE_DIFFERS_FROM_FORM");
   });
 
   it("refuses non-effect inputs, unknown inputs, files outside the form, and a missing host", async () => {
@@ -504,11 +519,11 @@ describe("F1 find_evidence tool", () => {
       "find_evidence",
       { file_id: "file-2", input_id: "hours_saved_per_staff_week" },
       ctxFor(host),
-    )) as Record<string, any>;
-    const vals = out["candidates"].map((c: any) => c.value_in_quote);
+    )) as EvOut;
+    const vals = out["candidates"].map((c: EvCand) => c.value_in_quote);
     expect(vals[0]).toBe("5 hours");
     expect([...vals].sort()).toEqual(["1,240", "5 hours", "9 hours"]);
-    expect(out["candidates"][0].id).toBe("ev_1");
+    expect(firstOf(out).id).toBe("ev_1");
   });
 });
 
@@ -520,11 +535,11 @@ describe("F1 read_project_file tool", () => {
       "read_project_file",
       { file_id: "file-1" },
       ctx,
-    )) as Record<string, any>;
+    )) as Excerpt;
     expect(out["untrusted"]).toBe(true);
     expect(out["notice"]).toMatch(/not instructions/);
-    expect(out["excerpt"][1]).toMatchObject({ loc: "Pilot!A2:D2" });
-    expect(out["sections"][0].name).toBe("Pilot");
+    expect(out.excerpt[1]).toMatchObject({ loc: "Pilot!A2:D2" });
+    expect(out.sections[0]?.name).toBe("Pilot");
     expect(JSON.stringify(out).length).toBeLessThan(READ_EXCERPT_CHARS * 2);
     expect(Object.isFrozen(out)).toBe(true);
     expect(ctx.state.seen).toHaveLength(0);
@@ -532,7 +547,7 @@ describe("F1 read_project_file tool", () => {
       "read_project_file",
       { file_id: "file-1", query: "tickets" },
       ctx,
-    )) as Record<string, any>;
+    )) as Excerpt;
     expect(q["excerpt"]).toHaveLength(1);
     await expect(
       run("read_project_file", { file_id: "nope" }, ctx),
@@ -651,7 +666,7 @@ describe("F1 completer: the cheap model through the AI SDK client", () => {
       "find_evidence",
       { file_id: "file-1", input_id: "hours_saved_per_staff_week" },
       ctxFor(host),
-    )) as Record<string, any>;
+    )) as EvOut;
     expect(out["candidates"]).toHaveLength(1);
     expect(out["rejected"].count).toBe(1);
     expect(calls).toHaveLength(1);
@@ -687,7 +702,7 @@ describe("F1 completer: the cheap model through the AI SDK client", () => {
       "find_evidence",
       { file_id: "file-1", input_id: "hours_saved_per_staff_week" },
       ctxFor(host),
-    )) as Record<string, any>;
+    )) as EvOut;
     expect(out["candidates"]).toEqual([]);
     expect(out["extractor_problem"]).toBe("no_object");
   });
