@@ -1,9 +1,9 @@
 import type { FormContext, FormFile, FormIssue } from "../../shared/form";
 import { validateFormFile } from "./intake-form.ts";
 
-/** Drafts use the form envelope, with an explicit marker when not engine-ready.
+/** Drafts use the version-1 form envelope; old marked drafts stay readable.
  * Empty goals and horizon 0 mean unanswered, never an engine default.
- * Ready saves omit the marker and are exact producer output.
+ * Ready saves are exact producer output; Start run validates completeness.
  */
 export type IntakeDraft = FormFile & { intake_draft_version?: 1 };
 
@@ -68,6 +68,12 @@ export function validateIntakeDraft(
         return false;
       if (issue.code === "HORIZON" && form?.horizon_years === 0) return false;
       if (["ESSENTIAL_COST", "MISSING_SETTING"].includes(issue.code))
+        return false;
+      if (
+        issue.code === "BASIS" &&
+        form?.inputs?.find((input) => input.id === issue.field)?.basis ===
+          undefined
+      )
         return false;
       if (issue.code === "MEASURED_TYPED") return false;
       if (issue.code === "ADOPTION_LENGTH" && form?.horizon_years === 0)

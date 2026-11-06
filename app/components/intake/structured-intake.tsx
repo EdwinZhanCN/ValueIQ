@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useBlocker, useFetcher } from "react-router";
+import { useRef, useState } from "react";
+import { Link } from "react-router";
 import { Download, FileText, Plus, Target, Trash2 } from "lucide-react";
 import sample from "../../../docs/research/samples/sample-result.form.json";
 import type {
@@ -17,28 +17,6 @@ import {
   serializeFormFile,
   validateFormFile,
 } from "../../lib/intake-form";
-
-import {
-  blankIntake,
-  intakePaths,
-  validateIntakeDraft,
-} from "../../lib/intake-draft";
-import type { ProjectFileItem } from "../files/project-files";
-
-type ProjectIntakeProps = {
-  projectId: string;
-  initial: FormFile;
-  files: ProjectFileItem[];
-  savedAt: string | null;
-  target: string | null;
-  onDirtyChange?: (dirty: boolean) => void;
-};
-type SaveResult = {
-  saved: boolean;
-  error: string | null;
-  savedAt?: string;
-  conflict?: boolean;
-};
 
 type FileGroup = {
   id: string;
@@ -63,71 +41,16 @@ const sourceChoices = [
   ["measured", "System record with confirmed passage"],
 ] as const;
 
-export function StructuredIntake({
-  project,
-}: {
-  project?: ProjectIntakeProps;
-}) {
-  const initial = project?.initial ?? blankIntake();
-  const paths = intakePaths(initial, project?.target);
-  const save = useFetcher<SaveResult>();
-  const generation = useRef(0);
-  const submittedGeneration = useRef(0);
-  const revision = useRef(project?.savedAt ?? "");
-  const [changed, setChanged] = useState(false);
-  const [draftSave, setDraftSave] = useState(false);
-  const blocker = useBlocker(Boolean(project) && changed);
-  const root = useRef<HTMLElement>(null);
-  useEffect(() => {
-    project?.onDirtyChange?.(false);
-  }, [project?.projectId, project?.onDirtyChange]);
-  useEffect(() => {
-    if (save.state === "idle" && save.data?.saved && save.data.savedAt) {
-      revision.current = save.data.savedAt;
-      if (generation.current === submittedGeneration.current) {
-        setChanged(false);
-        project?.onDirtyChange?.(false);
-      }
-    }
-  }, [save.state, save.data, project?.onDirtyChange]);
-  useEffect(() => {
-    if (!project?.target) return;
-    const element =
-      document.getElementById(`value-${project.target}`) ??
-      document.getElementById(
-        (
-          {
-            horizon_years: "horizon",
-            other_notes: "other-notes",
-            currency: "currency",
-          } as Record<string, string>
-        )[project.target] ?? "",
-      );
-    element?.scrollIntoView({ block: "center" });
-    element?.focus();
-  }, [project?.target]);
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (changed) event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [changed]);
-  const [selected, setSelected] = useState<Goal[]>(initial.goals);
-  const [currency, setCurrency] = useState(initial.currency);
-  const [horizon, setHorizon] = useState(
-    initial.horizon_years ? String(initial.horizon_years) : "",
-  );
-  const acceptedHorizon = useRef(
-    initial.horizon_years ? String(initial.horizon_years) : "",
-  );
-  const [records, setRecords] = useState<Input[]>(initial.inputs);
+export function StructuredIntake() {
+  const [selected, setSelected] = useState<Goal[]>([]);
+  const [currency, setCurrency] = useState("USD");
+  const [horizon, setHorizon] = useState("");
+  const acceptedHorizon = useRef("");
+  const [records, setRecords] = useState<Input[]>([]);
   const [raw, setRaw] = useState<Record<string, string>>({});
-  const [notes, setNotes] = useState(initial.other_notes);
-  const [plans, setPlans] = useState<FormFile["measurement_plan"]>(
-    initial.measurement_plan,
-  );
-  const [asked, setAsked] = useState<string[]>(initial.asked);
+  const [notes, setNotes] = useState("");
+  const [plans, setPlans] = useState<FormFile["measurement_plan"]>({});
+  const [asked, setAsked] = useState<string[]>([]);
   const [files, setFiles] = useState<FileGroup[]>([]);
   const [sampleMode, setSampleMode] = useState(false);
   const [sampleEdited, setSampleEdited] = useState(false);
@@ -136,24 +59,14 @@ export function StructuredIntake({
   const [json, setJson] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
   const summary = useRef<HTMLDivElement>(null);
-  const [timePath, setTimePath] = useState(paths.time);
-  const [qualityPath, setQualityPath] = useState(paths.quality);
-  const [errorCostPath, setErrorCostPath] = useState(paths.errorCost);
-  const [riskPath, setRiskPath] = useState(paths.risk);
-  const availableFiles: FileGroup[] = project
-    ? project.files.map((file) => ({
-        id: file.id,
-        files: [{ id: file.id, name: file.name }],
-        description: initial.file_descriptions[file.id] ?? file.description,
-      }))
-    : files;
+  const [timePath, setTimePath] = useState("hours");
+  const [qualityPath, setQualityPath] = useState("counts");
+  const [errorCostPath, setErrorCostPath] = useState("direct");
+  const [riskPath, setRiskPath] = useState("direct");
   const context: FormContext = {
-    projectId: project?.projectId ?? "local-intake",
-    files: availableFiles.flatMap((group) =>
-      group.files.map((file) => ({
-        id: file.id,
-        projectId: project?.projectId ?? "local-intake",
-      })),
+    projectId: "local-intake",
+    files: files.flatMap((group) =>
+      group.files.map((file) => ({ id: file.id, projectId: "local-intake" })),
     ),
   };
   const sections = [
@@ -253,19 +166,8 @@ export function StructuredIntake({
       : []),
   ];
   const visible = new Set(sections.flatMap((section) => section.ids));
-  if (
-    project?.target &&
-    !visible.has(project.target) &&
-    Object.hasOwn(INPUT_RULES, project.target)
-  ) {
-    sections.push({ title: "Requested input", ids: [project.target] });
-    visible.add(project.target);
-  }
   const byId = new Map(records.map((record) => [record.id, record]));
   function dirty(id?: string) {
-    generation.current += 1;
-    setChanged(true);
-    project?.onDirtyChange?.(true);
     setJson(null);
     setCopyStatus("");
     if (sampleMode) setSampleEdited(true);
@@ -326,7 +228,11 @@ export function StructuredIntake({
     return next;
   }
   function candidate(inputs = records): FormFile {
-    const merged = new Map(inputs.map((record) => [record.id, record]));
+    const merged = new Map(
+      inputs
+        .filter((record) => visible.has(record.id))
+        .map((record) => [record.id, record]),
+    );
     for (const [id, text] of Object.entries(raw))
       if (visible.has(id)) {
         const record = valueRecord(id, text);
@@ -340,12 +246,16 @@ export function StructuredIntake({
       horizon_years: horizon.trim() ? Number(horizon) : 0,
       inputs: [...merged.values()],
       file_descriptions: Object.fromEntries(
-        availableFiles.flatMap((group) =>
+        files.flatMap((group) =>
           group.files.map((file) => [file.id, group.description]),
         ),
       ),
       other_notes: notes,
-      measurement_plan: Object.fromEntries(Object.entries(plans)),
+      measurement_plan: Object.fromEntries(
+        Object.entries(plans).filter(([goal]) =>
+          selected.includes(goal as Goal),
+        ),
+      ),
       asked,
     };
   }
@@ -356,16 +266,6 @@ export function StructuredIntake({
         : [...previous, record],
     );
     dirty(record.id);
-  }
-  function discardMethod(ids: string[]) {
-    setRecords((previous) =>
-      previous.filter((record) => !ids.includes(record.id)),
-    );
-    setRaw((previous) =>
-      Object.fromEntries(
-        Object.entries(previous).filter(([id]) => !ids.includes(id)),
-      ),
-    );
   }
   function commit(id: string) {
     const form = candidate();
@@ -435,10 +335,6 @@ export function StructuredIntake({
     value: string | number | boolean | undefined,
   ) {
     const next = { ...byId.get(id)?.backing };
-    if (key === "source_file_id" || key === "quote") {
-      next.quote_confirmed = false;
-      next.verified = false;
-    }
     if (value === undefined) delete next[key];
     else Object.assign(next, { [key]: value });
     metadata(id, { backing: next });
@@ -472,26 +368,6 @@ export function StructuredIntake({
     setIssues([]);
     setJson(serialized);
     return serialized;
-  }
-  function saveProject() {
-    if (!project || save.state !== "idle") return;
-    const form = candidate();
-    const errors = validateIntakeDraft(form, context);
-    if (errors.length) {
-      setIssues(errors);
-      requestAnimationFrame(() => summary.current?.focus());
-      return;
-    }
-    const ready = validateFormFile(form, context).length === 0;
-    setDraftSave(!ready);
-    const formJson = ready
-      ? serializeFormFile(form, context)
-      : JSON.stringify({ ...form, intake_draft_version: 1 });
-    submittedGeneration.current = generation.current;
-    void save.submit(
-      { formJson, baseUpdatedAt: revision.current, intakeEditor: "structured" },
-      { method: "post", action: `/projects/${project.projectId}` },
-    );
   }
   function download() {
     const serialized = validate();
@@ -824,7 +700,7 @@ export function StructuredIntake({
                   }
                 >
                   <option value="">No file selected</option>
-                  {availableFiles
+                  {files
                     .flatMap((group) => group.files)
                     .map((file) => (
                       <option key={file.id} value={file.id}>
@@ -970,53 +846,22 @@ export function StructuredIntake({
   }
 
   return (
-    <section
-      ref={root}
+    <main
       className="h-full scroll-pt-32 overflow-y-auto bg-background p-4 sm:p-8"
       aria-label="Project intake"
     >
       <div className="mx-auto max-w-6xl">
-        {blocker.state === "blocked" && (
-          <div
-            role="alertdialog"
-            aria-label="Unsaved intake"
-            className="mb-4 rounded-xl border bg-card p-4"
-          >
-            <p>
-              Your intake has unsaved changes. Stay to save them, or leave and
-              discard them.
-            </p>
-            <button
-              type="button"
-              className={action}
-              onClick={() => blocker.reset()}
-            >
-              Keep editing
-            </button>
-            <button
-              type="button"
-              className={action}
-              onClick={() => blocker.proceed()}
-            >
-              Leave without saving
-            </button>
-          </div>
-        )}
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2 font-semibold">
             <Target className="size-5 text-primary" />
             ValueIQ
           </Link>
           <span className="rounded-full border px-3 py-1 text-xs">
-            {project
-              ? changed
-                ? "Unsaved changes"
-                : "Project intake"
-              : sampleMode
-                ? sampleEdited
-                  ? "Edited sample · local draft"
-                  : "Sample data · local draft"
-                : "Local draft · not saved"}
+            {sampleMode
+              ? sampleEdited
+                ? "Edited sample · local draft"
+                : "Sample data · local draft"
+              : "Local draft · not saved"}
           </span>
         </header>
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -1032,68 +877,20 @@ export function StructuredIntake({
               them. Download the validated form for assessment.
             </p>
           </div>
-          {!project && (
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className={action} onClick={startBlank}>
-                Start blank draft
-              </button>
-              <button type="button" className={action} onClick={loadSample}>
-                Load Eli’s sample
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={action} onClick={startBlank}>
+              Start blank draft
+            </button>
+            <button type="button" className={action} onClick={loadSample}>
+              Load Eli’s sample
+            </button>
+          </div>
         </div>
         <p className="mb-6 rounded-xl border bg-muted/50 p-4 text-sm">
-          {project
-            ? "Save your intake before using Run assessment. Incomplete drafts are labeled and cannot run. Upload evidence below, then select its supporting file on an input."
-            : "This editor exports local JSON. Open a project to save your intake and upload evidence."}
-          {!project && (
-            <Link to="/projects" className="ml-2 underline">
-              Open projects
-            </Link>
-          )}
+          This editor exports a local JSON file. It does not save a project,
+          upload files, run the assistant, or calculate results.{" "}
           {sampleMode && "Sample file references are for testing only."}
         </p>
-        {project && (
-          <div className="mb-4 space-y-2">
-            {project.savedAt && (
-              <p className="text-xs text-muted-foreground">
-                Last saved{" "}
-                <time dateTime={project.savedAt}>{project.savedAt}</time>
-              </p>
-            )}
-            <button
-              type="button"
-              className={action}
-              onClick={saveProject}
-              disabled={save.state !== "idle"}
-            >
-              {save.state !== "idle" ? "Saving..." : "Save intake"}
-            </button>
-            <a className={`${action} ml-2 inline-block`} href="#project-files">
-              Upload project evidence
-            </a>
-            {save.data?.error && (
-              <p role="alert">
-                {save.data.error}{" "}
-                {save.data.conflict && (
-                  <Link reloadDocument to=".">
-                    Reload latest
-                  </Link>
-                )}
-              </p>
-            )}
-            {save.state === "idle" && save.data?.saved && (
-              <p role="status">
-                {changed
-                  ? "Previous changes saved. New edits are unsaved."
-                  : draftSave
-                    ? "Draft saved. Complete the required inputs before running an assessment."
-                    : "Intake saved to project."}
-              </p>
-            )}
-          </div>
-        )}
         <div className="sticky top-0 z-10 mb-5 flex flex-wrap gap-3 rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
           <button
             type="button"
@@ -1159,7 +956,6 @@ export function StructuredIntake({
             <label className="text-sm font-medium">
               Currency
               <input
-                id="currency"
                 aria-label="Currency"
                 className={`${control} mt-2`}
                 value={currency}
@@ -1250,114 +1046,111 @@ export function StructuredIntake({
             </div>
           </fieldset>
         </section>
-        {!project && (
-          <section
-            className="mb-5 rounded-xl border bg-card p-5"
-            aria-labelledby="files-heading"
+        <section
+          className="mb-5 rounded-xl border bg-card p-5"
+          aria-labelledby="files-heading"
+        >
+          <h2 id="files-heading" className="font-semibold">
+            Source files
+          </h2>
+          <p className="my-2 text-xs text-muted-foreground">
+            Local references only, not uploaded. Each file group needs a
+            description. Up to 10 files, 10 MB each. Files must be uploaded
+            before a connected assessment can read them.
+          </p>
+          <label
+            className={`${action} inline-flex cursor-pointer items-center gap-2`}
           >
-            <h2 id="files-heading" className="font-semibold">
-              Source files
-            </h2>
-            <p className="my-2 text-xs text-muted-foreground">
-              Local references only, not uploaded. Each file group needs a
-              description. Up to 10 files, 10 MB each. Files must be uploaded
-              before a connected assessment can read them.
+            <Plus className="size-4" />
+            Add file group
+            <input
+              aria-label="Add file group"
+              type="file"
+              multiple
+              className="sr-only"
+              onChange={(event) => {
+                const picked = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                if (!picked.length) return;
+                if (
+                  files.flatMap((group) => group.files).length + picked.length >
+                    10 ||
+                  picked.some(
+                    (file) => !file.size || file.size > 10 * 1024 * 1024,
+                  )
+                ) {
+                  setFileError(
+                    "Select non-empty files up to 10 MB each, 10 files total. Previous selections were kept.",
+                  );
+                  return;
+                }
+                setFiles((previous) => [
+                  ...previous,
+                  {
+                    id: crypto.randomUUID(),
+                    files: picked.map((file) => ({
+                      id: `local-${crypto.randomUUID()}`,
+                      name: file.name,
+                    })),
+                    description: "",
+                  },
+                ]);
+                setFileError("");
+                dirty();
+              }}
+            />
+          </label>
+          {fileError && (
+            <p role="alert" className="mt-2 text-sm text-destructive">
+              {fileError}
             </p>
-            <label
-              className={`${action} inline-flex cursor-pointer items-center gap-2`}
-            >
-              <Plus className="size-4" />
-              Add file group
-              <input
-                aria-label="Add file group"
-                type="file"
-                multiple
-                className="sr-only"
-                onChange={(event) => {
-                  const picked = Array.from(event.target.files ?? []);
-                  event.target.value = "";
-                  if (!picked.length) return;
-                  if (
-                    files.flatMap((group) => group.files).length +
-                      picked.length >
-                      10 ||
-                    picked.some(
-                      (file) => !file.size || file.size > 10 * 1024 * 1024,
-                    )
-                  ) {
-                    setFileError(
-                      "Select non-empty files up to 10 MB each, 10 files total. Previous selections were kept.",
+          )}
+          {files.map((group, index) => (
+            <div key={group.id} className="mt-4 rounded-lg border p-4">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <ul className="min-w-0 text-sm">
+                  {group.files.map((file) => (
+                    <li key={file.id} className="flex gap-2 break-all">
+                      <FileText className="mt-0.5 size-4 shrink-0" />
+                      {file.name}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  className={action}
+                  aria-label={`Remove file group ${index + 1}`}
+                  onClick={() => {
+                    setFiles((previous) =>
+                      previous.filter((file) => file.id !== group.id),
                     );
-                    return;
-                  }
-                  setFiles((previous) => [
-                    ...previous,
-                    {
-                      id: crypto.randomUUID(),
-                      files: picked.map((file) => ({
-                        id: `local-${crypto.randomUUID()}`,
-                        name: file.name,
-                      })),
-                      description: "",
-                    },
-                  ]);
-                  setFileError("");
-                  dirty();
-                }}
-              />
-            </label>
-            {fileError && (
-              <p role="alert" className="mt-2 text-sm text-destructive">
-                {fileError}
-              </p>
-            )}
-            {files.map((group, index) => (
-              <div key={group.id} className="mt-4 rounded-lg border p-4">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <ul className="min-w-0 text-sm">
-                    {group.files.map((file) => (
-                      <li key={file.id} className="flex gap-2 break-all">
-                        <FileText className="mt-0.5 size-4 shrink-0" />
-                        {file.name}
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    className={action}
-                    aria-label={`Remove file group ${index + 1}`}
-                    onClick={() => {
-                      setFiles((previous) =>
-                        previous.filter((file) => file.id !== group.id),
-                      );
-                      dirty();
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-                <label className="text-xs">
-                  Group {index + 1} description (required)
-                  <textarea
-                    aria-label={`Group ${index + 1} description`}
-                    className={`${control} mt-1`}
-                    value={group.description}
-                    onChange={(event) => {
-                      setFiles((previous) =>
-                        previous.map((file) =>
-                          file.id === group.id
-                            ? { ...file, description: event.target.value }
-                            : file,
-                        ),
-                      );
-                      dirty("file_descriptions");
-                    }}
-                  />
-                </label>
+                    dirty();
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </div>
-            ))}
-          </section>
-        )}
+              <label className="text-xs">
+                Group {index + 1} description (required)
+                <textarea
+                  aria-label={`Group ${index + 1} description`}
+                  className={`${control} mt-1`}
+                  value={group.description}
+                  onChange={(event) => {
+                    setFiles((previous) =>
+                      previous.map((file) =>
+                        file.id === group.id
+                          ? { ...file, description: event.target.value }
+                          : file,
+                      ),
+                    );
+                    dirty("file_descriptions");
+                  }}
+                />
+              </label>
+            </div>
+          ))}
+        </section>
         {selected.includes("time_savings") && (
           <label className="mb-4 block text-sm">
             Time-saving input method
@@ -1367,15 +1160,6 @@ export function StructuredIntake({
               value={timePath}
               onChange={(event) => {
                 setTimePath(event.target.value);
-                discardMethod(
-                  event.target.value === "hours"
-                    ? [
-                        "minutes_per_task_before",
-                        "minutes_per_task_after",
-                        "tasks_per_staff_week",
-                      ]
-                    : ["hours_saved_per_staff_week"],
-                );
                 dirty();
               }}
             >
@@ -1396,15 +1180,6 @@ export function StructuredIntake({
                 value={qualityPath}
                 onChange={(event) => {
                   setQualityPath(event.target.value);
-                  discardMethod(
-                    event.target.value === "counts"
-                      ? [
-                          "records_or_events_per_year",
-                          "error_rate_before",
-                          "error_rate_after",
-                        ]
-                      : ["error_count_before", "error_count_after"],
-                  );
                   dirty();
                 }}
               >
@@ -1420,11 +1195,6 @@ export function StructuredIntake({
                 value={errorCostPath}
                 onChange={(event) => {
                   setErrorCostPath(event.target.value);
-                  discardMethod(
-                    event.target.value === "direct"
-                      ? ["cost_per_clean_unit", "error_cost_multiplier"]
-                      : ["cost_per_error"],
-                  );
                   dirty();
                 }}
               >
@@ -1443,11 +1213,6 @@ export function StructuredIntake({
               value={riskPath}
               onChange={(event) => {
                 setRiskPath(event.target.value);
-                discardMethod(
-                  event.target.value === "direct"
-                    ? ["asset_value", "exposure_factor_pct"]
-                    : ["loss_per_event"],
-                );
                 dirty();
               }}
             >
@@ -1551,11 +1316,9 @@ export function StructuredIntake({
           </section>
         )}
         <p className="pb-6 text-xs text-muted-foreground">
-          {project
-            ? "Save intake to keep your answers with this project. Unsaved edits stay in this tab."
-            : "Draft answers stay in this tab and clear when you leave or refresh."}
+          Draft answers stay in this tab and clear when you leave or refresh.
         </p>
       </div>
-    </section>
+    </main>
   );
 }

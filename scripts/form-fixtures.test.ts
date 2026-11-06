@@ -5,6 +5,7 @@ import {
   applyFormEdit,
   FormValidationError,
   parseFormFile,
+  readFormDraft,
   serializeFormFile,
   validateFormFile,
 } from "../app/lib/intake-form.ts";
@@ -314,4 +315,38 @@ await test("bad dates, ranges, enums and non-JSON numbers fail at the form bound
   const draft = structuredClone(good);
   draft.inputs.find((record) => record.id === "cost_nature")!.value = "revenue";
   assert.throws(() => serializeFormFile(draft, context), FormValidationError);
+});
+
+await test("readFormDraft returns a complete saved form unchanged", () => {
+  assert.deepEqual(readFormDraft(JSON.parse(JSON.stringify(good))), good);
+  assert.deepEqual(readFormDraft(JSON.parse(JSON.stringify(gap))), gap);
+});
+
+await test("readFormDraft keeps an incomplete draft without validating it", () => {
+  const draft = readFormDraft({
+    goals: ["time_savings", "revenue"],
+    inputs: [
+      { id: "staff_affected", value: 12, tier: "estimate", origin: "user" },
+      { id: "not_a_field", value: 1, tier: "estimate", origin: "user" },
+      "junk",
+    ],
+    file_descriptions: { f1: "Timesheets", f2: 3 },
+  });
+  assert.deepEqual(draft.goals, ["time_savings"]);
+  assert.deepEqual(
+    draft.inputs.map((record) => record.id),
+    ["staff_affected"],
+  );
+  assert.deepEqual(draft.file_descriptions, { f1: "Timesheets" });
+  assert.equal(draft.horizon_years, 0);
+  assert.ok(validateFormFile(draft, context).length > 0, "draft is not ready");
+});
+
+await test("readFormDraft turns anything that is not a form into an empty draft", () => {
+  for (const value of [null, [], "x", 3, { marker: "legacy" }]) {
+    const draft = readFormDraft(value);
+    assert.deepEqual(draft.goals, []);
+    assert.deepEqual(draft.inputs, []);
+    assert.equal(draft.other_notes, "");
+  }
 });

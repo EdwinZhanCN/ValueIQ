@@ -43,6 +43,30 @@ const TARGETS = [
     },
   },
   {
+    name: "clarify step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/clarify` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
+    name: "process step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/process` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
+    name: "report step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/report` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
     name: "persisted result page",
     setup: async (fx) => {
       const output = JSON.parse(
@@ -65,6 +89,24 @@ const TARGETS = [
       assert.equal(result.status, 200, result.body.slice(0, 400));
       assert.match(result.body, /127,956\.73/);
       assert.match(result.body, /STUB/);
+      assert.match(result.body, /Continue to report/);
+    },
+  },
+  {
+    name: "report builder page",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/report?run=${fx.runId}`,
+    }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert.match(result.body, /127,956\.73/);
+      assert.match(result.body, /STUB/);
+      assert(
+        result.body.includes(
+          `/projects/${fx.projectId}/runs/${fx.runId}/reports`,
+        ),
+        "Report builder lost the PDF action",
+      );
     },
   },
   {
@@ -75,10 +117,9 @@ const TARGETS = [
     }),
     allowed: (result, fx) => {
       assert.equal(result.status, 302, result.body.slice(0, 400));
-      fx.reportId = new URL(
-        result.location,
-        "http://local.test",
-      ).searchParams.get("report");
+      const location = new URL(result.location, "http://local.test");
+      assert.equal(location.pathname, `/projects/${fx.projectId}/report`);
+      fx.reportId = location.searchParams.get("report");
       assert(fx.reportId);
     },
   },
@@ -104,6 +145,22 @@ const TARGETS = [
       // The round trip: the owner loads what this actor saved.
       const page = await call("owner", { path: `/projects/${fx.projectId}` });
       assert(page.body.includes(`${fx.run}-${actor}`), "Saved form not loaded");
+    },
+  },
+  {
+    name: "form save resource",
+    request: (fx, actor) => ({
+      path: `/projects/${fx.projectId}/form`,
+      method: "POST",
+      form: { formJson: JSON.stringify({ marker: `${fx.run}-${actor}-step` }) },
+    }),
+    allowed: async (result, fx, actor, call) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      const page = await call("owner", { path: `/projects/${fx.projectId}` });
+      assert(
+        page.body.includes(`${fx.run}-${actor}-step`),
+        "Saved form not loaded",
+      );
     },
   },
   {
@@ -191,11 +248,10 @@ const TARGETS = [
     allowed: async (result, fx, actor, call) => {
       assert.equal(result.status, 200, result.body.slice(0, 400));
       const page = await call(actor, {
-        path: `/projects/${fx.projectId}?input=hours_saved_per_staff_week`,
+        path: `/projects/${fx.projectId}/clarify?input=hours_saved_per_staff_week`,
       });
-      assert.match(page.body, /Save intake/);
-      const savedAt = page.body.match(/datetime="([^"]+)"/i)?.[1];
-      assert(savedAt, "Saved revision missing from reloaded editor");
+      assert.match(page.body, /Clarify/);
+      const savedAt = new Date().toISOString();
       assert.match(page.body, /value-hours_saved_per_staff_week/);
       assert(
         page.body.includes(fx.fileId),

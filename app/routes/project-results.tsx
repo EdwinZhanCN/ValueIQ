@@ -1,34 +1,41 @@
-import { Link, useRevalidator } from "react-router";
+import { Link, redirect, useRevalidator } from "react-router";
 import { useEffect } from "react";
+import { RefreshCw } from "lucide-react";
 import { requireProjectAccess } from "../server/access.server";
-import { getProject } from "../server/projects.server";
 import { getLatestResult, getRun } from "../server/output-runs.server";
-import { listRunReports } from "../server/reports.server";
-import { OutputWorkspace } from "../components/output/output-workspace";
+import { ProjectResultView } from "../components/output/output-workspace";
+import { useProjectFlow } from "./project-layout";
 import type { Route } from "./+types/project-results";
+
+const PENDING = ["running", "preflight", "blocked_on_question", "idle"];
+
+/** Step 4, Review (mock UI 06/06a/06b): the pinned run's engine output. */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const access = await requireProjectAccess(request, params.projectId);
-  const project = await getProject(params.projectId);
-  if (!project) throw new Response("Not found", { status: 404 });
-  const runId = new URL(request.url).searchParams.get("run");
+  const url = new URL(request.url);
+  const runId = url.searchParams.get("run");
+  // The report used to be a tab here; it is now its own step.
+  if (url.searchParams.get("tab") === "report") {
+    const search = new URLSearchParams();
+    if (runId) search.set("run", runId);
+    const report = url.searchParams.get("report");
+    if (report) search.set("report", report);
+    throw redirect(
+      `/projects/${params.projectId}/report${search.size ? `?${search}` : ""}`,
+    );
+  }
   const snapshot = runId
     ? await getRun(access, runId)
     : await getLatestResult(access);
   if (runId && !snapshot) throw new Response("Not found", { status: 404 });
-  const reports =
-    snapshot?.output?.kind === "result"
-      ? await listRunReports(access, snapshot.run.id)
-      : [];
-  return { project, snapshot, reports };
+  return { snapshot };
 }
+
 export default function ProjectResults({ loaderData }: Route.ComponentProps) {
-  const { project, snapshot, reports } = loaderData;
+  const { snapshot } = loaderData;
+  const { project } = useProjectFlow();
   const revalidator = useRevalidator();
-  const pending =
-    snapshot &&
-    ["running", "preflight", "blocked_on_question", "idle"].includes(
-      snapshot.run.status,
-    );
+  const pending = !!snapshot && PENDING.includes(snapshot.run.status);
   useEffect(() => {
     if (!pending) return;
     const interval = setInterval(() => {
@@ -38,36 +45,43 @@ export default function ProjectResults({ loaderData }: Route.ComponentProps) {
   }, [pending, revalidator]);
   if (!snapshot?.output)
     return (
-      <main className="mx-auto max-w-3xl p-10">
-        <Link className="text-sm text-primary" to={`/projects/${project.id}`}>
-          ← Saved intake
-        </Link>
-        <h1 className="mt-6 text-3xl font-semibold">{project.name}</h1>
-        <p className="mt-5">
-          {snapshot
-            ? `Run status: ${snapshot.run.status}`
-            : "No engine result has been published for this project."}
-        </p>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Your saved intake is available. This page displays the recorded run
-          status and will show its output when the workflow publishes it.
-        </p>
-        <button
-          className="mt-5 rounded-lg border px-4 py-2"
-          onClick={() => void revalidator.revalidate()}
-        >
-          Refresh result
-        </button>
-      </main>
+      <section className="flex flex-col items-start gap-4 rounded-2xl border p-6">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-medium">
+            {pending
+              ? "The run is still working"
+              : snapshot
+                ? `Run ${snapshot.run.status.replaceAll("_", " ")}`
+                : "No result yet"}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {pending
+              ? "This page refreshes on its own and shows the output once the engine publishes it."
+              : "Start a run from the Process step; the engine output appears here."}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to={`/projects/${project.id}/process`}
+            className="inline-flex min-h-10 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/85"
+          >
+            Go to Process
+          </Link>
+          <button
+            type="button"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-4 text-sm hover:bg-muted"
+            onClick={() => void revalidator.revalidate()}
+          >
+            <RefreshCw size={14} aria-hidden="true" />
+            Refresh
+          </button>
+        </div>
+      </section>
     );
   return (
-    <OutputWorkspace
-      storedOutput={snapshot.output}
+    <ProjectResultView
+      output={snapshot.output}
       project={{ id: project.id, name: project.name }}
-      reports={reports.map((report) => ({
-        id: report.id,
-        createdAt: report.createdAt.toISOString(),
-      }))}
     />
   );
 }
