@@ -5,8 +5,10 @@ import { Field, FieldError, FieldLabel } from "../components/ui/field";
 import { Textarea } from "../components/ui/textarea";
 import { formText } from "~/lib/form";
 import { ProjectFiles } from "../components/files/project-files";
+import { RunAssessment } from "../components/run/run-assessment";
 import { requireProjectAccess } from "../server/access.server";
 import { listProjectFiles } from "../server/files.server";
+import { getLatestOutcome } from "../server/run-outcome.server";
 import {
   getProject,
   getProjectForm,
@@ -28,6 +30,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getProjectForm(params.projectId),
     listProjectFiles(params.projectId),
   ]);
+  const latest = await getLatestOutcome(
+    params.projectId,
+    form?.updatedAt ?? null,
+  );
   if (!project) throw new Response("Not found", { status: 404 });
   return {
     project: { id: project.id, name: project.name, goals: project.goals },
@@ -38,6 +44,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         }
       : null,
     files,
+    latest,
   };
 }
 
@@ -62,7 +69,7 @@ export default function Project({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { project, form, files } = loaderData;
+  const { project, form, files, latest } = loaderData;
   const error = actionData?.error ?? null;
 
   return (
@@ -80,8 +87,17 @@ export default function Project({
         ) : null}
       </div>
 
+      <section aria-label="Run assessment" className="rounded-xl border p-4">
+        <RunAssessment
+          projectId={project.id}
+          hasForm={form !== null}
+          latest={latest}
+        />
+      </section>
+
       {/* The Input team's intake form (I4) replaces this section. */}
       <section
+        id="intake"
         aria-label="Form file"
         className="flex flex-col gap-3 rounded-xl border border-dashed p-4"
       >
