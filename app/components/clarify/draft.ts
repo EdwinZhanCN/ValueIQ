@@ -1,6 +1,5 @@
 /**
- * Pure form-draft logic shared by the Clarify step and the older all-in-one
- * intake form: which fields a goal asks for, how typed text becomes an
+ * Pure form-draft logic for the Clarify step: which fields a goal asks for, how typed text becomes an
  * `Input` record, and how values are shown. No React here.
  */
 import type { FormFile, Goal, Input, Tier } from "../../../shared/form";
