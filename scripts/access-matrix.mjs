@@ -89,6 +89,24 @@ const TARGETS = [
       assert.equal(result.status, 200, result.body.slice(0, 400));
       assert.match(result.body, /127,956\.73/);
       assert.match(result.body, /STUB/);
+      assert.match(result.body, /Continue to report/);
+    },
+  },
+  {
+    name: "report builder page",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/report?run=${fx.runId}`,
+    }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert.match(result.body, /127,956\.73/);
+      assert.match(result.body, /STUB/);
+      assert(
+        result.body.includes(
+          `/projects/${fx.projectId}/runs/${fx.runId}/reports`,
+        ),
+        "Report builder lost the PDF action",
+      );
     },
   },
   {
@@ -99,10 +117,9 @@ const TARGETS = [
     }),
     allowed: (result, fx) => {
       assert.equal(result.status, 302, result.body.slice(0, 400));
-      fx.reportId = new URL(
-        result.location,
-        "http://local.test",
-      ).searchParams.get("report");
+      const location = new URL(result.location, "http://local.test");
+      assert.equal(location.pathname, `/projects/${fx.projectId}/report`);
+      fx.reportId = location.searchParams.get("report");
       assert(fx.reportId);
     },
   },
