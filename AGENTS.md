@@ -15,14 +15,16 @@ Human setup and deployment commands live in [README.md](README.md).
 - `workers/app.ts`: Worker entry and the `ValueIQAgent` Durable Object export.
 - `agents/valueiq-agent.ts`: empty agent shell — no state, no tools, no methods.
 - `db/`, `drizzle/`: Drizzle client, Better Auth tables (`auth-schema.ts`, generated from `auth.cli.ts`), application tables (`schema.ts`), and their migrations.
-- `app/server/`: Better Auth (`auth.server.ts`) and the project access rule (`access.server.ts`).
+- `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), the signed-in user and current team (`team.server.ts`), the project API (`projects.server.ts`), and project files in R2 (`files.server.ts`).
 - `docs/`: [architecture](docs/architecture.md) and [core beliefs](docs/core-beliefs.md).
 - `.agents/`: coding-agent procedures and durable project memory.
 
 ## Implementation boundaries
 
-- The pages are `/` (landing) and `/workspace` (mock workspace), and neither has a loader or an action. `/api/auth/*` serves Better Auth.
-- Every loader, action, and resource route that touches a project calls `requireProjectAccess` first.
+- The marketing pages are `/` (landing) and `/workspace` (mock workspace), and neither has a loader or an action. `/api/auth/*` serves Better Auth.
+- Account pages: `/sign-up`, `/sign-in`, `/sign-out` (`auth-layout`), and `/teams/new`, `/team` inside the signed-in shell `app/routes/app-layout.tsx`. `app/server/team.server.ts` gives loaders the signed-in user and current team (`requireUser`, `requireTeam`).
+- Project pages: `/projects`, `/projects/new`, and `/projects/:projectId`, also inside `app-layout`. `/projects/:projectId` holds a placeholder JSON form until the intake form replaces it.
+- Every loader, action, and resource route that touches a project calls `requireProjectAccess` first, and gets a row in `scripts/access-matrix.mjs`.
 - Keep the agent shell empty: do not add agent state, tools, skill conventions, or domain types until that design is actually decided. New tables follow the active exec plans.
 - Never present mock or scripted behaviour as a working assessment.
 - `worker-configuration.d.ts` and `.react-router/types/` are generated and ignored; use `pnpm typegen` rather than hand-editing them.
