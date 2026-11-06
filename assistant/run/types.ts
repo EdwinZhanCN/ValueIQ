@@ -1,37 +1,16 @@
-// Run types shared with the integration contract (section 3). blocked_on_question stays in the type
+﻿// Run types shared with the integration contract (section 3). blocked_on_question stays in the type
 // for the contract but is NOT implemented: ask_user is tabled until after the demo.
 import type { RunOutput } from "../../engine";
-import type { Question } from "../tools";
 
-export type { Question };
+import type { RunError, RunStatus } from "../../shared/types";
 
-export type RunStatus =
-  | "idle"
-  | "preflight"
-  | "running"
-  | "blocked_on_question"
-  | "released"
-  | "gap_list"
-  | "failed"
-  | "cancelled";
-
-export interface RunError {
-  code: string;
-  message: string;
-  retryable: boolean;
-}
-
-export interface RunView {
-  run_id: string | null;
-  status: RunStatus;
-  step: string | null;
-  progress_pct: number;
-  checklist: { label: string; state: "todo" | "doing" | "done" | "error" }[];
-  pending_question: Question | null;
-  error?: RunError;
-  mode: "real" | "stub";
-}
-
+export type {
+  Question,
+  RunError,
+  RunErrorCode,
+  RunStatus,
+  RunView,
+} from "../../shared/types";
 export const CHECKLIST_LABELS = [
   "Files read",
   "Haircuts",

@@ -1,4 +1,4 @@
-// Run orchestrator: the contract's run states (idle, preflight, running, released, gap_list, failed,
+﻿// Run orchestrator: the contract's run states (idle, preflight, running, released, gap_list, failed,
 // cancelled) over a RunStore. blocked_on_question is NOT implemented (ask_user is tabled); the pause
 // would be a plain return so a Cloudflare Workflow can later map it to step.waitForEvent.
 // All model calls go through assistant/gemini.ts (via runGuarded). Events hold ids and hashes only.
@@ -31,6 +31,7 @@ import { TOOLS, callTool, createContext, type ToolContext } from "../tools";
 import {
   CHECKLIST_LABELS,
   type RunError,
+  type RunErrorCode,
   type RunRecord,
   type RunStatus,
   type RunStore,
@@ -39,7 +40,7 @@ import {
 
 export class OrchestratorError extends Error {
   constructor(
-    public readonly code: string,
+    public readonly code: RunErrorCode,
     message: string,
     public readonly retryable = false,
   ) {
