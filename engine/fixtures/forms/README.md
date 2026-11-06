@@ -41,7 +41,7 @@ The second wave is intentionally not generated in this first handoff. No API key
 
 ## Verification
 
-- `pnpm test:forms` includes 21 tests plus deterministic regeneration, including full equality with Eli's exact sample and rejection of misplaced settings.
+- `pnpm test:forms` includes 22 tests plus deterministic regeneration, including full equality with Eli's exact sample, misplaced settings, and endpoint bounds/order for known and unknown values.
 - The earlier fixture revision was checked against an independent engine validator before Eli supplied the exact reference. Current ownership remains Input code producing/validating the structured form; Eli owns engine execution and expected calculated outputs.
 - These are input-boundary checks, not an assertion that computed output equals #123's expected result snapshots. The engine owner performs that numerical comparison.
 - `.prettierignore` excludes `CLAUDE.md`, a Git symlink to `AGENTS.md` that Windows can materialize as a text pointer. The link target is preserved byte-for-byte instead of formatting it as Markdown.

@@ -241,9 +241,23 @@ export function validateFormFile(
         id,
         "Measured values require file origin, a source file and a confirmed quote; typed time savings cannot be measured.",
       );
-    for (const key of ["low", "high"] as const)
-      if (raw[key] !== undefined && !finite(raw[key]))
-        add("RANGE", id, "Ranges must be finite.");
+    for (const key of ["low", "high"] as const) {
+      const endpoint = raw[key];
+      if (endpoint === undefined) continue;
+      if (!finite(endpoint)) add("RANGE", id, "Ranges must be finite.");
+      else if (
+        (rule.min !== undefined &&
+          (rule.exclusiveMin ? endpoint <= rule.min : endpoint < rule.min)) ||
+        (rule.max !== undefined && endpoint > rule.max)
+      )
+        add("RANGE", id, `${key} is outside the field's permitted range.`);
+    }
+    if (finite(raw.low) && finite(raw.high) && raw.low > raw.high)
+      add(
+        "RANGE",
+        id,
+        "Low must be no greater than high, including for an unknown value.",
+      );
     const value = raw.value;
     if (value === null) continue; // Unknown effects become unquantified; costs checked below.
     const inRange = (number: number) => {

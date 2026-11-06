@@ -186,6 +186,48 @@ await test("foreign file ownership cannot be established by writing a descriptio
   );
 });
 
+await test("range endpoints respect domain bounds and ordering even for unknown values", () => {
+  const invalid: {
+    id: string;
+    value?: number | null;
+    low: number;
+    high: number;
+  }[] = [
+    { id: "hours_saved_per_staff_week", low: -1, high: 6 },
+    { id: "aro_after", value: null, low: 4, high: 1 },
+    { id: "aro_after", value: null, low: -1, high: 1 },
+    { id: "recapture_pct", low: 40, high: 105 },
+  ];
+  for (const change of invalid) {
+    const draft = structuredClone(good);
+    const record = draft.inputs.find((item) => item.id === change.id)!;
+    record.low = change.low;
+    record.high = change.high;
+    if (change.value !== undefined) record.value = change.value;
+    assert.throws(
+      () => serializeFormFile(draft, context),
+      (error: unknown) => {
+        assert.ok(error instanceof FormValidationError);
+        assert.ok(
+          error.issues.some(
+            (issue) => issue.code === "RANGE" && issue.field === change.id,
+          ),
+        );
+        return true;
+      },
+    );
+    assert.equal(applyFormEdit(good, draft, context).form, good);
+  }
+  for (const value of [null, 0.25]) {
+    const draft = structuredClone(good);
+    Object.assign(
+      draft.inputs.find((item) => item.id === "aro_after")!,
+      { value, low: 0, high: 0.5 },
+    );
+    assert.doesNotThrow(() => serializeFormFile(draft, context));
+  }
+});
+
 await test("bad dates, ranges, enums and non-JSON numbers fail at the form boundary", () => {
   const mutate = (edit: (record: (typeof good.inputs)[number]) => void) => {
     const draft = structuredClone(good);
