@@ -10,6 +10,10 @@ const sample = (f: string) =>
   JSON.parse(readFileSync(`docs/research/samples/${f}`, "utf8")) as RunOutput;
 const result = sample("sample-result.json");
 const gap = sample("sample-gap-list.json");
+const forRun = (source: RunOutput, id: string): RunOutput => ({
+  ...structuredClone(source),
+  meta: { ...source.meta, run_id: id },
+});
 
 const T0 = "2026-11-05T12:00:00.000Z";
 const newRun = (
@@ -19,11 +23,11 @@ const newRun = (
 ): NewRun => ({
   id,
   project_id: "p1",
-  mode: "real",
+  mode: result.meta.mode,
   form_hash: "h1",
   contract_version: "1",
-  formula_version: "1",
-  settings_version: "1",
+  formula_version: result.meta.formula_version,
+  settings_version: result.meta.settings_version,
   started_by: by,
   started_at: T0,
   ...over,
@@ -109,10 +113,10 @@ describe("D1RunStore data", () => {
     const s = as(ids.owner);
     await s.createRun(newRun("r1", ids.owner));
     await s.createRun(newRun("r2", ids.owner, { form_hash: "h2" }));
-    const a = await s.saveResult("r1", result, T0);
+    const a = await s.saveResult("r1", forRun(result, "r1"), T0);
     expect(a.result_json).not.toBeNull();
     expect(a.gap_list_json).toBeNull();
-    const b = await s.saveResult("r2", gap, T0);
+    const b = await s.saveResult("r2", forRun(gap, "r2"), T0);
     expect(b.result_json).toBeNull();
     expect(b.gap_list_json).not.toBeNull();
     // saving is buffered until release; the release stores it once (finishRun)
@@ -151,7 +155,7 @@ describe("D1RunStore data", () => {
     await s.createRun(newRun("r1", ids.owner));
     expect((await s.cancel("r1", T0))?.status).toBe("cancelled");
     await s.createRun(newRun("r2", ids.owner, { form_hash: "h2" }));
-    await s.saveResult("r2", gap, T0);
+    await s.saveResult("r2", forRun(gap, "r2"), T0);
     await s.updateRun("r2", { status: "gap_list", finished_at: T0 });
     expect((await s.cancel("r2", T0))?.status).toBe("gap_list");
   });
@@ -182,7 +186,7 @@ describe("D1RunStore data", () => {
     });
     expect(await s.latestResult()).toBeNull();
     await s.createRun(newRun("r2", ids.owner, { form_hash: "h2" }));
-    await s.saveResult("r2", result, T0);
+    await s.saveResult("r2", forRun(result, "r2"), T0);
     await s.updateRun("r2", { status: "released", finished_at: T0 });
     const latest = await s.latestResult();
     expect(latest?.run.id).toBe("r2");

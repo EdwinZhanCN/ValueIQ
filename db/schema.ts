@@ -229,3 +229,21 @@ export const runResults = sqliteTable(
     ),
   ],
 );
+
+export const runReports = sqliteTable(
+  "run_reports",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    r2Key: text("r2_key").notNull().unique(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(now),
+  },
+  (table) => [index("run_reports_run_idx").on(table.runId)],
+);

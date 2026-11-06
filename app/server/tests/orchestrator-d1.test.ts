@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { dryFetch } from "../../../assistant/dry-fetch";
 import { resolveModels } from "../../../assistant/models";
 import { RunOrchestrator } from "../../../assistant/run/orchestrator";
+import { DEFAULT_CONFIG } from "../../../engine/config";
 import { NOW, goldenResultForm } from "../../../engine/tests/forms";
+import { getRun as getOutputSnapshot } from "../output-runs.server";
 import { D1RunStore } from "../run-store.server";
 import { env } from "./cf-workers-stub";
 import { createTestD1, seedTeams, type TestD1 } from "./d1-shim";
@@ -52,6 +54,16 @@ describe("RunOrchestrator on the D1 store", () => {
     const row = await store.getResult("run-1");
     expect(row?.result_json).not.toBeNull();
     expect(row?.gap_list_json).toBeNull();
+    const snapshot = await getOutputSnapshot(
+      {
+        userId: ids.member,
+        teamId: "t1",
+        projectId: ids.projectId,
+        role: "member",
+      },
+      "run-1",
+    );
+    expect(snapshot?.output).toEqual(out.output);
     const seqs = (await store.listRunEvents("run-1")).map((e) => e.seq);
     expect(seqs).toEqual(seqs.map((_, i) => i + 1));
 
@@ -67,9 +79,9 @@ describe("RunOrchestrator on the D1 store", () => {
       project_id: ids.projectId,
       mode: "real",
       form_hash: "h",
-      contract_version: "1",
-      formula_version: "1",
-      settings_version: "1",
+      contract_version: DEFAULT_CONFIG.versions.contract,
+      formula_version: DEFAULT_CONFIG.versions.formula,
+      settings_version: DEFAULT_CONFIG.versions.settings,
       started_by: ids.owner,
       started_at: NOW,
     });

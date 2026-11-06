@@ -455,7 +455,8 @@ export type LatestOutcome = {
  * to e.g. `(projectId) => `/projects/${projectId}/results`` when it lands.
  */
 export const resultsHref:
-  ((projectId: string, runId: string) => string) | null = null;
+  ((projectId: string, runId: string) => string) | null = (projectId, runId) =>
+  `/projects/${projectId}/results?run=${encodeURIComponent(runId)}`;
 
 /**
  * Where "what to add" sends the user. The intake form (I4) is not built; until

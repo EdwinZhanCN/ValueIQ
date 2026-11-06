@@ -13,20 +13,13 @@ import {
  *               site chrome and no server data: the UI is disconnected from
  *               the project/assessment backend on purpose.
  * - `/api/auth/*` Better Auth's endpoints (sign-up, sign-in, sessions, teams).
- * - `/projects`  signed-in project pages, in their own layout.
- * - `/projects/:projectId/files` upload action and `/projects/:projectId/files/:fileId`
- *               download: resource routes, no page.
  */
 export default [
   route("api/auth/*", "routes/api.auth.ts"),
-  route("projects/:projectId/files", "routes/projects.files.ts"),
-  route(
-    "projects/:projectId/files/:fileId",
-    "routes/projects.files.download.ts",
-  ),
   layout("routes/site-layout.tsx", [index("routes/home.tsx")]),
   layout("routes/workspace-layout.tsx", [
     route("workspace", "routes/workspace.tsx"),
+    route("projects/:projectId/results", "routes/project-results.tsx"),
   ]),
   // Z1: accounts and teams. `app-layout` is the signed-in shell.
   layout("routes/auth-layout.tsx", [
@@ -38,9 +31,18 @@ export default [
   layout("routes/app-layout.tsx", [
     route("teams/new", "routes/teams.new.tsx"),
     route("team", "routes/team.tsx"),
-    // Z2: projects.
     route("projects", "routes/projects.tsx"),
     route("projects/new", "routes/projects.new.tsx"),
     route("projects/:projectId", "routes/projects.$projectId.tsx"),
+    route("projects/:projectId/files", "routes/projects.files.ts"),
+    route(
+      "projects/:projectId/files/:fileId",
+      "routes/projects.files.download.ts",
+    ),
   ]),
+  route("projects/:projectId/runs/:runId/reports", "routes/project-reports.ts"),
+  route(
+    "projects/:projectId/runs/:runId/reports/:reportId",
+    "routes/project-report.ts",
+  ),
 ] satisfies RouteConfig;
