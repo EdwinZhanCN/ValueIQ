@@ -1,0 +1,55 @@
+{
+  "kind": "gap_list",
+  "meta": {
+    "run_id": "run_gate-project-below-floor",
+    "mode": "real",
+    "label": "Pre-funding estimate",
+    "currency": "USD",
+    "horizon_years": 3,
+    "discount_rate_pct": 10,
+    "scenario": "expected",
+    "tier_counts": {
+      "measured": 0,
+      "documented": 0,
+      "benchmark": 1,
+      "estimate": 0,
+      "assumption": 0
+    },
+    "contract_version": "1",
+    "formula_version": "0.1",
+    "settings_version": "s1",
+    "generated_at": "2026-11-05T12:00:00Z"
+  },
+  "gap_list": {
+    "reason": "Not enough backed evidence to give a result",
+    "project_confidence": 0.8025,
+    "project_floor": 0.85,
+    "items": [
+      {
+        "rank": 1,
+        "target": "hours_saved_per_staff_week",
+        "label": "Hours saved per person per week",
+        "what_to_add": "Attach a time sample or system log and confirm the quoted passage (a typed estimate cannot be treated as measured)",
+        "confidence_now": 0.8025,
+        "confidence_if_added": 1,
+        "return_to": {
+          "screen": "intake",
+          "input_id": "hours_saved_per_staff_week"
+        }
+      },
+      {
+        "rank": 2,
+        "target": "hours_saved_per_staff_week",
+        "label": "Hours saved per person per week",
+        "what_to_add": "Add a second independent source within 20% of the figure",
+        "confidence_now": 0.8025,
+        "confidence_if_added": 0.8325,
+        "return_to": {
+          "screen": "intake",
+          "input_id": "hours_saved_per_staff_week"
+        }
+      }
+    ],
+    "dropped_drivers": []
+  }
+}

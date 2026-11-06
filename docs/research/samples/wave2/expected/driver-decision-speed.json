@@ -1,0 +1,502 @@
+{
+  "kind": "result",
+  "meta": {
+    "run_id": "run_driver-decision-speed",
+    "mode": "real",
+    "label": "Pre-funding estimate",
+    "currency": "USD",
+    "horizon_years": 3,
+    "discount_rate_pct": 10,
+    "scenario": "expected",
+    "tier_counts": {
+      "measured": 0,
+      "documented": 3,
+      "benchmark": 0,
+      "estimate": 0,
+      "assumption": 0
+    },
+    "contract_version": "1",
+    "formula_version": "0.1",
+    "settings_version": "s1",
+    "generated_at": "2026-11-05T12:00:00Z"
+  },
+  "result": {
+    "headline": {
+      "npv": {
+        "hard": null,
+        "capacity_inclusive": 63015.02629601801
+      },
+      "roi": {
+        "undiscounted": {
+          "hard": null,
+          "capacity_inclusive": 106.11650485436893
+        },
+        "pv": {
+          "hard": null,
+          "capacity_inclusive": 83.66467495935119
+        }
+      },
+      "payback": {
+        "hard": {
+          "years": null,
+          "text": "No payback within the selected horizon"
+        },
+        "capacity_inclusive": {
+          "years": 1.3377814845704754,
+          "text": "about 16 months (uniform-flow assumption)"
+        }
+      },
+      "benefits_pv": 138333.58377160027,
+      "costs_pv": 75318.55747558226,
+      "null_reasons": {
+        "npv.hard": "No documented cash reduction",
+        "roi.undiscounted.hard": "No documented cash reduction",
+        "roi.pv.hard": "No documented cash reduction"
+      }
+    },
+    "drivers": [
+      {
+        "id": "decision_speed",
+        "label_class": "incremental_profit",
+        "label": "Decision speed",
+        "included": true,
+        "steps": [
+          {
+            "ref": "A1",
+            "order": 1,
+            "name": "gross",
+            "label": "Gross annual value",
+            "formula": "decisions x (days before - days after) x cost of delay per day",
+            "inputs": [
+              {
+                "id": "decisions_per_year",
+                "label": "Decisions per year",
+                "value": 50
+              },
+              {
+                "id": "days_to_decide_before",
+                "label": "Days to decide today",
+                "value": 10
+              },
+              {
+                "id": "days_to_decide_after",
+                "label": "Days to decide with the project",
+                "value": 6
+              },
+              {
+                "id": "cost_of_delay_per_day",
+                "label": "Cost of one day of delay",
+                "value": 400
+              }
+            ],
+            "source_type": "user",
+            "by_year": [80000, 80000, 80000],
+            "value": 240000,
+            "evidence_tier": "documented"
+          },
+          {
+            "ref": "A2",
+            "order": 2,
+            "name": "adoption",
+            "label": "After adoption (50% / 80% / 90%)",
+            "formula": "gross x adoption by year",
+            "inputs": [
+              {
+                "id": "adoption_by_year",
+                "label": "Adoption by year",
+                "value": "50 / 80 / 90"
+              }
+            ],
+            "source_type": "calculated",
+            "by_year": [40000, 64000, 72000],
+            "value": 176000,
+            "evidence_tier": null
+          },
+          {
+            "ref": "A3",
+            "order": 3,
+            "name": "haircut",
+            "label": "After evidence haircut (3.5%)",
+            "formula": "previous step x (1 - haircut); haircut = weakest link over the effect inputs",
+            "inputs": [
+              {
+                "id": "days_to_decide_before",
+                "label": "Days to decide today haircut %",
+                "value": 3.5000000000000004
+              },
+              {
+                "id": "days_to_decide_after",
+                "label": "Days to decide with the project haircut %",
+                "value": 3.5000000000000004
+              },
+              {
+                "id": "cost_of_delay_per_day",
+                "label": "Cost of one day of delay haircut %",
+                "value": 3.5000000000000004
+              }
+            ],
+            "source_type": "calculated",
+            "by_year": [38600, 61760, 69480],
+            "value": 169840,
+            "evidence_tier": null
+          }
+        ],
+        "annual": [
+          {
+            "year": 1,
+            "benefit": 38600
+          },
+          {
+            "year": 2,
+            "benefit": 61760
+          },
+          {
+            "year": 3,
+            "benefit": 69480
+          }
+        ],
+        "haircut_pct": 3.5000000000000004,
+        "confidence": 0.965,
+        "tier_counts": {
+          "measured": 0,
+          "documented": 3,
+          "benchmark": 0,
+          "estimate": 0,
+          "assumption": 0
+        },
+        "total": 169840,
+        "pv": 138333.58377160027,
+        "share_of_benefit": 1,
+        "measured_by": "Not specified: define a before/after measure for this driver",
+        "risk_factors": ["Adoption depends on training and rollout."]
+      }
+    ],
+    "costs": {
+      "lines": [
+        {
+          "id": "cost_one_time_vendor_license",
+          "label": "Vendor, license, integration (one-time)",
+          "base": 30000,
+          "basis": "quoted",
+          "uplift_pct": 15,
+          "adjusted": 34500,
+          "ref": "B1"
+        },
+        {
+          "id": "cost_training_change",
+          "label": "Training and change management (one-time)",
+          "base": 5000,
+          "basis": "estimated",
+          "uplift_pct": 30,
+          "adjusted": 6500,
+          "ref": "B2"
+        },
+        {
+          "id": "cost_annual_run",
+          "label": "Annual run cost",
+          "base": 12000,
+          "basis": "quoted",
+          "uplift_pct": 15,
+          "adjusted": 13799.999999999998,
+          "ref": "B3"
+        }
+      ],
+      "total_pv": 75318.55747558226,
+      "delay_months": 0
+    },
+    "cash_flows": [
+      {
+        "year": 0,
+        "benefits_hard": 0,
+        "benefits_capacity": 0,
+        "costs": 41000,
+        "net": -41000,
+        "cumulative": -41000
+      },
+      {
+        "year": 1,
+        "benefits_hard": 0,
+        "benefits_capacity": 38600,
+        "costs": 13799.999999999998,
+        "net": 24800,
+        "cumulative": -16200
+      },
+      {
+        "year": 2,
+        "benefits_hard": 0,
+        "benefits_capacity": 61760,
+        "costs": 13799.999999999998,
+        "net": 47960,
+        "cumulative": 31760
+      },
+      {
+        "year": 3,
+        "benefits_hard": 0,
+        "benefits_capacity": 69480,
+        "costs": 13799.999999999998,
+        "net": 55680,
+        "cumulative": 87440
+      }
+    ],
+    "scenarios": {
+      "conservative": {
+        "npv_hard": null,
+        "npv_capacity_inclusive": 34344.85349361382,
+        "roi_pv_capacity_inclusive": 45.59945735119552,
+        "what_moved": "Haircuts at the top of each band, adoption x0.85, recapture -10 points"
+      },
+      "expected": {
+        "npv_hard": null,
+        "npv_capacity_inclusive": 63015.02629601801,
+        "roi_pv_capacity_inclusive": 83.66467495935119,
+        "what_moved": "Headline scenario: stated inputs and computed haircuts"
+      },
+      "optimistic": {
+        "npv_hard": null,
+        "npv_capacity_inclusive": 82367.39293764086,
+        "roi_pv_capacity_inclusive": 109.35869684485631,
+        "what_moved": "Haircuts at the bottom of each band, adoption x1.1 (capped at 100%), recapture +10 points"
+      }
+    },
+    "sensitivity": {
+      "x_labels": {
+        "discount_rate": "Discount rate (%)",
+        "adoption": "Adoption multiplier",
+        "haircut": "Extra haircut (percentage points)"
+      },
+      "discount_rate": [
+        {
+          "x": 3,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 79239.6572977514
+        },
+        {
+          "x": 5,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 74218.65889212827
+        },
+        {
+          "x": 8,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 67281.51196463952
+        },
+        {
+          "x": 10,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 63015.02629601801
+        },
+        {
+          "x": 12,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 59008.19970845478
+        },
+        {
+          "x": 15,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 53440.37149667133
+        }
+      ],
+      "adoption": [
+        {
+          "x": 0.6,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 7681.5927873779
+        },
+        {
+          "x": 0.8,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 35348.30954169796
+        },
+        {
+          "x": 1,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 63015.02629601801
+        },
+        {
+          "x": 1.1,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 76848.38467317805
+        }
+      ],
+      "haircut": [
+        {
+          "x": 0,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 63015.02629601801
+        },
+        {
+          "x": 5,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 55847.48309541696
+        },
+        {
+          "x": 10,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 48679.93989481591
+        },
+        {
+          "x": 15,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 41512.39669421484
+        }
+      ]
+    },
+    "charts": {
+      "waterfall": [
+        {
+          "label": "Gross value",
+          "value": 240000
+        },
+        {
+          "label": "After adoption",
+          "value": 176000
+        },
+        {
+          "label": "After recapture",
+          "value": 176000
+        },
+        {
+          "label": "After evidence haircut",
+          "value": 169840
+        }
+      ],
+      "driver_contribution": [
+        {
+          "driver": "decision_speed",
+          "value": 169840
+        }
+      ],
+      "sensitivity": [
+        {
+          "x": 3,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 79239.6572977514
+        },
+        {
+          "x": 5,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 74218.65889212827
+        },
+        {
+          "x": 8,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 67281.51196463952
+        },
+        {
+          "x": 10,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 63015.02629601801
+        },
+        {
+          "x": 12,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 59008.19970845478
+        },
+        {
+          "x": 15,
+          "npv_hard": null,
+          "npv_capacity_inclusive": 53440.37149667133
+        }
+      ]
+    },
+    "confidence": {
+      "integrity": {
+        "passed": true,
+        "checks": [
+          {
+            "name": "bounds",
+            "passed": true
+          },
+          {
+            "name": "versions recorded",
+            "passed": true
+          },
+          {
+            "name": "every number traces to a step",
+            "passed": true
+          },
+          {
+            "name": "driver totals reconcile to benefit total",
+            "passed": true
+          },
+          {
+            "name": "cash flows reproduce NPV",
+            "passed": true
+          },
+          {
+            "name": "no unresolved double count",
+            "passed": true
+          },
+          {
+            "name": "no missing essential cost",
+            "passed": true
+          }
+        ]
+      },
+      "drivers": [
+        {
+          "id": "decision_speed",
+          "confidence": 0.965,
+          "floor": 0.85,
+          "included": true
+        }
+      ],
+      "project": {
+        "confidence": 0.965,
+        "floor": 0.85,
+        "capped_by": "decision_speed"
+      },
+      "band_note": "3 documented inputs. Effective haircuts: decision speed 3.5%."
+    },
+    "narrative": {
+      "summary": "Over 3 years this project is estimated to return a capacity-inclusive NPV of $63,015.03 on costs with a present value of $75,318.56 [B1, B2, B3]. No documented cash reduction is included, so there is no hard-savings NPV. Treat this as a pre-funding estimate.",
+      "by_driver": {
+        "decision_speed": "Decision speed contributes $169,840.00 over the horizon after the evidence haircut [A3]."
+      }
+    },
+    "unquantified": [
+      {
+        "target": "time_savings",
+        "reason": "Not selected as a goal for this project",
+        "raise_with": "Add the time savings goal and the inputs it needs"
+      },
+      {
+        "target": "data_quality",
+        "reason": "Not selected as a goal for this project",
+        "raise_with": "Add the data quality goal and the inputs it needs"
+      },
+      {
+        "target": "risk_reduction",
+        "reason": "Not selected as a goal for this project",
+        "raise_with": "Add the risk reduction goal and the inputs it needs"
+      }
+    ],
+    "flexibility": [],
+    "doing_nothing_risks": [
+      "Today's costs and exposure continue unchanged (no baseline alternative was entered)."
+    ],
+    "proceeding_risks": [
+      "Training and change management (one-time) is estimated, so a 30% uplift was applied [B2].",
+      "Adoption may ramp more slowly than the stated path."
+    ],
+    "measurement_plan": {
+      "decision_speed": {
+        "metric": "Not specified",
+        "baseline": "Not specified",
+        "baseline_source": "Not specified",
+        "owner": "Not specified",
+        "frequency": "Not specified"
+      }
+    },
+    "proxies_used": [
+      {
+        "input_id": "discount_rate_pct",
+        "value": 10,
+        "source": "Forrester TEI convention (organizations typically 8-16%)",
+        "tier": "benchmark"
+      }
+    ],
+    "overrides": [],
+    "warnings": []
+  }
+}

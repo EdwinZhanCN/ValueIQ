@@ -1,0 +1,763 @@
+{
+  "kind": "result",
+  "meta": {
+    "run_id": "run_class-customer-borne",
+    "mode": "real",
+    "label": "Pre-funding estimate",
+    "currency": "USD",
+    "horizon_years": 3,
+    "discount_rate_pct": 10,
+    "scenario": "expected",
+    "tier_counts": {
+      "measured": 0,
+      "documented": 7,
+      "benchmark": 0,
+      "estimate": 0,
+      "assumption": 0
+    },
+    "contract_version": "1",
+    "formula_version": "0.1",
+    "settings_version": "s1",
+    "generated_at": "2026-11-05T12:00:00Z"
+  },
+  "result": {
+    "headline": {
+      "npv": {
+        "hard": -18641.926371149515,
+        "capacity_inclusive": 65128.73478587526
+      },
+      "roi": {
+        "undiscounted": {
+          "hard": -15.552038834951462,
+          "capacity_inclusive": 109.26592233009708
+        },
+        "pv": {
+          "hard": -24.750774571317425,
+          "capacity_inclusive": 86.47103312751247
+        }
+      },
+      "payback": {
+        "hard": {
+          "years": null,
+          "text": "No payback within the selected horizon"
+        },
+        "capacity_inclusive": {
+          "years": 1.3192029720462755,
+          "text": "about 16 months (uniform-flow assumption)"
+        }
+      },
+      "benefits_pv": 140447.29226145754,
+      "costs_pv": 75318.55747558226,
+      "null_reasons": {}
+    },
+    "drivers": [
+      {
+        "id": "time_savings",
+        "label_class": "capacity_value",
+        "label": "Time savings",
+        "included": true,
+        "steps": [
+          {
+            "ref": "A1",
+            "order": 1,
+            "name": "gross",
+            "label": "Gross annual value",
+            "formula": "staff x hours saved per week x weeks x loaded rate",
+            "inputs": [
+              {
+                "id": "staff_affected",
+                "label": "People affected",
+                "value": 10
+              },
+              {
+                "id": "hours_saved_per_staff_week",
+                "label": "Hours saved per person per week",
+                "value": 5
+              },
+              {
+                "id": "weeks_per_year",
+                "label": "Working weeks per year",
+                "value": 40
+              },
+              {
+                "id": "loaded_hourly_cost",
+                "label": "Loaded hourly cost",
+                "value": 50
+              }
+            ],
+            "source_type": "user",
+            "by_year": [100000, 100000, 100000],
+            "value": 300000,
+            "evidence_tier": "documented"
+          },
+          {
+            "ref": "A2",
+            "order": 2,
+            "name": "adoption",
+            "label": "After adoption (50% / 80% / 90%)",
+            "formula": "gross x adoption by year",
+            "inputs": [
+              {
+                "id": "adoption_by_year",
+                "label": "Adoption by year",
+                "value": "50 / 80 / 90"
+              }
+            ],
+            "source_type": "calculated",
+            "by_year": [50000, 80000, 90000],
+            "value": 220000,
+            "evidence_tier": null
+          },
+          {
+            "ref": "A3",
+            "order": 3,
+            "name": "recapture",
+            "label": "After recapture (capacity value only)",
+            "formula": "after adoption x recapture 50%",
+            "inputs": [
+              {
+                "id": "recapture_pct",
+                "label": "Share of freed time turned into useful work",
+                "value": 50
+              }
+            ],
+            "source_type": "default",
+            "by_year": [25000, 40000, 45000],
+            "value": 110000,
+            "evidence_tier": "benchmark"
+          },
+          {
+            "ref": "A4",
+            "order": 4,
+            "name": "haircut",
+            "label": "After evidence haircut (6.5%)",
+            "formula": "previous step x (1 - haircut); haircut = weakest link over the effect inputs",
+            "inputs": [
+              {
+                "id": "hours_saved_per_staff_week",
+                "label": "Hours saved per person per week haircut %",
+                "value": 6.5
+              }
+            ],
+            "source_type": "calculated",
+            "by_year": [23375, 37400, 42075],
+            "value": 102850,
+            "evidence_tier": null
+          }
+        ],
+        "annual": [
+          {
+            "year": 1,
+            "benefit": 23375
+          },
+          {
+            "year": 2,
+            "benefit": 37400
+          },
+          {
+            "year": 3,
+            "benefit": 42075
+          }
+        ],
+        "haircut_pct": 6.5,
+        "confidence": 0.935,
+        "tier_counts": {
+          "measured": 0,
+          "documented": 1,
+          "benchmark": 0,
+          "estimate": 0,
+          "assumption": 0
+        },
+        "total": 102850,
+        "pv": 83770.66115702478,
+        "share_of_benefit": 0.596456220751318,
+        "measured_by": "Not specified: define a before/after measure for this driver",
+        "risk_factors": [
+          "Freed time may not be turned into other work (recapture).",
+          "Adoption depends on training and rollout."
+        ]
+      },
+      {
+        "id": "data_quality",
+        "label_class": "hard_savings",
+        "label": "Data quality",
+        "included": true,
+        "steps": [
+          {
+            "ref": "B1",
+            "order": 1,
+            "name": "gross",
+            "label": "Gross annual value",
+            "formula": "(errors before - errors after) x cost per error",
+            "inputs": [
+              {
+                "id": "error_count_before",
+                "label": "Errors per year today",
+                "value": 72
+              },
+              {
+                "id": "error_count_after",
+                "label": "Errors per year with the project",
+                "value": 24
+              },
+              {
+                "id": "cost_per_error",
+                "label": "Cost of one error",
+                "value": 690
+              }
+            ],
+            "source_type": "user",
+            "by_year": [33120, 33120, 33120],
+            "value": 99360,
+            "evidence_tier": "documented"
+          },
+          {
+            "ref": "B2",
+            "order": 2,
+            "name": "adoption",
+            "label": "After adoption (50% / 80% / 90%)",
+            "formula": "gross x adoption by year",
+            "inputs": [
+              {
+                "id": "adoption_by_year",
+                "label": "Adoption by year",
+                "value": "50 / 80 / 90"
+              }
+            ],
+            "source_type": "calculated",
+            "by_year": [16560, 26496, 29808],
+            "value": 72864,
+            "evidence_tier": null
+          },
+          {
+            "ref": "B3",
+            "order": 3,
+            "name": "haircut",
+            "label": "After evidence haircut (4.5%)",
+            "formula": "previous step x (1 - haircut); haircut = weakest link over the effect inputs",
+            "inputs": [
+              {
+                "id": "error_count_before",
+                "label": "Errors per year today haircut %",
+                "value": 4.5
+              },
+              {
+                "id": "error_count_after",
+                "label": "Errors per year with the project haircut %",
+                "value": 4.5
+              },
+              {
+                "id": "cost_per_error",
+                "label": "Cost of one error haircut %",
+                "value": 4.5
+              }
+            ],
+            "source_type": "calculated",
+            "by_year": [15814.8, 25303.68, 28466.64],
+            "value": 69585.12,
+            "evidence_tier": null
+          }
+        ],
+        "annual": [
+          {
+            "year": 1,
+            "benefit": 15814.8
+          },
+          {
+            "year": 2,
+            "benefit": 25303.68
+          },
+          {
+            "year": 3,
+            "benefit": 28466.64
+          }
+        ],
+        "haircut_pct": 4.5,
+        "confidence": 0.955,
+        "tier_counts": {
+          "measured": 0,
+          "documented": 3,
+          "benchmark": 0,
+          "estimate": 0,
+          "assumption": 0
+        },
+        "total": 69585.12,
+        "pv": 56676.631104432745,
+        "share_of_benefit": 0.40354377924868207,
+        "measured_by": "Not specified: define a before/after measure for this driver",
+        "risk_factors": ["Adoption depends on training and rollout."]
+      },
+      {
+        "id": "risk_reduction",
+        "label_class": "customer_benefit",
+        "label": "Risk reduction",
+        "included": true,
+        "steps": [
+          {
+            "ref": "C1",
+            "order": 1,
+            "name": "gross",
+            "label": "Gross annual value",
+            "formula": "(ALE before - ALE after), ALE = events per year x loss per event",
+            "inputs": [
+              {
+                "id": "loss_per_event",
+                "label": "Loss per event",
+                "value": 25000
+              },
+              {
+                "id": "aro_before",
+                "label": "Events per year today",
+                "value": 3
+              },
+              {
+                "id": "aro_after",
+                "label": "Events per year with the project",
+                "value": 1.5
+              }
+            ],
+            "source_type": "user",
+            "by_year": [37500, 37500, 37500],
+            "value": 112500,
+            "evidence_tier": "documented"
+          },
+          {
+            "ref": "C2",
+            "order": 2,
+            "name": "adoption",
+            "label": "After adoption (50% / 80% / 90%)",
+            "formula": "gross x adoption by year",
+            "inputs": [
+              {
+                "id": "adoption_by_year",
+                "label": "Adoption by year",
+                "value": "50 / 80 / 90"
+              }
+            ],
+            "source_type": "calculated",
+            "by_year": [18750, 30000, 33750],
+            "value": 82500,
+            "evidence_tier": null
+          },
+          {
+            "ref": "C3",
+            "order": 3,
+            "name": "haircut",
+            "label": "After evidence haircut (6.5%)",
+            "formula": "previous step x (1 - haircut); haircut = weakest link over the effect inputs",
+            "inputs": [
+              {
+                "id": "loss_per_event",
+                "label": "Loss per event haircut %",
+                "value": 1.9999999999999991
+              },
+              {
+                "id": "aro_before",
+                "label": "Events per year today haircut %",
+                "value": 6.5
+              },
+              {
+                "id": "aro_after",
+                "label": "Events per year with the project haircut %",
+                "value": 6.5
+              }
+            ],
+            "source_type": "calculated",
+            "by_year": [17531.25, 28050, 31556.25],
+            "value": 77137.5,
+            "evidence_tier": null
+          }
+        ],
+        "annual": [
+          {
+            "year": 1,
+            "benefit": 0
+          },
+          {
+            "year": 2,
+            "benefit": 0
+          },
+          {
+            "year": 3,
+            "benefit": 0
+          }
+        ],
+        "haircut_pct": 6.5,
+        "confidence": 0.935,
+        "tier_counts": {
+          "measured": 0,
+          "documented": 3,
+          "benchmark": 0,
+          "estimate": 0,
+          "assumption": 0
+        },
+        "total": 0,
+        "pv": 0,
+        "share_of_benefit": 0,
+        "measured_by": "Not specified: define a before/after measure for this driver",
+        "risk_factors": ["Adoption depends on training and rollout."]
+      }
+    ],
+    "costs": {
+      "lines": [
+        {
+          "id": "cost_one_time_vendor_license",
+          "label": "Vendor, license, integration (one-time)",
+          "base": 30000,
+          "basis": "quoted",
+          "uplift_pct": 15,
+          "adjusted": 34500,
+          "ref": "D1"
+        },
+        {
+          "id": "cost_training_change",
+          "label": "Training and change management (one-time)",
+          "base": 5000,
+          "basis": "estimated",
+          "uplift_pct": 30,
+          "adjusted": 6500,
+          "ref": "D2"
+        },
+        {
+          "id": "cost_annual_run",
+          "label": "Annual run cost",
+          "base": 12000,
+          "basis": "quoted",
+          "uplift_pct": 15,
+          "adjusted": 13799.999999999998,
+          "ref": "D3"
+        }
+      ],
+      "total_pv": 75318.55747558226,
+      "delay_months": 0
+    },
+    "cash_flows": [
+      {
+        "year": 0,
+        "benefits_hard": 0,
+        "benefits_capacity": 0,
+        "costs": 41000,
+        "net": -41000,
+        "cumulative": -41000
+      },
+      {
+        "year": 1,
+        "benefits_hard": 15814.8,
+        "benefits_capacity": 23375,
+        "costs": 13799.999999999998,
+        "net": 25389.800000000003,
+        "cumulative": -15610.199999999997
+      },
+      {
+        "year": 2,
+        "benefits_hard": 25303.68,
+        "benefits_capacity": 37400,
+        "costs": 13799.999999999998,
+        "net": 48903.68,
+        "cumulative": 33293.48
+      },
+      {
+        "year": 3,
+        "benefits_hard": 28466.64,
+        "benefits_capacity": 42075,
+        "costs": 13799.999999999998,
+        "net": 56741.64,
+        "cumulative": 90035.12
+      }
+    ],
+    "scenarios": {
+      "conservative": {
+        "npv_hard": -29917.905334335082,
+        "npv_capacity_inclusive": 24913.80015026295,
+        "roi_pv_capacity_inclusive": 33.07790401899269,
+        "what_moved": "Haircuts at the top of each band, adoption x0.85, recapture -10 points"
+      },
+      "expected": {
+        "npv_hard": -18641.926371149515,
+        "npv_capacity_inclusive": 65128.73478587526,
+        "roi_pv_capacity_inclusive": 86.47103312751247,
+        "what_moved": "Headline scenario: stated inputs and computed haircuts"
+      },
+      "optimistic": {
+        "npv_hard": -10036.57400450789,
+        "npv_capacity_inclusive": 108227.88880540946,
+        "roi_pv_capacity_inclusive": 143.69352312741276,
+        "what_moved": "Haircuts at the bottom of each band, adoption x1.1 (capped at 100%), recapture +10 points"
+      }
+    },
+    "sensitivity": {
+      "x_labels": {
+        "discount_rate": "Discount rate (%)",
+        "adoption": "Adoption multiplier",
+        "haircut": "Extra haircut (percentage points)"
+      },
+      "discount_rate": [
+        {
+          "x": 3,
+          "npv_hard": -14778.508520426414,
+          "npv_capacity_inclusive": 81673.33855574174
+        },
+        {
+          "x": 5,
+          "npv_hard": -15977.370910268866,
+          "npv_capacity_inclusive": 76553.40330417882
+        },
+        {
+          "x": 8,
+          "npv_hard": -17629.041304679165,
+          "npv_capacity_inclusive": 69479.44063404968
+        },
+        {
+          "x": 10,
+          "npv_hard": -18641.926371149515,
+          "npv_capacity_inclusive": 65128.73478587526
+        },
+        {
+          "x": 12,
+          "npv_hard": -19590.98350947522,
+          "npv_capacity_inclusive": 61042.757151967904
+        },
+        {
+          "x": 15,
+          "npv_hard": -20906.011342155005,
+          "npv_capacity_inclusive": 55364.84425084246
+        }
+      ],
+      "adoption": [
+        {
+          "x": 0.6,
+          "npv_hard": -41312.57881292261,
+          "npv_capacity_inclusive": 8949.817881292242
+        },
+        {
+          "x": 0.8,
+          "npv_hard": -29977.252592036057,
+          "npv_capacity_inclusive": 37039.276333583766
+        },
+        {
+          "x": 1,
+          "npv_hard": -18641.926371149515,
+          "npv_capacity_inclusive": 65128.73478587526
+        },
+        {
+          "x": 1.1,
+          "npv_hard": -12974.263260706233,
+          "npv_capacity_inclusive": 79173.46401202102
+        }
+      ],
+      "haircut": [
+        {
+          "x": 0,
+          "npv_hard": -18641.926371149515,
+          "npv_capacity_inclusive": 65128.73478587526
+        },
+        {
+          "x": 5,
+          "npv_hard": -21609.289256198346,
+          "npv_capacity_inclusive": 57681.657400450786
+        },
+        {
+          "x": 10,
+          "npv_hard": -24576.652141247185,
+          "npv_capacity_inclusive": 50234.580015026295
+        },
+        {
+          "x": 15,
+          "npv_hard": -27544.01502629602,
+          "npv_capacity_inclusive": 42787.50262960179
+        }
+      ]
+    },
+    "charts": {
+      "waterfall": [
+        {
+          "label": "Gross value",
+          "value": 399360
+        },
+        {
+          "label": "After adoption",
+          "value": 292864
+        },
+        {
+          "label": "After recapture",
+          "value": 182864
+        },
+        {
+          "label": "After evidence haircut",
+          "value": 172435.12
+        }
+      ],
+      "driver_contribution": [
+        {
+          "driver": "time_savings",
+          "value": 102850
+        },
+        {
+          "driver": "data_quality",
+          "value": 69585.12
+        }
+      ],
+      "sensitivity": [
+        {
+          "x": 3,
+          "npv_hard": -14778.508520426414,
+          "npv_capacity_inclusive": 81673.33855574174
+        },
+        {
+          "x": 5,
+          "npv_hard": -15977.370910268866,
+          "npv_capacity_inclusive": 76553.40330417882
+        },
+        {
+          "x": 8,
+          "npv_hard": -17629.041304679165,
+          "npv_capacity_inclusive": 69479.44063404968
+        },
+        {
+          "x": 10,
+          "npv_hard": -18641.926371149515,
+          "npv_capacity_inclusive": 65128.73478587526
+        },
+        {
+          "x": 12,
+          "npv_hard": -19590.98350947522,
+          "npv_capacity_inclusive": 61042.757151967904
+        },
+        {
+          "x": 15,
+          "npv_hard": -20906.011342155005,
+          "npv_capacity_inclusive": 55364.84425084246
+        }
+      ]
+    },
+    "confidence": {
+      "integrity": {
+        "passed": true,
+        "checks": [
+          {
+            "name": "bounds",
+            "passed": true
+          },
+          {
+            "name": "versions recorded",
+            "passed": true
+          },
+          {
+            "name": "every number traces to a step",
+            "passed": true
+          },
+          {
+            "name": "driver totals reconcile to benefit total",
+            "passed": true
+          },
+          {
+            "name": "cash flows reproduce NPV",
+            "passed": true
+          },
+          {
+            "name": "no unresolved double count",
+            "passed": true
+          },
+          {
+            "name": "no missing essential cost",
+            "passed": true
+          }
+        ]
+      },
+      "drivers": [
+        {
+          "id": "time_savings",
+          "confidence": 0.935,
+          "floor": 0.8,
+          "included": true
+        },
+        {
+          "id": "data_quality",
+          "confidence": 0.955,
+          "floor": 0.8,
+          "included": true
+        },
+        {
+          "id": "risk_reduction",
+          "confidence": 0.935,
+          "floor": 0.85,
+          "included": true
+        }
+      ],
+      "project": {
+        "confidence": 0.935,
+        "floor": 0.85,
+        "capped_by": "time_savings"
+      },
+      "band_note": "7 documented inputs. Effective haircuts: time savings 6.5%, data quality 4.5%, risk reduction 6.5%."
+    },
+    "narrative": {
+      "summary": "Over 3 years this project is estimated to return a capacity-inclusive NPV of $65,128.73 on costs with a present value of $75,318.56 [D1, D2, D3]. Hard savings alone give an NPV of -$18,641.93 [B3]. Treat this as a pre-funding estimate.",
+      "by_driver": {
+        "time_savings": "Time savings contributes $102,850.00 over the horizon after the evidence haircut [A4].",
+        "data_quality": "Data quality contributes $69,585.12 over the horizon after the evidence haircut [B3].",
+        "risk_reduction": "Risk reduction contributes $0.00 over the horizon after the evidence haircut [C3]."
+      }
+    },
+    "unquantified": [
+      {
+        "target": "decision_speed",
+        "reason": "Not selected as a goal for this project",
+        "raise_with": "Add the decision speed goal and the inputs it needs"
+      }
+    ],
+    "flexibility": [],
+    "doing_nothing_risks": [
+      "Today's costs and exposure continue unchanged (no baseline alternative was entered)."
+    ],
+    "proceeding_risks": [
+      "Training and change management (one-time) is estimated, so a 30% uplift was applied [D2].",
+      "Adoption may ramp more slowly than the stated path."
+    ],
+    "measurement_plan": {
+      "time_savings": {
+        "metric": "Not specified",
+        "baseline": "Not specified",
+        "baseline_source": "Not specified",
+        "owner": "Not specified",
+        "frequency": "Not specified"
+      },
+      "data_quality": {
+        "metric": "Not specified",
+        "baseline": "Not specified",
+        "baseline_source": "Not specified",
+        "owner": "Not specified",
+        "frequency": "Not specified"
+      },
+      "risk_reduction": {
+        "metric": "Not specified",
+        "baseline": "Not specified",
+        "baseline_source": "Not specified",
+        "owner": "Not specified",
+        "frequency": "Not specified"
+      }
+    },
+    "proxies_used": [
+      {
+        "input_id": "recapture_pct",
+        "value": 50,
+        "source": "Nucleus productivity correction factor 0.5",
+        "tier": "benchmark"
+      },
+      {
+        "input_id": "discount_rate_pct",
+        "value": 10,
+        "source": "Forrester TEI convention (organizations typically 8-16%)",
+        "tier": "benchmark"
+      }
+    ],
+    "overrides": [],
+    "warnings": [
+      {
+        "code": "DRIVER_CONCENTRATION",
+        "message": "Time savings is 59.6% of total benefit (guardrail: over 50%). Check it carefully.",
+        "refs": ["A1"]
+      }
+    ]
+  }
+}
