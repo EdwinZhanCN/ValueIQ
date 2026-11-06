@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "goals": ["decision_speed"],
+  "currency": "USD",
+  "horizon_years": 3,
+  "inputs": [
+    {
+      "id": "adoption_by_year",
+      "value": [50, 80, 90],
+      "tier": "estimate",
+      "origin": "user"
+    },
+    {
+      "id": "discount_rate_pct",
+      "value": 10,
+      "tier": "benchmark",
+      "origin": "default",
+      "note": "Forrester TEI convention (organizations typically 8-16%)"
+    },
+    {
+      "id": "cost_one_time_vendor_license",
+      "value": 30000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "quoted"
+    },
+    {
+      "id": "cost_training_change",
+      "value": 5000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "estimated"
+    },
+    {
+      "id": "cost_annual_run",
+      "value": 12000,
+      "tier": "documented",
+      "origin": "user",
+      "basis": "quoted"
+    },
+    {
+      "id": "decisions_per_year",
+      "value": 50,
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "days_to_decide_before",
+      "value": 10,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30",
+        "verified": true
+      }
+    },
+    {
+      "id": "days_to_decide_after",
+      "value": 6,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30",
+        "verified": true
+      }
+    },
+    {
+      "id": "cost_of_delay_per_day",
+      "value": 400,
+      "tier": "documented",
+      "origin": "user",
+      "backing": {
+        "source_file_id": "f1",
+        "observations": 100,
+        "source_date": "2026-09-30",
+        "verified": true
+      }
+    },
+    {
+      "id": "cost_of_delay_basis",
+      "value": "revenue_deferred",
+      "tier": "documented",
+      "origin": "user"
+    },
+    {
+      "id": "example_decision",
+      "value": "Q2 vendor approval took 10 days",
+      "tier": "documented",
+      "origin": "user"
+    }
+  ],
+  "file_descriptions": {
+    "f1": "test file"
+  },
+  "other_notes": "",
+  "measurement_plan": {},
+  "asked": []
+}

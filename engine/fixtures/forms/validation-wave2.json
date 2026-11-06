@@ -1,0 +1,114 @@
+{
+  "reference_commit": "a1f05169707d5e79aafad288c1a3bc7328c05982",
+  "reference_date": "2026-11-05T12:00:00.000Z",
+  "context": {
+    "projectId": "fixture-project",
+    "files": [
+      {
+        "id": "f1",
+        "projectId": "fixture-project"
+      },
+      {
+        "id": "foreign-project-file",
+        "projectId": "another-project"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "driver-time-savings",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "driver-data-quality",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "driver-decision-speed",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "driver-risk-reduction",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "combined-all-four",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "class-hard-cash",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "class-no-cash",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "class-customer-borne",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "edge-zero-cost",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "edge-delay-6",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "edge-no-payback",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "edge-negative-npv",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "gate-all-pass",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "gate-one-driver-dropped",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "gate-project-below-floor",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "gate-driver-over-30pct",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "gate-estimate-effect",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "unknown-null-effect",
+      "expected": "accepted",
+      "issues": []
+    },
+    {
+      "id": "unknown-user-unknown-tier",
+      "expected": "accepted",
+      "issues": []
+    }
+  ]
+}
