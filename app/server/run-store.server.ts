@@ -94,7 +94,7 @@ export class D1RunStore implements RunStore {
       id: row.id,
       project_id: row.projectId,
       status: row.status as RunRecord["status"],
-      mode: row.mode as RunRecord["mode"],
+      mode: row.mode,
       form_hash: row.formHash,
       contract_version: row.contractVersion,
       formula_version: row.formulaVersion,

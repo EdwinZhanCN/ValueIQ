@@ -50,6 +50,7 @@
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
+    "@babel/plugin-proposal-decorators": "^8.0.2",
     "@cloudflare/vite-plugin": "^1.54.8",
     "@eslint/js": "^10.0.1",
     "@react-router/dev": "^8.3.1",
