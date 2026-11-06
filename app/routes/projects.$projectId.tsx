@@ -1,6 +1,8 @@
 import { ProjectFiles } from "../components/files/project-files";
+import { RunAssessment } from "../components/run/run-assessment";
 import { listProjectFiles } from "../server/files.server";
 import { readSmallForm } from "../server/form-body.server";
+import { getLatestOutcome } from "../server/run-outcome.server";
 import { useEffect, useRef } from "react";
 import { data, Form, Link } from "react-router";
 import { requireProjectAccess } from "../server/access.server";
@@ -20,11 +22,17 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     listProjectFiles(params.projectId),
   ]);
   if (!project) throw new Response("Not found", { status: 404 });
+  const latest = await getLatestOutcome(
+    params.projectId,
+    form?.updatedAt ?? null,
+  );
   const url = new URL(request.url);
   const run = url.searchParams.get("run");
   return {
     project,
     files,
+    latest,
+    hasForm: form !== null,
     formText: JSON.stringify(form ? form.formJson : {}, null, 2),
     savedAt: form?.updatedAt.toISOString() ?? null,
     target: url.searchParams.get("input"),
@@ -53,7 +61,36 @@ export async function action({ request, params }: Route.ActionArgs) {
   } catch {
     return data({ error: "Enter valid JSON.", saved: false }, { status: 400 });
   }
-  await saveProjectForm(params.projectId, json, access.userId);
+  // The version the editor loaded: "" means it loaded no saved form. Scripted
+  // clients that omit the field overwrite unconditionally.
+  const baseField = form.get("baseUpdatedAt");
+  const base =
+    typeof baseField !== "string"
+      ? undefined
+      : baseField === ""
+        ? null
+        : new Date(baseField);
+  if (base && Number.isNaN(base.getTime()))
+    return data(
+      { error: "Reload and try again.", saved: false },
+      { status: 400 },
+    );
+  const saved = await saveProjectForm(
+    params.projectId,
+    json,
+    access.userId,
+    base,
+  );
+  if (!saved.ok)
+    return data(
+      {
+        error:
+          "Someone else saved this form after you opened it. Your edits are still here: copy them, then reload to see the latest version.",
+        saved: false,
+        conflict: true,
+      },
+      { status: 409 },
+    );
   return { error: null, saved: true };
 }
 export default function ProjectIntake({
@@ -78,7 +115,14 @@ export default function ProjectIntake({
           {loaderData.project.name}
         </h1>
       </div>
-      <section className="rounded-xl border bg-card p-6">
+      <section aria-label="Run assessment" className="rounded-xl border p-4">
+        <RunAssessment
+          projectId={loaderData.project.id}
+          hasForm={loaderData.hasForm}
+          latest={loaderData.latest}
+        />
+      </section>
+      <section id="intake" className="rounded-xl border bg-card p-6">
         <h2 className="mb-2 font-semibold">Saved intake · JSON preview</h2>
         <p className="mb-4 text-sm text-muted-foreground">
           The structured intake form is being built by the input team. This
@@ -102,7 +146,21 @@ export default function ProjectIntake({
             spellCheck={false}
             className="w-full rounded-lg border bg-background p-4 font-mono text-xs"
           />
-          {actionData?.error && <p role="alert">{actionData.error}</p>}
+          <input
+            type="hidden"
+            name="baseUpdatedAt"
+            value={loaderData.savedAt ?? ""}
+          />
+          {actionData?.error && (
+            <p role="alert">
+              {actionData.error}{" "}
+              {"conflict" in actionData && (
+                <Link reloadDocument to=".">
+                  Reload latest
+                </Link>
+              )}
+            </p>
+          )}
           {actionData?.saved && (
             <p role="status">
               Intake saved. Existing results remain tied to their original run.

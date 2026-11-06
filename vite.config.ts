@@ -12,6 +12,9 @@ export default defineConfig({
     reactRouter(),
     tailwindcss(),
   ],
+  // Pre-bundle the browser agent hook at startup. Found on first use it triggers a
+  // mid-session re-optimization and the page crashes with a duplicate-React error.
+  optimizeDeps: { include: ["agents/react"] },
   resolve: {
     tsconfigPaths: true,
   },
