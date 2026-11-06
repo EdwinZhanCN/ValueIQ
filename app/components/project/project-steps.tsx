@@ -28,7 +28,10 @@ export function stepFor(pathname: string, projectId: string) {
   );
 }
 
-/** Mock UI progress bar: done steps get a check, the current one is filled. */
+/**
+ * Mock UI progress bar (docs/mock-ui): done steps get a check, the current
+ * one is filled. "mock UI NN" in comments names a screen in docs/mock-ui.
+ */
 export function ProjectSteps({
   projectId,
   current,

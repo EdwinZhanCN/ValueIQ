@@ -6,6 +6,7 @@ Human setup and deployment commands live in [README.md](README.md).
 
 - Read [architecture](docs/architecture.md) before changing UI/server, agent, or storage boundaries.
 - Read [core beliefs](docs/core-beliefs.md) when changing assessment behavior or product scope.
+- Read the [Mock UI](docs/mock-ui/README.md) before changing a signed-in screen: the screen for your route and its owner notes. The issue wins over the notes, the notes over the HTML.
 - Read the research plan for your own area in [docs/research/plans](docs/research/plans/README.md) (read the README, then only your file: input `01`, AI assistant `02`, calculation engine `03`, output `04`, infrastructure `05`). It is research context to review and build from, not a spec; `docs/research/ROI.md` and `SOURCES.md` back it.
 - Read only relevant unfinished plans in [.agents/exec-plans/active](.agents/exec-plans/active/README.md). Never read or cite `.agents/exec-plans/archive/`; it is human reference only.
 
@@ -18,7 +19,7 @@ Human setup and deployment commands live in [README.md](README.md).
 - `shared/types.ts`: the cross-track types from the integration contract (run states, `RunView`, `Question`).
 - `db/`, `drizzle/`: Drizzle client, Better Auth tables (`auth-schema.ts`, generated from `auth.cli.ts`), application tables (`schema.ts`), and their migrations.
 - `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), the signed-in user and current team (`team.server.ts`), the project API (`projects.server.ts`), project files in R2 (`files.server.ts`), calculation runs (`runs.server.ts`), and the agent gate (`agent-gate.server.ts`).
-- `docs/`: [architecture](docs/architecture.md) and [core beliefs](docs/core-beliefs.md).
+- `docs/`: [architecture](docs/architecture.md), [core beliefs](docs/core-beliefs.md), and the [Mock UI](docs/mock-ui/README.md) screens with owner notes.
 - `.agents/`: coding-agent procedures and durable project memory.
 
 ## Implementation boundaries

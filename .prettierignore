@@ -6,3 +6,6 @@ build/
 .react-router/
 .wrangler/
 drizzle/meta/
+# Copied verbatim from the Mock UI canvas; regenerate, do not reformat.
+docs/mock-ui/*.dc.html
+docs/mock-ui/canvas.json
