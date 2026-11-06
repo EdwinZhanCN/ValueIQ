@@ -69,11 +69,11 @@ Owners: input team, with Zihao and Eli reviewing their boundaries.
 Owner: input team; Zihao reviews the server boundary.
 
 - After #129 and #130 land or are reconciled, mount the structured editor at `/projects/:projectId`, replacing the placeholder JSON editor. `/workspace` remains explicitly a local demonstration until separately changed.
-- Loader authorizes first, then reads project, saved form, authorized file list and team defaults. Server derives project identity from route/access results, never from submitted `FormContext`.
+- Loader authorizes first, then reads project, saved form and the authorized file list. Team-settings/default reads are deferred per the reviewed decision above. Server derives project identity from route/access results, never from submitted `FormContext`.
 - Hydrate the agreed draft/canonical representation. Keep display-only state separate from the engine contract. Show unsupported/legacy content with a recovery path rather than asserting it is validated.
 - Save through the existing project action and `saveProjectForm`, with the agreed validation and revision semantics. Retain the 256 KiB UTF-8 limit server-side. Do not mark an optimistic save as successful before acknowledgement.
 - Preserve local edits on failed saves, revalidation and stale-save conflicts. Show saving/saved/failed state; protect navigation with unsaved changes. Use an explicit Save first; autosave is optional later.
-- Keep project goals consistent using the Phase 0 decision. Apply team defaults only to newly initialized values, preserving source/tier and user overrides.
+- Keep project goals consistent using the Phase 0 decision. Use explicitly accepted, labeled built-in proxies; preserve saved values, source/tier and user overrides. Do not add a team-settings API or loader dependency this round.
 - Exit: owner and member can save an incomplete draft, reload, sign out/in and recover it; rejected writes leave the last saved form intact. No run is started in this phase.
 
 ### Phase 2 - Attach real evidence
@@ -103,7 +103,7 @@ Owners: input team for the saved form; Deli for run controls ([#139](https://git
 
 Owner: Zihao for deployment; input team for acceptance evidence.
 
-- Ship small implementation PRs into `develop`: draft persistence, evidence linkage, then run UI. Each states dependencies and remaining limitations. No direct push to protected branches.
+- Ship small implementation PRs into `develop`: draft persistence, evidence linkage, then the saved-form handoff to the existing run UI. Each states dependencies and remaining limitations. No direct push to protected branches.
 - Zihao confirms required bindings/migrations/secrets and uses the existing GitHub Actions release path. This plan requires no credentials, migration application or remote deployment now.
 - On `valueiq-dev`, test save/upload/reload as member and owner and refusal as outsider/signed out. Include two browser sessions for conflict behavior. Collect IDs/statuses and reproducible steps without logging file contents or secrets.
 - On regression, preserve stored data and coordinate code rollback/forward fix with Zihao; do not roll back D1 by editing an applied migration. Review any incompatible draft-schema change before release.
