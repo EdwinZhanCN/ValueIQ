@@ -44,13 +44,18 @@ export class D1RunStore implements RunStore {
 
   constructor(
     d1: D1Database,
-    private readonly scope: { projectId: string; userId: string },
+    /**
+     * `userId: null` is the internal system scope, used only by the agent's own workflow
+     * callbacks (no user is present); it skips the membership check but stays project-scoped.
+     */
+    private readonly scope: { projectId: string; userId: string | null },
   ) {
     this.db = createDb(d1);
   }
 
   /** The team-membership check for the scoped user and project. */
   async assertAccess(): Promise<void> {
+    if (this.scope.userId === null) return;
     const row = await this.db
       .select({ role: member.role })
       .from(projects)

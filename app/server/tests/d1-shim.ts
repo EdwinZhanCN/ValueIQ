@@ -16,10 +16,7 @@ class Stmt {
     return this;
   }
   private rows(): Record<string, unknown>[] {
-    return this.db.prepare(this.sql).all(...this.params) as Record<
-      string,
-      unknown
-    >[];
+    return this.db.prepare(this.sql).all(...this.params);
   }
   all() {
     return Promise.resolve({ results: this.rows(), success: true, meta: {} });
@@ -27,7 +24,7 @@ class Stmt {
   raw() {
     const stmt = this.db.prepare(this.sql);
     stmt.setReturnArrays(true);
-    return Promise.resolve(stmt.all(...this.params) as unknown[][]);
+    return Promise.resolve(stmt.all(...this.params) as unknown as unknown[][]);
   }
   run() {
     const r = this.db.prepare(this.sql).run(...this.params);

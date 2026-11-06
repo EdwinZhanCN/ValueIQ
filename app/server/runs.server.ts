@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Server functions for calculation runs (integration contract section 5):
  * `createRun`, `appendRunEvent`, `finishRun`, `getRun`, `getLatestResult`.
  *
@@ -16,7 +16,8 @@ import { D1RunStore } from "./run-store.server";
 
 export { RunAccessError } from "./run-store.server";
 
-type Caller = { userId: string; projectId: string };
+/** `userId: null` is the internal system scope for the agent's own callbacks. */
+type Caller = { userId: string | null; projectId: string };
 
 /** A store scoped to one user and project, for the agent and workflow adapters. */
 export function runStoreFor(caller: Caller): D1RunStore {
@@ -31,7 +32,7 @@ const store = (c: Caller) => runStoreFor(c);
  * not count: editing nothing and starting again makes a new run.
  */
 export async function createRun(
-  caller: Caller,
+  caller: { userId: string; projectId: string },
   form: FormFile,
   mode: "real" | "stub" = "real",
 ): Promise<{ run: RunRecord; created: boolean }> {
