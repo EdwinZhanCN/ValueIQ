@@ -10,6 +10,8 @@
 // route needs (an uploaded file, say) goes in `setup`, which runs once as the
 // owner and can add fields to the shared fixture.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { openAgentSocket } from "./agent-socket.mjs";
 import { localSql, startDevServer, stopDevServer } from "./dev-server.mjs";
 
 const port = Number(process.env.VALUEIQ_SMOKE_PORT ?? 5179);
@@ -273,6 +275,89 @@ try {
     path: "/agents/value-i-q-agent/no-such-project",
   });
   assert.equal(missingAgent.status, 404, "missing project agent");
+
+  // Callable methods over a live socket (agent methods answer with typed results).
+  for (const actor of ["member", "owner"]) {
+    const ws = await openAgentSocket(origin, agentPath, cookies[actor], {
+      // A client-sent copy of the header must be overwritten by the gate.
+      "x-valueiq-user-id": users.outsider,
+    });
+    const wsLabel = `agent websocket as ${actor}`;
+    {
+      assert.equal(ws.opened, true, `${wsLabel}: connection refused`);
+      const state = await ws.state();
+      assert.equal(state.status, "idle", `${wsLabel}: initial state`);
+      // Not supported while ask_user is tabled.
+      const answer = await ws.rpc("answerQuestion", ["q1", "value"]);
+      assert.equal(answer.ok, false);
+      assert.equal(answer.error.code, "NOT_SUPPORTED");
+      // Before a form is saved the member gets BAD_INPUT, not ACCESS_DENIED:
+      // the forged header above did not become the connection's user id.
+      if (actor === "member") {
+        const start = await ws.rpc("startRun", []);
+        assert.equal(start.ok, false);
+        assert.equal(start.error.code, "BAD_INPUT", JSON.stringify(start));
+        const cancel = await ws.rpc("cancelRun", []);
+        assert.equal(cancel.ok, true);
+      }
+      ws.close();
+    }
+    rows.push(`${wsLabel}: open`);
+  }
+
+  // Workflow plumbing, only when no Gemini key is configured locally (so this
+  // never calls the model): a saved form starts a real run, the workflow fails
+  // it as MODEL_ERROR, and the run row, event and agent state say so. Nothing
+  // is faked. Delete the key from .dev.vars to run this block.
+  if (!/^GEMINI_API_KEY=/m.test(readFileSync(".dev.vars", "utf8"))) {
+    const form = readFileSync(
+      "docs/research/samples/sample-result.form.json",
+      "utf8",
+    );
+    const saved = await call("owner", {
+      path: `/projects/${projectId}`,
+      method: "POST",
+      form: { formJson: form },
+    });
+    assert.equal(saved.status, 200, "save sample form");
+    const live = await openAgentSocket(origin, agentPath, cookies.owner, {});
+    const start = await live.rpc("startRun", []);
+    assert.equal(start.ok, true, JSON.stringify(start));
+    const runId = start.value.run_id;
+    assert(runId, "startRun returned no run id");
+    let status = "";
+    for (let i = 0; i < 40 && status !== "failed"; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      const out = JSON.parse(
+        (
+          await localSql(`SELECT status FROM runs WHERE id = '${runId}'`)
+        ).replace(/^[^[]*/, ""),
+      );
+      status = out[0].results[0].status;
+    }
+    assert.equal(status, "failed", "run without a key should fail");
+    const state = await live.state();
+    assert(["running", "failed"].includes(state.status));
+    // Same form again: a failed run does not block a new one.
+    const again = await live.rpc("startRun", []);
+    assert.equal(again.ok, true, JSON.stringify(again));
+    assert.notEqual(again.value.run_id, runId, "failed run was reused");
+    live.close();
+    rows.push("agent workflow run without a key: failed (MODEL_ERROR)");
+  }
+
+  // A user who leaves the team loses callable access on a live connection.
+  {
+    const live = await openAgentSocket(origin, agentPath, cookies.member, {});
+    assert.equal(live.opened, true, "member socket before removal");
+    await localSql(
+      `DELETE FROM member WHERE user_id = '${users.member}' AND organization_id IN (SELECT team_id FROM projects WHERE id = '${projectId}')`,
+    );
+    const start = await live.rpc("startRun", []);
+    assert.equal(start.ok, false);
+    assert.equal(start.error.code, "ACCESS_DENIED", JSON.stringify(start));
+    live.close();
+  }
 
   console.log(rows.join("\n"));
   console.log(
