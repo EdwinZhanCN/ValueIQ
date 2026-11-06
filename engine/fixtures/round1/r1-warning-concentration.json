@@ -90,11 +90,7 @@
               }
             ],
             "source_type": "user",
-            "by_year": [
-              100000,
-              100000,
-              100000
-            ],
+            "by_year": [100000, 100000, 100000],
             "value": 300000,
             "evidence_tier": "documented"
           },
@@ -112,11 +108,7 @@
               }
             ],
             "source_type": "calculated",
-            "by_year": [
-              50000,
-              80000,
-              90000
-            ],
+            "by_year": [50000, 80000, 90000],
             "value": 220000,
             "evidence_tier": null
           },
@@ -134,11 +126,7 @@
               }
             ],
             "source_type": "default",
-            "by_year": [
-              25000,
-              40000,
-              45000
-            ],
+            "by_year": [25000, 40000, 45000],
             "value": 110000,
             "evidence_tier": "benchmark"
           },
@@ -156,11 +144,7 @@
               }
             ],
             "source_type": "calculated",
-            "by_year": [
-              23375,
-              37400,
-              42075
-            ],
+            "by_year": [23375, 37400, 42075],
             "value": 102850,
             "evidence_tier": null
           }
@@ -492,9 +476,7 @@
     "doing_nothing_risks": [
       "Today's costs and exposure continue unchanged (no baseline alternative was entered)."
     ],
-    "proceeding_risks": [
-      "Adoption may ramp more slowly than the stated path."
-    ],
+    "proceeding_risks": ["Adoption may ramp more slowly than the stated path."],
     "measurement_plan": {
       "time_savings": {
         "metric": "Not specified",
@@ -523,9 +505,7 @@
       {
         "code": "DRIVER_CONCENTRATION",
         "message": "Time savings is 100.0% of total benefit (guardrail: over 50%). Check it carefully.",
-        "refs": [
-          "A1"
-        ]
+        "refs": ["A1"]
       }
     ]
   }

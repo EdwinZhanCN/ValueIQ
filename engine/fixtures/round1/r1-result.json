@@ -86,11 +86,7 @@
               }
             ],
             "source_type": "user",
-            "by_year": [
-              100000,
-              100000,
-              100000
-            ],
+            "by_year": [100000, 100000, 100000],
             "value": 300000,
             "evidence_tier": "documented"
           },
@@ -108,11 +104,7 @@
               }
             ],
             "source_type": "calculated",
-            "by_year": [
-              50000,
-              80000,
-              90000
-            ],
+            "by_year": [50000, 80000, 90000],
             "value": 220000,
             "evidence_tier": null
           },
@@ -130,11 +122,7 @@
               }
             ],
             "source_type": "default",
-            "by_year": [
-              25000,
-              40000,
-              45000
-            ],
+            "by_year": [25000, 40000, 45000],
             "value": 110000,
             "evidence_tier": "benchmark"
           },
@@ -152,11 +140,7 @@
               }
             ],
             "source_type": "calculated",
-            "by_year": [
-              23375,
-              37400,
-              42075
-            ],
+            "by_year": [23375, 37400, 42075],
             "value": 102850,
             "evidence_tier": null
           }
@@ -223,11 +207,7 @@
               }
             ],
             "source_type": "user",
-            "by_year": [
-              33120,
-              33120,
-              33120
-            ],
+            "by_year": [33120, 33120, 33120],
             "value": 99360,
             "evidence_tier": "documented"
           },
@@ -245,11 +225,7 @@
               }
             ],
             "source_type": "calculated",
-            "by_year": [
-              16560,
-              26496,
-              29808
-            ],
+            "by_year": [16560, 26496, 29808],
             "value": 72864,
             "evidence_tier": null
           },
@@ -277,11 +253,7 @@
               }
             ],
             "source_type": "calculated",
-            "by_year": [
-              15814.8,
-              25303.68,
-              28466.64
-            ],
+            "by_year": [15814.8, 25303.68, 28466.64],
             "value": 69585.12,
             "evidence_tier": null
           }
@@ -313,9 +285,7 @@
         "pv": 56676.631104432745,
         "share_of_benefit": 0.2788171234488783,
         "measured_by": "Not specified: define a before/after measure for this driver",
-        "risk_factors": [
-          "Adoption depends on training and rollout."
-        ]
+        "risk_factors": ["Adoption depends on training and rollout."]
       },
       {
         "id": "risk_reduction",
@@ -347,11 +317,7 @@
               }
             ],
             "source_type": "user",
-            "by_year": [
-              37500,
-              37500,
-              37500
-            ],
+            "by_year": [37500, 37500, 37500],
             "value": 112500,
             "evidence_tier": "documented"
           },
@@ -369,11 +335,7 @@
               }
             ],
             "source_type": "calculated",
-            "by_year": [
-              18750,
-              30000,
-              33750
-            ],
+            "by_year": [18750, 30000, 33750],
             "value": 82500,
             "evidence_tier": null
           },
@@ -401,11 +363,7 @@
               }
             ],
             "source_type": "calculated",
-            "by_year": [
-              17531.25,
-              28050,
-              31556.25
-            ],
+            "by_year": [17531.25, 28050, 31556.25],
             "value": 77137.5,
             "evidence_tier": null
           }
@@ -437,9 +395,7 @@
         "pv": 62827.99586776858,
         "share_of_benefit": 0.3090783756647664,
         "measured_by": "Not specified: define a before/after measure for this driver",
-        "risk_factors": [
-          "Adoption depends on training and rollout."
-        ]
+        "risk_factors": ["Adoption depends on training and rollout."]
       }
     ],
     "costs": {
