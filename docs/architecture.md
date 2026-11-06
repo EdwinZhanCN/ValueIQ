@@ -40,6 +40,8 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 
 `/projects/:projectId` shows the saved form file as plain JSON, labelled as a placeholder until the Input team's intake form mounts there.
 
+The fixture generator also covers the 19 second-wave input cases. `scripts/form-wave2-cases.ts` constructs typed submissions independently of the pinned reference forms; `scripts/form-wave2.test.ts` compares complete serializer output against each reference. This adds input coverage without changing runtime/UI behavior.
+
 ## Runs and the agent gate
 
 The Input team's pre-integration wire type is `shared/form.ts`. `app/lib/intake-form.ts` owns serialization, parsing, field/evidence validation and preserving accepted state on rejected edits; it imports no engine or storage code. `pnpm fixtures:forms` produces deterministic engine handoff files from typed form state, including explicit rejected candidates for negative tests. `pnpm test:forms` runs the boundary checks and detects stale generated fixtures. The Intake step (goals, decision, files) and the Clarify step (numbers, defaults, evidence) edit this form as a lenient draft (`readFormDraft`); `validateFormFile` decides completeness before Process. [Fixture handoff and compatibility notes](../engine/fixtures/forms/README.md) record differences from the old research skeleton and #127 proposal.
