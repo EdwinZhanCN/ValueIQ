@@ -1,9 +1,11 @@
 # Team Agreement: ValueIQ
 
 ## Team commitment
+
 We are a project team working on ValueIQ. We will not treat project work as a series of loose tasks or vague updates. Every decision, discovery, and implementation detail must be documented and shared clearly.
 
 ## Research is part of the deliverable
+
 We will stop glossing over research.
 
 - Every major research effort must be captured in a repository-backed knowledge library.
@@ -15,6 +17,7 @@ We will stop glossing over research.
 The repo library is the source of truth for project knowledge. If it is not in the repo, it is not considered complete.
 
 ## Working rhythm
+
 Each team member will communicate more frequently and with more clarity.
 
 - We will provide a brief update at least 2-3 times per week in the agreed team channel or project tracker.
@@ -23,6 +26,7 @@ Each team member will communicate more frequently and with more clarity.
 - We will respond to teammate questions and blockers within a reasonable turnaround window, not leave them waiting in silence.
 
 ## Blocker management
+
 Blockers are expected and will be handled openly.
 
 - A blocker is any issue that prevents progress, creates ambiguity, or risks delivery quality.
@@ -31,6 +35,7 @@ Blockers are expected and will be handled openly.
 - We will not allow blockers to sit unexplained.
 
 ### Process for handling blockers
+
 1. Name the blocker clearly.
 2. State the impact on the project timeline, scope, or quality.
 3. Identify the owner and any dependencies.
@@ -39,6 +44,7 @@ Blockers are expected and will be handled openly.
 6. Revisit the blocker in the next communication update until resolved.
 
 ## Project operating principles
+
 - No undocumented assumptions.
 - No silently abandoned research.
 - No hidden blockers.
@@ -46,6 +52,7 @@ Blockers are expected and will be handled openly.
 - No implementation without linking it to the relevant documented findings and decisions.
 
 ## Resolution and accountability
+
 We will hold each other accountable to this agreement.
 
 - If a teammate does not document research, communicate regularly, or flag blockers, the team will call it out directly and promptly.
@@ -53,6 +60,7 @@ We will hold each other accountable to this agreement.
 - We will keep a lightweight record of decisions, tradeoffs, and open issues in the repo so the team can pick up work without redoing context gathering.
 
 ## Final expectation
+
 ValueIQ will move with more shared awareness, less ambiguity, and better execution because every member is expected to contribute, document, communicate, and unblock the work consistently.
 
 We are committing to a standard where research is library-backed, communication is frequent, and blockers are exposed and resolved quickly.
