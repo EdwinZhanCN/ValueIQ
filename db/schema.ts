@@ -125,3 +125,85 @@ export const teamSettings = sqliteTable(
     ),
   ],
 );
+
+// Output persistence from integration-contract sections 4/5. The workflow and
+// engine publish through runs.server.ts; no calculation is performed in D1.
+export const runs = sqliteTable(
+  "runs",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    status: text("status", {
+      enum: [
+        "idle",
+        "preflight",
+        "running",
+        "blocked_on_question",
+        "released",
+        "gap_list",
+        "failed",
+        "cancelled",
+      ],
+    }).notNull(),
+    mode: text("mode", { enum: ["real", "stub"] }).notNull(),
+    formHash: text("form_hash").notNull(),
+    contractVersion: text("contract_version").notNull(),
+    formulaVersion: text("formula_version").notNull(),
+    settingsVersion: text("settings_version").notNull(),
+    startedBy: text("started_by")
+      .notNull()
+      .references(() => user.id),
+    startedAt: integer("started_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(now),
+    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("runs_project_started_idx").on(table.projectId, table.startedAt),
+    check(
+      "runs_status_valid",
+      sql`${table.status} in ('idle','preflight','running','blocked_on_question','released','gap_list','failed','cancelled')`,
+    ),
+    check("runs_mode_valid", sql`${table.mode} in ('real','stub')`),
+  ],
+);
+
+export const runResults = sqliteTable(
+  "run_results",
+  {
+    runId: text("run_id")
+      .primaryKey()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    resultJson: text("result_json", { mode: "json" }).$type<unknown>(),
+    gapListJson: text("gap_list_json", { mode: "json" }).$type<unknown>(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(now),
+  },
+  (table) => [
+    check(
+      "run_results_exactly_one",
+      sql`(${table.resultJson} is null) != (${table.gapListJson} is null)`,
+    ),
+  ],
+);
+
+export const runReports = sqliteTable(
+  "run_reports",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    r2Key: text("r2_key").notNull().unique(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(now),
+  },
+  (table) => [index("run_reports_run_idx").on(table.runId)],
+);

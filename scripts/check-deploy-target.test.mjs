@@ -67,6 +67,11 @@ for (const [name, mutate, message] of [
       (built.durable_objects.bindings[0].script_name = "valueiq-dev"),
     /deep-equal/,
   ],
+  [
+    "cross-environment R2 bucket",
+    (_, built) => (built.r2_buckets[0].bucket_name = "valueiq-dev-files"),
+    /wrong private R2 bucket/,
+  ],
 ]) {
   test(`rejects ${name}`, async () => {
     const result = await check("production", mutate);

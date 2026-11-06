@@ -15,7 +15,8 @@ Human setup and deployment commands live in [README.md](README.md).
 - `workers/app.ts`: Worker entry and the `ValueIQAgent` Durable Object export.
 - `agents/valueiq-agent.ts`: empty agent shell — no state, no tools, no methods.
 - `db/`, `drizzle/`: Drizzle client, Better Auth tables (`auth-schema.ts`, generated from `auth.cli.ts`), application tables (`schema.ts`), and their migrations.
-- `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), and the signed-in user and current team (`team.server.ts`).
+- `app/server/`: identity/access, saved project forms, validated run snapshots and private R2 report storage. See [output pipeline](docs/output-pipeline.md) for server interfaces.
+- `shared/output.ts`: version 1 engine-output validation and inferred types, based on the supplied engine samples.
 - `docs/`: [architecture](docs/architecture.md) and [core beliefs](docs/core-beliefs.md).
 - `.agents/`: coding-agent procedures and durable project memory.
 
@@ -24,7 +25,9 @@ Human setup and deployment commands live in [README.md](README.md).
 - The marketing pages are `/` (landing) and `/workspace` (mock workspace), and neither has a loader or an action. `/api/auth/*` serves Better Auth.
 - Account pages: `/sign-up`, `/sign-in`, `/sign-out` (`auth-layout`), and `/teams/new`, `/team` inside the signed-in shell `app/routes/app-layout.tsx`. `app/server/team.server.ts` gives loaders the signed-in user and current team (`requireUser`, `requireTeam`).
 - Every loader, action, and resource route that touches a project calls `requireProjectAccess` first.
-- Keep the agent shell empty: do not add agent state, tools, skill conventions, or domain types until that design is actually decided. New tables follow the active exec plans.
+- `/projects`, `/projects/new`, `/projects/:projectId`, and `/projects/:projectId/results` use persisted data. The project editor currently preserves opaque JSON; the structured intake UI and executable engine are pending their owners' implementations. Report resources are private and project-scoped.
+- Only trusted server engine/workflow code calls `createRun`/`finishRun`; never add a browser endpoint accepting result numbers. Results and reports pin run identity; intake edits do not rewrite prior outputs.
+- Keep the agent shell empty: do not add agent state, tools or skill conventions until their design is implemented. New tables follow the active exec plans; the output slice proposes `runs`, `run_results` and `run_reports` in one generated migration for infrastructure review.
 - Never present mock or scripted behaviour as a working assessment.
 - `worker-configuration.d.ts` and `.react-router/types/` are generated and ignored; use `pnpm typegen` rather than hand-editing them.
 - Generate migrations from `db/schema.ts` with `pnpm db:generate`. Review generated SQL and retain applied migrations unchanged.

@@ -50,4 +50,9 @@ assert.notEqual(
 assert.deepEqual(config.durable_objects.bindings, [
   { name: "ValueIQAgent", class_name: "ValueIQAgent" },
 ]);
+assert.deepEqual(
+  config.r2_buckets,
+  [{ binding: "FILES", bucket_name: `${worker}-files` }],
+  "Build targets the wrong private R2 bucket",
+);
 console.log(`Deployment target verified: ${worker}`);

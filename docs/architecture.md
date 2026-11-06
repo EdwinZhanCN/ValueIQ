@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ is a technology-stack skeleton for a project value assessment product. What exists is the chosen stack, wired end to end, plus two interface surfaces. Identity and the first tables are in place (Better Auth, teams, projects, form files, uploads, team settings); there is still no agent state, no agent tools, no shared domain types, and no screen that uses the tables. Nothing in the repository pretends otherwise.
+ValueIQ has account/team pages, persisted projects and opaque saved forms, a validated engine-output consumer, and private PDF generation/storage. The executable calculation engine has not been pushed; project pages show an honest empty or pending state until trusted server code publishes a run. The agent remains an empty shell. See the [output pipeline](output-pipeline.md) for implemented server interfaces and remaining integration work.
 
 ## Stack
 
@@ -20,13 +20,13 @@ ValueIQ is a technology-stack skeleton for a project value assessment product. W
 | Route                  | Layout                            | Contents                                                                                    |
 | ---------------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
 | `/`                    | `app/routes/site-layout.tsx`      | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
-| `/workspace`           | `app/routes/workspace-layout.tsx` | The interface skeleton from `app/components/agents/`, given the whole viewport              |
+| `/workspace`           | `app/routes/workspace-layout.tsx` | Labeled STUB output preview; vendored chat example at `?view=chat`                          |
 | `/sign-up`, `/sign-in` | `app/routes/auth-layout.tsx`      | One centred form; `redirectTo` is honoured only for same-site paths                         |
 | `/teams/new`, `/team`  | `app/routes/app-layout.tsx`       | The signed-in shell: header with the current team, nav, and sign-out                        |
 
 `app/root.tsx` renders the document only: html/body, theme provider, tooltip provider, and the grain overlay. Page chrome belongs to the surface layouts, and error pages bring their own frame.
 
-Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders example content owned by vendored components; it is a mock interface, not a working assessment, and it calls nothing.
+Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders supplied STUB samples. Protected `/projects`, `/projects/new` and `/projects/:projectId` list/create projects and edit saved opaque JSON. `/projects/:projectId/results` loads a pinned or latest persisted run; its report resources generate PDFs and stream private R2 objects. These routes call the shared access gate first. The structured intake editor and executable engine remain pending.
 
 ## Identity, data, and access
 
@@ -40,18 +40,18 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 - `agents/valueiq-agent.ts` — an empty `ValueIQAgent` Durable Object: no state shape, no tools, no RPC methods.
 - `app/context.server.ts` — typed Worker bindings for loaders and actions.
 
-Undecided on purpose: agent state, agent tools, application skill conventions, and every shared domain type. Add them when the design is settled and reconnect a surface to them deliberately.
+Pending: agent state, agent tools, application skill conventions and executable orchestration. `shared/output.ts` now validates the supplied version 1 engine envelope; runtime consumers and storage share it. The output migration proposes `runs`, `run_results` and `run_reports` from the integration plan. Infrastructure and engine owners still review this concrete handoff before merge.
 
 ## Runtime and generated artifacts
 
 `pnpm dev` uses the Cloudflare Vite plugin to execute SSR and bindings in local workerd. D1 and Durable Object data persist under ignored `.wrangler/state/`. `pnpm build` produces client assets and a server Worker with a generated Wrangler deployment configuration. `pnpm deploy:check` packages that build without publishing it.
 
-`wrangler.jsonc` owns binding declarations: the `DB` D1 database and the `ValueIQAgent` Durable Object, plus each environment's `AUTH_ALLOWED_HOSTS` variable and required `BETTER_AUTH_SECRET` secret. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. The default configuration is local. Named `development` and `production` environments declare separate Workers, D1 databases, and Durable Object bindings. Their D1 databases are provisioned in the maintainer’s Cloudflare account, and their non-secret IDs are committed in `wrangler.jsonc`. Deployment rejects placeholder IDs and shared databases. Checks run without credentials. [Development and release guide](deployment.md) documents the live environments, access controls, and ongoing release workflow.
+`wrangler.jsonc` owns binding declarations: the `DB` D1 database and the `ValueIQAgent` Durable Object, the private `FILES` R2 bucket, plus each environment's `AUTH_ALLOWED_HOSTS` variable and required `BETTER_AUTH_SECRET` secret. `pnpm typegen` generates runtime/binding types and React Router route types. Drizzle generates migration SQL and snapshots from `db/schema.ts`; Wrangler applies the SQL. The default configuration is local. Named `development` and `production` environments declare separate Workers, D1 databases, and Durable Object bindings. Their D1 databases are provisioned in the maintainer’s Cloudflare account, and their non-secret IDs are committed in `wrangler.jsonc`. Deployment rejects placeholder IDs and shared databases. Checks run without credentials. [Development and release guide](deployment.md) documents the live environments, access controls, and ongoing release workflow.
 
 There are no model secrets, outbound model calls, MCP integrations, queues, or separate backend. People sign up, create a team, and add teammates through the account pages.
 
 ## Verification boundaries
 
-The [check-selection skill](../.agents/skills/valueiq-select-checks/SKILL.md) owns command routing. There are no unit tests while the repository holds no calculation contracts. The smoke test starts the real local Worker and checks that the landing page renders with the site chrome, that the workspace renders fullscreen without it, that sign-up returns a session, that two accounts in two teams work through the account pages (an owner adds a member by email, a member is refused, sign-in honours only same-site `redirectTo`), and that `/projects` is not served yet. The build and deployment dry run check Worker packaging and the Durable Object binding.
+The [check-selection skill](../.agents/skills/valueiq-select-checks/SKILL.md) routes static, contract, local workerd, migration, browser and deployment-package checks. `pnpm test:output` validates the output contract and immutable publication. `pnpm test:smoke` checks both public surfaces and account/team/project access. `pnpm test:output:integration`, with a separately running local Worker, checks saved forms, persisted run states, access isolation and private R2 reports using explicitly STUB test data. No test invokes a real engine yet.
 
-Two boundaries are review-enforced: the interface stays separate from anything backend-shaped, and an empty shell stays empty until its design is decided. A page, a loader, or a mock must not start implying a design that has not been made.
+Database and R2 access stay in server-only modules. Browsers never submit trusted results; report generation reads the selected stored snapshot. Missing, pending, gap and invalid outcomes cannot fall back to a sample or old headline. Editing intake preserves historical results and reports. The runtime database, migrations and R2 behavior have local checks; remote deployment and executable engine integration are separate work.

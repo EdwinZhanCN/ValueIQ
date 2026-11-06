@@ -124,7 +124,17 @@ try {
   // Workspace surface: the interface owns the page, with no site chrome
   // wrapped around it.
   const workspace = await get("/workspace");
-  assert.match(workspace, /Agent workspace/, "Workspace interface missing");
+  assert.match(workspace, /STUB/, "Output preview must identify its stub data");
+  assert.match(workspace, /127,956\.73/, "Stored sample headline missing");
+  assert.match(
+    workspace,
+    /202\.9%/,
+    "Undiscounted ROI must use percentage points",
+  );
+  assert.match(workspace, /169\.9%/, "PV-based ROI must use percentage points");
+  const gaps = await get("/workspace?view=gaps");
+  assert.match(gaps, /STUB/);
+  assert(!gaps.includes("127,956.73"), "Failed gate exposed a headline");
   assert(
     !workspace.includes('aria-label="Main"'),
     "Workspace still renders the site header",
@@ -238,11 +248,13 @@ try {
   });
   assert.equal(offsite.response.headers.get("location"), "/projects");
 
-  // No project pages yet.
-  await get("/projects", 404);
+  const projects = await page("/projects", "");
+  assert.equal(projects.response.status, 302);
+  assert.match(projects.response.headers.get("location"), /^\/sign-in/);
+  assert.equal((await page("/projects", offsite.jar)).response.status, 200);
 
   console.log(
-    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, no project pages yet.",
+    "Smoke passed: landing, fullscreen stub outputs, gated gap list, account/team access and protected projects.",
   );
 } catch (error) {
   console.error(logs);
