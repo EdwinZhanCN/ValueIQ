@@ -401,7 +401,7 @@ describe("input links", () => {
     for (const id of Object.keys(CATALOG)) {
       const href = inputStepHref("p1", id);
       expect(href).toMatch(
-        new RegExp("^/projects/p1(/clarify)?\?[?]input=" + id + "$"),
+        new RegExp("^/projects/p1(/clarify)?[?]input=" + id + "$"),
       );
       expect(["intake", "clarify"]).toContain(inputStep(id));
     }
