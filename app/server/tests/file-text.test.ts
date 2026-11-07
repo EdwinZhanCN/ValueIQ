@@ -15,7 +15,7 @@ import {
   readProjectFileForModel,
   type FileEvent,
 } from "../file-text.server";
-import { uploadProjectFile } from "../files.server";
+import { deleteProjectFiles, uploadProjectFile } from "../files.server";
 import { env } from "./cf-workers-stub";
 import { createTestD1, seedTeams, type TestD1 } from "./d1-shim";
 import { FakeR2 } from "./r2-fake";
@@ -160,6 +160,26 @@ describe("K17 server: access, scoping and limits", () => {
     const bad = await upload("broken.docx", new Uint8Array([1, 2, 3, 4, 5]));
     const b = await getExtractedText(owner(), bad);
     expect(!b.ok && b.code).toBe("FILE_UNREADABLE");
+  });
+});
+
+describe("K17 server: deleting a project's files", () => {
+  it("removes the source files and their extracted/ cache entries, and only that project's", async () => {
+    const id = await upload("pilot.docx", doc());
+    const other = await upload(
+      "other.docx",
+      doc(),
+      "application/octet-stream",
+      "p2",
+      "t2",
+      ids.outsider,
+    );
+    await getExtractedText(owner(), id);
+    expect(r2.objects.has(extractedKey("t1", "p1", id))).toBe(true);
+    await deleteProjectFiles("p1");
+    expect(r2.objects.has(`teams/t1/projects/p1/files/${id}`)).toBe(false);
+    expect(r2.objects.has(extractedKey("t1", "p1", id))).toBe(false);
+    expect(r2.objects.has(`teams/t2/projects/p2/files/${other}`)).toBe(true);
   });
 });
 
