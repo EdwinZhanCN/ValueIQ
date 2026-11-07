@@ -10,8 +10,7 @@
 import { formatMoney, formatPct } from "../../engine/present";
 import type { FormIssue } from "../../shared/form";
 import type { RunError, RunStatus, RunView } from "../../shared/types";
-import { INTAKE_FIELDS } from "../components/intake/intake-draft";
-import { GOAL_LABELS, LABELS } from "./intake-fields";
+import { GOAL_LABELS, LABELS, INTAKE_FIELDS } from "./intake-fields";
 
 // ---------- connection ----------
 
