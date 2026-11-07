@@ -7,7 +7,7 @@
 //  - period_months cannot be checked and is flagged as the assistant's reading.
 // Anything else is rejected and only counted. File text is untrusted data: it goes to the model
 // only inside a block delimited by an unguessable marker, never in the system prompt.
-import type { JsonSchema } from "../schema";
+import type { JsonSchema } from "./json-schema";
 import { CATALOG } from "../../engine/catalog";
 import type { ExtractedText, Segment } from "./extract/types";
 import type { StructuredCompleter, Usage } from "./host";

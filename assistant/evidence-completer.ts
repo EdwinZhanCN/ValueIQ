@@ -5,9 +5,9 @@ import {
   type FetchLike,
   type GeminiEvent,
   type StructuredOptions,
-} from "../gemini";
-import type { ThinkingSetting } from "../models";
-import type { StructuredCompleter } from "./host";
+} from "./gemini";
+import type { ThinkingSetting } from "./models";
+import type { StructuredCompleter } from "./evidence/host";
 
 export interface CompleterOptions {
   apiKey: string;

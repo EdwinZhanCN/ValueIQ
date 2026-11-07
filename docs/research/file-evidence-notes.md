@@ -15,7 +15,7 @@ Flow: upload (unchanged) -> `getExtractedText` (deterministic, cached in R2) -> 
 | Limits (one place)                         | `assistant/evidence/limits.ts`                                                                                 |
 | Extraction (no Cloudflare imports)         | `assistant/evidence/extract/` (`zip.ts`, `sax.ts`, `docx.ts`, `xlsx.ts`, `plain.ts`, `pdf.ts`, `index.ts`)     |
 | Excerpts and rendering                     | `assistant/evidence/text.ts`                                                                                   |
-| Extractor and verification                 | `assistant/evidence/find.ts`, `assistant/evidence/completer.ts`; `generateStructured` in `assistant/gemini.ts` |
+| Extractor and verification                 | `assistant/evidence/find.ts`, `assistant/evidence-completer.ts`; `generateStructured` in `assistant/gemini.ts` |
 | Tools                                      | `read_project_file`, `find_evidence` in `assistant/tools.ts` (async, run through `callToolDef`)                |
 | Host interface for the tools               | `assistant/evidence/host.ts` (`FileEvidenceHost`, passed as `ctx.files`)                                       |
 | Server layer (access, scoping, cache)      | `app/server/file-text.server.ts`: `getExtractedText`, `readProjectFileForModel`, `makeFileHost`                |

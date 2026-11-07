@@ -1,6 +1,6 @@
 // What the tool layer needs from its host (the Worker, a test, or a live script). Types only, so the
 // tools stay free of Cloudflare and of any model client.
-import type { JsonSchema } from "../schema";
+import type { JsonSchema } from "./json-schema";
 import type { ExtractedText } from "./extract/types";
 import type { Excerpt, ExcerptRequest } from "./text";
 

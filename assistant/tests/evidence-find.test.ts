@@ -16,7 +16,7 @@ import {
 import type { FileEvidenceHost, StructuredCompleter } from "../evidence/host";
 import { READ_EXCERPT_CHARS } from "../evidence/limits";
 import { buildExcerpt, type Excerpt } from "../evidence/text";
-import { geminiCompleter } from "../evidence/completer";
+import { geminiCompleter } from "../evidence-completer";
 import { DEFAULT_MODEL_ASSISTANT } from "../models";
 import {
   ToolArgError,

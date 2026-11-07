@@ -7,7 +7,7 @@
 // The key comes from the environment or the gitignored .dev.vars and is never printed.
 import { goldenResultForm } from "../engine/tests/forms";
 import type { FormFile } from "../engine";
-import { geminiCompleter } from "./evidence/completer";
+import { geminiCompleter } from "./evidence-completer";
 import { extractFileText, type ExtractedText } from "./evidence/extract";
 import type {
   EvidenceEvent,
