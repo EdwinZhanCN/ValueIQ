@@ -11,6 +11,7 @@ import type { CallResult } from "../../../agents/valueiq-agent";
 import type { RunView } from "../../../shared/types";
 import {
   EMPTY_VIEW,
+  FALLBACK_POLL_MS,
   callErrorText,
   type ConnectionState,
   type LatestOutcome,
@@ -63,6 +64,22 @@ export function RunAssessment(props: RunAssessmentProps) {
   return <ConnectedRunAssessment {...props} />;
 }
 
+/** Whole seconds since `key` last changed (restarts when it does), ticking each second while `on`. */
+function useSecondsSince(key: string, on: boolean): number {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    setSecs(0);
+    if (!on) return;
+    const start = Date.now();
+    const id = setInterval(
+      () => setSecs(Math.floor((Date.now() - start) / 1000)),
+      1000,
+    );
+    return () => clearInterval(id);
+  }, [key, on]);
+  return secs;
+}
+
 function ConnectedRunAssessment(props: RunAssessmentProps) {
   const { projectId, hasForm, missing, latest } = props;
   const [open, setOpen] = useState(false);
@@ -90,6 +107,26 @@ function ConnectedRunAssessment(props: RunAssessmentProps) {
       : everOpened
         ? "reconnecting"
         : "connecting";
+
+  const connectingSecs = useSecondsSince("connect", connection !== "open");
+  const active =
+    view.status === "preflight" ||
+    view.status === "running" ||
+    view.status === "blocked_on_question";
+  const idleSecs = useSecondsSince(
+    `${view.run_id}:${view.status}:${view.step}:${view.progress_pct}`,
+    active && connection === "open",
+  );
+
+  // While the live connection is down, keep the saved state fresh from the loader.
+  const { revalidate, state: loaderState } = revalidator;
+  useEffect(() => {
+    if (connection === "open") return;
+    const id = setInterval(() => {
+      if (loaderState === "idle") void revalidate();
+    }, FALLBACK_POLL_MS);
+    return () => clearInterval(id);
+  }, [connection, revalidate, loaderState]);
 
   // When a run ends, refresh the layout's saved outcome (step bar, stale note).
   const seen = useRef<string | null>(null);
@@ -151,6 +188,8 @@ function ConnectedRunAssessment(props: RunAssessmentProps) {
       busy={busy}
       cancelling={cancelling}
       notice={notice}
+      connectingSecs={connectingSecs}
+      idleSecs={idleSecs}
       onStart={() => void start()}
       onCancel={() => void cancel()}
     />

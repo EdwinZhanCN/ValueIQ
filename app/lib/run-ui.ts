@@ -27,12 +27,46 @@ export function connectionNote(state: ConnectionState): string | null {
     case "open":
       return null;
     case "connecting":
-      return "Connecting to the assessment service...";
+      return "Getting ready to start...";
     case "reconnecting":
       return "Connection lost. Reconnecting... Your progress is saved on the server.";
     case "denied":
       return "You do not have access to this project's assessment. Reload the page or sign in again.";
   }
+}
+
+/** Seconds of a first connection attempt before we say it is slow. */
+export const CONNECT_SLOW_SECS = 10;
+/** Seconds without a status or progress change before the "longer than usual" note. */
+export const STALL_SECS = 20;
+/** How often the saved state is re-read while the live connection is down. */
+export const FALLBACK_POLL_MS = 3000;
+
+/** True when the first connection has been trying for too long. */
+export function connectionStuck(state: ConnectionState, secs: number): boolean {
+  return state === "connecting" && secs >= CONNECT_SLOW_SECS;
+}
+
+/** The note under the heading; a slow first connection gets its own wording. */
+export function connectionMessage(
+  state: ConnectionState,
+  secs: number,
+): string | null {
+  return connectionStuck(state, secs)
+    ? "Still connecting... Showing your last saved state."
+    : connectionNote(state);
+}
+
+/**
+ * Reassurance while an active run shows no change. A pure function of the
+ * seconds since the last status, step or progress change. It never states an
+ * attempt count: the view does not carry one.
+ */
+export function stallNote(view: RunView, idleSecs: number): string | null {
+  return (view.status === "preflight" || view.status === "running") &&
+    idleSecs >= STALL_SECS
+    ? "Taking longer than usual, still working..."
+    : null;
 }
 
 // ---------- run view ----------
@@ -284,6 +318,59 @@ export function runControls(args: {
   };
 }
 
+export interface ErrorCopy {
+  /** What happened, one sentence. */
+  what: string;
+  /** What to do next, one sentence. */
+  next: string;
+}
+
+/** Friendly copy for a failed run's `error.code`. The raw code is only for the Details line. */
+export function errorCopy(code: string | undefined): ErrorCopy {
+  switch (code) {
+    case "MODEL_ERROR":
+      return {
+        what: "The AI service could not finish the assessment, often because it is busy.",
+        next: "Wait a minute, then start a new assessment.",
+      };
+    case "MODEL_TIMEOUT":
+      return {
+        what: "The AI service took too long to answer.",
+        next: "Start a new assessment; large files can take longer.",
+      };
+    case "BAD_INPUT":
+      return {
+        what: "Something in your inputs could not be used.",
+        next: "Check Intake and Clarify, then start a new assessment.",
+      };
+    case "ACCESS_DENIED":
+      return {
+        what: "You no longer have access to this project.",
+        next: "Reload the page or sign in again.",
+      };
+    case "ENGINE_INTEGRITY":
+      return {
+        what: "The calculation failed its own checks, so no result is shown rather than a wrong one.",
+        next: "Start a new assessment; if it fails again, tell your team lead.",
+      };
+    case "FILE_UNREADABLE":
+      return {
+        what: "One of your uploaded files could not be read.",
+        next: "Check the files on Intake (or upload it again), then start a new assessment.",
+      };
+    case "GATE_FAILED":
+      return {
+        what: "The result did not pass the final quality check.",
+        next: "Add or fix evidence on Clarify, then start a new assessment.",
+      };
+    default:
+      return {
+        what: "The assessment stopped before it finished.",
+        next: "Start a new assessment; if it fails again, tell your team lead.",
+      };
+  }
+}
+
 /** Plain-language text for a failed call (`{ok:false, error}` from an agent method). */
 export function callErrorText(error: RunError): string {
   switch (error.code) {
@@ -330,6 +417,55 @@ export function missingInputs(issues: readonly FormIssue[]): MissingInput[] {
         message: issue.message,
       });
   return [...seen.values()];
+}
+
+export const MAX_MISSING = 6;
+
+export interface MissingGroup {
+  step: InputStep;
+  title: string;
+  items: MissingInput[];
+}
+
+/**
+ * The missing-inputs list: the first `max` rows grouped by the step that edits
+ * them (Intake before Clarify), the total, and how many are not shown.
+ */
+export function missingSummary(
+  missing: readonly MissingInput[],
+  max: number = MAX_MISSING,
+): { total: number; more: number; caption: string; groups: MissingGroup[] } {
+  const shown = missing.slice(0, max);
+  const groups: MissingGroup[] = [];
+  for (const step of ["intake", "clarify"] as const) {
+    const items = shown.filter((m) => inputStep(m.field) === step);
+    if (items.length > 0)
+      groups.push({
+        step,
+        title: step === "intake" ? "Intake" : "Clarify",
+        items,
+      });
+  }
+  const more = missing.length - shown.length;
+  return {
+    total: missing.length,
+    more,
+    caption:
+      more > 0
+        ? `${missing.length} missing, showing the first ${shown.length}`
+        : `${missing.length} missing`,
+    groups,
+  };
+}
+
+export const STALE_INPUTS_NOTE =
+  "You changed inputs after this result. Run again to update it, or view the old result.";
+
+/** Plain words for the two floors on a gap list; the numbers come from the saved output. */
+export function floorNote(project: string, driver: string | null): string {
+  return driver && driver !== project
+    ? `The project needs ${project}; this part needs ${driver}.`
+    : `The project needs ${project}.`;
 }
 
 /**

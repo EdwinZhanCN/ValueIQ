@@ -21,8 +21,14 @@ import {
   canRerun,
   cancelControl,
   clampPct,
-  connectionNote,
-  inputStep,
+  connectionMessage,
+  connectionStuck,
+  errorCopy,
+  floorNote,
+  MAX_MISSING,
+  missingSummary,
+  STALE_INPUTS_NOTE,
+  stallNote,
   inputStepHref,
   phaseItems,
   processAction,
@@ -52,12 +58,14 @@ export interface RunPanelProps {
   cancelling: boolean;
   /** A message about the last button press (a refused or failed call), or null. */
   notice: string | null;
+  /** Seconds the first connection attempt has been running. */
+  connectingSecs?: number;
+  /** Seconds since the run's status, step or progress last changed. */
+  idleSecs?: number;
   latest: LatestOutcome | null;
   onStart: () => void;
   onCancel: () => void;
 }
-
-const MAX_MISSING = 6;
 
 /**
  * The Process card (mock UI 05): progress ring, the run's own steps, "Saved ·
@@ -92,7 +100,16 @@ export function RunPanel(props: RunPanelProps) {
       ? latest.summary
       : null;
   const fresh = view.status === "idle";
-  const note = connection === "open" ? null : connectionNote(connection);
+  const stuck = connectionStuck(connection, props.connectingSecs ?? 0);
+  const note =
+    connection === "open"
+      ? null
+      : connectionMessage(connection, props.connectingSecs ?? 0);
+  const stall = stallNote(view, props.idleSecs ?? 0);
+  const retryFailed =
+    view.status === "failed" &&
+    action.kind === "start" &&
+    action.label === "Retry";
   const title =
     fresh && blockedFromStart
       ? props.hasForm
@@ -142,6 +159,7 @@ export function RunPanel(props: RunPanelProps) {
         {note ? (
           <p
             role="status"
+            aria-live="polite"
             className="flex items-center gap-1.5 text-sm text-muted-foreground"
           >
             {connection === "connecting" ? (
@@ -150,8 +168,24 @@ export function RunPanel(props: RunPanelProps) {
               <WifiOffIcon className="size-4 shrink-0" aria-hidden />
             )}
             {note}
+            {stuck ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.reload()}
+              >
+                Reload
+              </Button>
+            ) : null}
           </p>
         ) : null}
+        <p aria-live="polite" className="min-h-5 text-sm text-muted-foreground">
+          {stall ??
+            (view.status === "running" || view.status === "preflight"
+              ? view.step
+              : null)}
+        </p>
       </div>
 
       {view.status === "failed" ? <FailureNote view={view} /> : null}
@@ -185,7 +219,7 @@ export function RunPanel(props: RunPanelProps) {
       {rerun ? (
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <InfoIcon className="size-4 shrink-0" aria-hidden />
-          Inputs changed since this run.
+          {STALE_INPUTS_NOTE}
         </p>
       ) : null}
 
@@ -214,6 +248,25 @@ export function RunPanel(props: RunPanelProps) {
           >
             {props.cancelling ? <Spinner /> : null}
             {cancel.label}
+          </Button>
+        ) : null}
+        {rerun && view.run_id ? (
+          <Link
+            to={resultsHref(projectId, view.run_id)}
+            className={buttonVariants({ variant: "ghost", size: "lg" })}
+          >
+            View old result
+          </Link>
+        ) : null}
+        {retryFailed ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={props.onStart}
+            disabled={connection !== "open" || props.busy}
+          >
+            Start new run
           </Button>
         ) : null}
         {rerun ? (
@@ -311,7 +364,8 @@ function ProgressRing({ view }: { view: RunView }) {
   return (
     <div
       role="progressbar"
-      aria-label="Model build progress"
+      aria-label="Assessment progress"
+      aria-valuetext={`${pct} percent`}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={pct}
@@ -394,32 +448,48 @@ function MissingList({
   missing: readonly MissingInput[];
 }) {
   if (missing.length === 0) return null;
-  const shown = missing.slice(0, MAX_MISSING);
-  const more = missing.length - shown.length;
+  const sum = missingSummary(missing, MAX_MISSING);
   return (
     <div className="flex w-full flex-col gap-2">
-      <p className="text-sm font-medium">Needed before a run can start</p>
-      <ul className="flex w-full flex-col divide-y rounded-xl border">
-        {shown.map((m) => (
-          <li key={m.field}>
-            <Link
-              to={inputStepHref(projectId, m.field)}
-              className="flex flex-col gap-0.5 rounded-xl px-3.5 py-2.5 outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              <span className="text-sm font-medium">
-                {m.label}
-                <span className="font-normal text-muted-foreground">
-                  {" · "}
-                  {inputStep(m.field) === "intake" ? "Intake" : "Clarify"}
-                </span>
-              </span>
-              <span className="text-xs text-muted-foreground">{m.message}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-      {more > 0 ? (
-        <p className="text-xs text-muted-foreground">and {more} more</p>
+      <p className="text-sm font-medium">
+        Needed before an assessment can start
+        <span className="font-normal text-muted-foreground">
+          {" · "}
+          {sum.caption}
+        </span>
+      </p>
+      {sum.groups.map((group) => (
+        <div key={group.step} className="flex flex-col gap-1">
+          <p className="text-xs font-medium text-muted-foreground">
+            {group.title}
+          </p>
+          <ul className="flex w-full flex-col divide-y rounded-xl border">
+            {group.items.map((m) => (
+              <li key={m.field}>
+                <Link
+                  to={inputStepHref(projectId, m.field)}
+                  className="flex flex-col gap-0.5 rounded-xl px-3.5 py-2.5 outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <span className="text-sm font-medium">{m.label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {m.message}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {sum.more > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          and {sum.more} more.{" "}
+          <Link
+            to={inputStepHref(projectId, null)}
+            className="underline underline-offset-2"
+          >
+            See them on Clarify
+          </Link>
+        </p>
       ) : null}
     </div>
   );
@@ -427,6 +497,7 @@ function MissingList({
 
 function FailureNote({ view }: { view: RunView }) {
   const error = view.error;
+  const copy = errorCopy(error?.code);
   return (
     <div
       role="alert"
@@ -437,20 +508,17 @@ function FailureNote({ view }: { view: RunView }) {
         aria-hidden
       />
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="font-medium text-destructive">
-          {error?.message ?? "The run failed."}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {error ? (
-            <>
+        <p className="font-medium text-destructive">{copy.what}</p>
+        <p className="text-muted-foreground">{copy.next}</p>
+        {error ? (
+          <details className="text-xs text-muted-foreground">
+            <summary className="cursor-pointer">Details</summary>
+            <p className="mt-1 break-words">
               <code className="font-mono">{error.code}</code>
-              {" · "}
-            </>
-          ) : null}
-          {error?.retryable
-            ? "Usually fixed by retrying."
-            : "Retrying will not help until the cause is fixed."}
-        </p>
+              {error.message ? ` · ${error.message}` : ""}
+            </p>
+          </details>
+        ) : null}
       </div>
     </div>
   );
@@ -542,6 +610,9 @@ function GapCard({
       <p className="text-center text-sm text-muted-foreground">
         {gap.reason}. These are next steps, not an error.
       </p>
+      <p className="text-center text-sm text-muted-foreground">
+        {floorNote(gap.floor, gap.dropped[0]?.floor ?? null)}
+      </p>
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border text-sm">
         <div className="flex flex-col gap-0.5 bg-card px-4 py-3">
           <dt className="text-xs text-muted-foreground">Project confidence</dt>
@@ -550,7 +621,7 @@ function GapCard({
           </dd>
         </div>
         <div className="flex flex-col gap-0.5 bg-card px-4 py-3">
-          <dt className="text-xs text-muted-foreground">Release floor</dt>
+          <dt className="text-xs text-muted-foreground">Needed for a result</dt>
           <dd className="text-lg font-semibold tabular-nums">{gap.floor}</dd>
         </div>
       </dl>
@@ -572,7 +643,7 @@ function GapCard({
                     {item.whatToAdd}
                   </p>
                   <p className="text-xs text-muted-foreground tabular-nums">
-                    Confidence {item.confidenceNow} now,{" "}
+                    Confidence {item.confidenceNow} now, up to{" "}
                     {item.confidenceIfAdded} if added
                   </p>
                 </div>
@@ -603,7 +674,7 @@ function GapCard({
               >
                 <span>{driver.label}</span>
                 <span className="text-muted-foreground tabular-nums">
-                  {driver.confidence} confidence, needs {driver.floor}
+                  {driver.confidence} confidence; this part needs {driver.floor}
                 </span>
               </li>
             ))}

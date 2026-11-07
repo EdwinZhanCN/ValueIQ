@@ -10,6 +10,14 @@ import type { RunView } from "../../../shared/types";
 import {
   EMPTY_VIEW,
   callErrorText,
+  connectionMessage,
+  connectionStuck,
+  errorCopy,
+  floorNote,
+  missingSummary,
+  stallNote,
+  STALE_INPUTS_NOTE,
+  type MissingInput,
   canRerun,
   checklistItems,
   clampPct,
@@ -652,5 +660,85 @@ describe("Process screen", () => {
         missing: [],
       }),
     ).toBe(false);
+  });
+});
+
+describe("Process screen UX copy", () => {
+  it("gives friendly copy per error code and never leaks the raw code", () => {
+    for (const code of [
+      "MODEL_ERROR",
+      "MODEL_TIMEOUT",
+      "BAD_INPUT",
+      "ACCESS_DENIED",
+      "ENGINE_INTEGRITY",
+      "FILE_UNREADABLE",
+      "GATE_FAILED",
+      "SOMETHING_NEW",
+      undefined,
+    ]) {
+      const c = errorCopy(code);
+      expect(c.what.length).toBeGreaterThan(10);
+      expect(c.next.length).toBeGreaterThan(10);
+      expect(`${c.what} ${c.next}`).not.toMatch(/[A-Z]{3,}_[A-Z]+/);
+    }
+    expect(errorCopy("MODEL_ERROR").what).not.toBe(
+      errorCopy("MODEL_TIMEOUT").what,
+    );
+    expect(errorCopy("nope")).toEqual(errorCopy(undefined));
+  });
+
+  const m = (field: string): MissingInput => ({
+    field,
+    label: field,
+    message: "x",
+  });
+  it("counts and groups missing inputs by step", () => {
+    const all = [
+      m("number_x"),
+      m("project_name"),
+      ...Array.from({ length: 12 }, (_, i) => m(`number_${i}`)),
+    ];
+    const s = missingSummary(all, 6);
+    expect(s.total).toBe(14);
+    expect(s.more).toBe(8);
+    expect(s.caption).toBe("14 missing, showing the first 6");
+    expect(s.groups.map((g) => g.title)).toEqual(["Intake", "Clarify"]);
+    expect(s.groups.flatMap((g) => g.items)).toHaveLength(6);
+    const few = missingSummary([m("number_1")], 6);
+    expect(few.more).toBe(0);
+    expect(few.caption).toBe("1 missing");
+    expect(few.groups.map((g) => g.step)).toEqual(["clarify"]);
+  });
+
+  it("words the stale-inputs note with a next step", () => {
+    expect(STALE_INPUTS_NOTE).toMatch(/Run again/);
+    expect(STALE_INPUTS_NOTE).toMatch(/old result/);
+  });
+
+  it("shows the slow note only after 20 quiet seconds of an active run", () => {
+    const running = view({ status: "running" });
+    expect(stallNote(running, 19)).toBeNull();
+    expect(stallNote(running, 20)).toMatch(/longer than usual/);
+    expect(stallNote(running, 20)).not.toMatch(/\d/);
+    expect(stallNote(view({ status: "failed" }), 90)).toBeNull();
+    expect(stallNote(view({ status: "released" }), 90)).toBeNull();
+  });
+
+  it("flags a stuck first connection after 10 seconds only", () => {
+    expect(connectionStuck("connecting", 9)).toBe(false);
+    expect(connectionStuck("connecting", 10)).toBe(true);
+    expect(connectionStuck("reconnecting", 60)).toBe(false);
+    expect(connectionMessage("connecting", 10)).toMatch(/Still connecting/);
+    expect(connectionMessage("connecting", 2)).toBe(
+      connectionNote("connecting"),
+    );
+    expect(connectionMessage("open", 99)).toBeNull();
+  });
+
+  it("explains the two floors in plain words", () => {
+    expect(floorNote("85.0%", "80.0%")).toBe(
+      "The project needs 85.0%; this part needs 80.0%.",
+    );
+    expect(floorNote("85.0%", null)).toBe("The project needs 85.0%.");
   });
 });
