@@ -20,7 +20,7 @@ Flow: upload (unchanged) -> `getExtractedText` (deterministic, cached in R2) -> 
 | Host interface for the tools               | `assistant/evidence/host.ts` (`FileEvidenceHost`, passed as `ctx.files`)                                       |
 | Server layer (access, scoping, cache)      | `app/server/file-text.server.ts`: `getExtractedText`, `readProjectFileForModel`, `makeFileHost`                |
 | Prompt and tool list for the evidence step | `EVIDENCE_SYSTEM`, `EVIDENCE_TOOLS` in `assistant/prompts.ts` (not part of `ASSISTANT_TOOLS`)                  |
-| Tests                                      | `assistant/tests/evidence-*.test.ts`, `app/server/tests/file-text.test.ts` (KPI K17 in `pnpm test:engine`)      |
+| Tests                                      | `assistant/tests/evidence-*.test.ts`, `app/server/tests/file-text.test.ts` (KPI K17 in `pnpm test:engine`)     |
 | Manual live check                          | `node assistant/scripts/live-evidence.mjs` (or `--dry`)                                                        |
 
 Nothing in the Worker entry, the agent or the workflow calls this yet. To use it: in the agent, build `makeFileHost({ projectId, userId }, geminiCompleter({ apiKey, model: resolveModels(env).assistant }))`, pass it as `files` to `createContext`, offer `EVIDENCE_TOOLS` with `EVIDENCE_SYSTEM`, and show the proposals on a card.
@@ -37,17 +37,17 @@ Nothing in the Worker entry, the agent or the workflow calls this yet. To use it
 
 ## Limits chosen (team judgment pending Q7)
 
-| Limit                            | Value                                                                                                                                    | Where                                                                    |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| File the extractor opens         | 10 MB (the upload cap) | `maxBytes` option, default `DEFAULT_MAX_EXTRACT_FILE_BYTES`; the server passes `MAX_FILE_BYTES` |
-| Per project (product limit)      | 25 MB of files in total, about 10 files | `MAX_BYTES_PER_PROJECT`, `SUGGESTED_MAX_FILES_PER_PROJECT`; constants only, **not enforced** (uploads are Zihao's) |
-| Text kept per file               | 1,000,000 characters, 60,000 segments                                                                                                    | `MAX_TEXT_CHARS`, `MAX_SEGMENTS`                                         |
-| XLSX / CSV                       | 30 sheets, 20,000 rows per sheet, 50 columns, 1,000 characters per cell                                                                  | `MAX_SHEETS`, `MAX_ROWS_PER_SHEET`, `MAX_COLS_PER_ROW`, `MAX_CELL_CHARS` |
-| PDF                              | 20 MB, 200 pages                                                                                                                         | `MAX_PDF_BYTES`, `MAX_PDF_PAGES`                                         |
-| Plain text / CSV decoded         | first 6 MB                                                                                                                               | `MAX_PLAIN_BYTES`                                                        |
-| What the model reads per call    | 8,000 characters per `read_project_file` call (paged by `start` / `next_start`, narrowed by `section` or `query`)                        | `READ_EXCERPT_CHARS`                                                     |
-| What the extractor model is sent | one call per (file, input), at most 40,000 characters, the most relevant segments when a file is bigger (`coverage.complete` says which) | `EXTRACTOR_CONTEXT_CHARS`                                                |
-| Candidates returned              | 5 per call, quotes up to 500 characters                                                                                                  | `EXTRACTOR_MAX_CANDIDATES`, `MAX_QUOTE_CHARS`                            |
+| Limit                            | Value                                                                                                                                    | Where                                                                                                              |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| File the extractor opens         | 10 MB (the upload cap)                                                                                                                   | `maxBytes` option, default `DEFAULT_MAX_EXTRACT_FILE_BYTES`; the server passes `MAX_FILE_BYTES`                    |
+| Per project (product limit)      | 25 MB of files in total, about 10 files                                                                                                  | `MAX_BYTES_PER_PROJECT`, `SUGGESTED_MAX_FILES_PER_PROJECT`; constants only, **not enforced** (uploads are Zihao's) |
+| Text kept per file               | 1,000,000 characters, 60,000 segments                                                                                                    | `MAX_TEXT_CHARS`, `MAX_SEGMENTS`                                                                                   |
+| XLSX / CSV                       | 30 sheets, 20,000 rows per sheet, 50 columns, 1,000 characters per cell                                                                  | `MAX_SHEETS`, `MAX_ROWS_PER_SHEET`, `MAX_COLS_PER_ROW`, `MAX_CELL_CHARS`                                           |
+| PDF                              | 20 MB, 200 pages                                                                                                                         | `MAX_PDF_BYTES`, `MAX_PDF_PAGES`                                                                                   |
+| Plain text / CSV decoded         | first 6 MB                                                                                                                               | `MAX_PLAIN_BYTES`                                                                                                  |
+| What the model reads per call    | 8,000 characters per `read_project_file` call (paged by `start` / `next_start`, narrowed by `section` or `query`)                        | `READ_EXCERPT_CHARS`                                                                                               |
+| What the extractor model is sent | one call per (file, input), at most 40,000 characters, the most relevant segments when a file is bigger (`coverage.complete` says which) | `EXTRACTOR_CONTEXT_CHARS`                                                                                          |
+| Candidates returned              | 5 per call, quotes up to 500 characters                                                                                                  | `EXTRACTOR_MAX_CANDIDATES`, `MAX_QUOTE_CHARS`                                                                      |
 
 ## Safety
 
