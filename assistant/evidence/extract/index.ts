@@ -1,7 +1,7 @@
 // Deterministic text extraction (no model). One entry point: bytes in, `ExtractedText` out.
 // No Cloudflare imports, so it runs in Workers and in Node tests.
 import {
-  MAX_EXTRACT_FILE_BYTES,
+  DEFAULT_MAX_EXTRACT_FILE_BYTES,
   MAX_SEGMENT_CHARS,
   MAX_SEGMENTS,
   MAX_TEXT_CHARS,
@@ -97,14 +97,17 @@ export interface ExtractInput {
   name: string;
   mime: string;
   bytes: Uint8Array;
+  /** Largest file to open. Defaults to the upload cap (10 MB); the server passes its own `MAX_FILE_BYTES`. */
+  maxBytes?: number;
 }
 
 /** Throws ExtractError for an unsupported, oversized, malformed or hostile file. */
 export async function extractFileText(i: ExtractInput): Promise<ExtractedText> {
-  if (i.bytes.length > MAX_EXTRACT_FILE_BYTES)
+  const maxBytes = i.maxBytes ?? DEFAULT_MAX_EXTRACT_FILE_BYTES;
+  if (i.bytes.length > maxBytes)
     throw new ExtractError(
       "TOO_LARGE",
-      `Files over ${Math.round(MAX_EXTRACT_FILE_BYTES / 1024 / 1024)} MB are not read`,
+      `Files over ${Math.round(maxBytes / 1024 / 1024)} MB are not read`,
     );
   const kind = detectKind(i.name, i.mime, i.bytes.subarray(0, 8));
   const sink = new SegmentSink(MAX_TEXT_CHARS, MAX_SEGMENTS, MAX_SEGMENT_CHARS);

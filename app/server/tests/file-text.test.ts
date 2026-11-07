@@ -6,7 +6,7 @@ import {
   buildDocx,
   buildXlsx,
 } from "../../../assistant/tests/evidence-fixtures";
-import { MAX_EXTRACT_FILE_BYTES } from "../../../assistant/evidence/limits";
+import { MAX_FILE_BYTES } from "../files.server";
 import { READ_EXCERPT_CHARS } from "../../../assistant/evidence/limits";
 import {
   extractedKey,
@@ -145,7 +145,7 @@ describe("K17 server: access, scoping and limits", () => {
   it("refuses an over-limit file without reading it", async () => {
     t.exec(
       "insert into files (id,project_id,r2_key,name,mime,size,description,uploaded_by) values ('huge','p1','teams/t1/projects/p1/files/huge','huge.xlsx','x/y',?,'d',?)",
-      MAX_EXTRACT_FILE_BYTES + 1,
+      MAX_FILE_BYTES + 1,
       ids.owner,
     );
     const r = await readProjectFileForModel(owner(), "huge");

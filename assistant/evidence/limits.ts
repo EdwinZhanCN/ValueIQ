@@ -1,11 +1,16 @@
 // Limits for file evidence. Pure constants (no imports) so the server layer, the tools and the tests
 // share one definition. Sizes are team judgment pending Q7 (docs/research/file-evidence-notes.md).
 
-/** Largest file the extractor will open (Eli's suggested per-file cap; the upload cap is still Zihao's). */
-export const MAX_EXTRACT_FILE_BYTES = 25 * 1024 * 1024;
-/** Suggested project caps (not enforced here; the upload path is Zihao's). */
+/**
+ * Default largest file the extractor will open. It matches the upload cap (`MAX_FILE_BYTES` in
+ * app/server/files.server.ts); this pure module cannot import server code, so the server passes its own
+ * cap as `maxBytes` and this default only guards direct callers.
+ */
+export const DEFAULT_MAX_EXTRACT_FILE_BYTES = 10 * 1024 * 1024;
+/** Product limit: 25 MB of files in total per project. Constant only, not enforced yet (uploads are Zihao's). */
+export const MAX_BYTES_PER_PROJECT = 25 * 1024 * 1024;
+/** Suggested file count per project (not enforced). */
 export const SUGGESTED_MAX_FILES_PER_PROJECT = 10;
-export const SUGGESTED_MAX_BYTES_PER_PROJECT = 100 * 1024 * 1024;
 
 // ---- zip (DOCX / XLSX) ----
 export const MAX_ZIP_ENTRIES = 2000;

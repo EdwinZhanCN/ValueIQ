@@ -20,7 +20,6 @@ import {
   extractFileText,
   type ExtractedText,
 } from "../../assistant/evidence/extract";
-import { MAX_EXTRACT_FILE_BYTES } from "../../assistant/evidence/limits";
 import {
   ExcerptError,
   buildExcerpt,
@@ -32,6 +31,7 @@ import type {
   FileEvidenceHost,
 } from "../../assistant/evidence/host";
 import { getProjectMembership } from "./access.server";
+import { MAX_FILE_BYTES } from "./files.server";
 
 export interface FileScope {
   projectId: string;
@@ -117,11 +117,11 @@ export async function getExtractedText(
   if (!row || !row.r2Key.startsWith(prefix))
     return refuse("FILE_NOT_FOUND", "That file is not in this project");
   const base = { file_id: row.id, project_id: scope.projectId };
-  if (row.size > MAX_EXTRACT_FILE_BYTES) {
+  if (row.size > MAX_FILE_BYTES) {
     log?.({ type: "file_refused", ...base, code: "TOO_LARGE" });
     return refuse(
       "TOO_LARGE",
-      `Files over ${Math.round(MAX_EXTRACT_FILE_BYTES / 1024 / 1024)} MB are not read`,
+      `Files over ${Math.round(MAX_FILE_BYTES / 1024 / 1024)} MB are not read`,
     );
   }
   const head = await env.FILES.head(row.r2Key);
@@ -168,6 +168,7 @@ export async function getExtractedText(
       name: row.name,
       mime: row.mime,
       bytes,
+      maxBytes: MAX_FILE_BYTES,
     });
     const entry: CacheEntry = {
       v: EXTRACTOR_VERSION,

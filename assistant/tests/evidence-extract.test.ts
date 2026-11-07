@@ -8,7 +8,7 @@ import {
 } from "../evidence/extract";
 import {
   MAX_COLS_PER_ROW,
-  MAX_EXTRACT_FILE_BYTES,
+  DEFAULT_MAX_EXTRACT_FILE_BYTES,
   MAX_PART_BYTES,
   MAX_ROWS_PER_SHEET,
 } from "../evidence/limits";
@@ -340,9 +340,26 @@ describe("K17 extract: hostile and unsupported input is refused", () => {
 
   it("refuses files over the size limit before reading them", async () => {
     await refused(
-      run("big.txt", new Uint8Array(MAX_EXTRACT_FILE_BYTES + 1)),
+      run("big.txt", new Uint8Array(DEFAULT_MAX_EXTRACT_FILE_BYTES + 1)),
       "TOO_LARGE",
     );
+    // exactly at the limit is opened
+    const ok = await run(
+      "edge.txt",
+      new Uint8Array(DEFAULT_MAX_EXTRACT_FILE_BYTES),
+    );
+    expect(ok.segments).toBeDefined();
+  });
+
+  it("honours an explicit maxBytes", async () => {
+    const input = {
+      fileId: "f1",
+      name: "a.txt",
+      mime: "",
+      bytes: new Uint8Array(11),
+    };
+    await refused(extractFileText({ ...input, maxBytes: 10 }), "TOO_LARGE");
+    await extractFileText({ ...input, maxBytes: 11 });
   });
 
   it("deeply nested XML is refused", async () => {

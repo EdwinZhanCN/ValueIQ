@@ -39,8 +39,8 @@ Nothing in the Worker entry, the agent or the workflow calls this yet. To use it
 
 | Limit                            | Value                                                                                                                                    | Where                                                                    |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| File the extractor opens         | 25 MB                                                                                                                                    | `MAX_EXTRACT_FILE_BYTES`; **the upload cap is still 10 MB** (Zihao's)    |
-| Suggested per project            | about 10 files and 100 MB                                                                                                                | constants only; **not enforced** (the upload path is Zihao's)            |
+| File the extractor opens         | 10 MB (the upload cap) | `maxBytes` option, default `DEFAULT_MAX_EXTRACT_FILE_BYTES`; the server passes `MAX_FILE_BYTES` |
+| Per project (product limit)      | 25 MB of files in total, about 10 files | `MAX_BYTES_PER_PROJECT`, `SUGGESTED_MAX_FILES_PER_PROJECT`; constants only, **not enforced** (uploads are Zihao's) |
 | Text kept per file               | 1,000,000 characters, 60,000 segments                                                                                                    | `MAX_TEXT_CHARS`, `MAX_SEGMENTS`                                         |
 | XLSX / CSV                       | 30 sheets, 20,000 rows per sheet, 50 columns, 1,000 characters per cell                                                                  | `MAX_SHEETS`, `MAX_ROWS_PER_SHEET`, `MAX_COLS_PER_ROW`, `MAX_CELL_CHARS` |
 | PDF                              | 20 MB, 200 pages                                                                                                                         | `MAX_PDF_BYTES`, `MAX_PDF_PAGES`                                         |
@@ -81,7 +81,7 @@ Checked by running the extractor inside local `workerd` through `wrangler dev` (
 - **PDF is viable in Workers.** `unpdf` 2.1.0 (a serverless pdf.js build) extracted a two-page PDF in about 200 ms in workerd, so the fallback of sending PDF bytes to Gemini was not needed. It is imported lazily. The probe Worker (extractor plus `unpdf` plus `fflate`) bundles to 4.2 MiB raw / 818 KiB gzip; the current app Worker is 2.4 MB raw / 578 KB gzip, so wiring this in will add roughly that much. Check the plan's size limit when it is wired.
 - **XLSX performance.** A 20,000-row by 10-column workbook (850 KB zipped) extracted in about 480 ms in workerd, stopping at the 1,000,000-character cap. The streaming parser keeps memory to the source bytes plus the capped output.
 - **A 70 MB-expanding zip** was refused in 1 ms from its declared size.
-- **Memory (128 MB).** The largest allocations are the source file (up to 25 MB), the extracted text (up to 1 M characters, about 2 MB) and pdf.js internals for a PDF (limited to 20 MB and 200 pages). Not measured under a real 128 MB limit with a 25 MB file; test that before raising the upload cap.
+- **Memory (128 MB).** The largest allocations are the source file (up to 10 MB, the upload cap), the extracted text (up to 1 M characters, about 2 MB) and pdf.js internals for a PDF (limited to 20 MB and 200 pages). Not measured under a real 128 MB limit; test that before raising the upload cap.
 - **CPU.** Decompression and parsing are synchronous JavaScript; the bounded per-push work and the row, character and page caps are the CPU guard. A cold `unpdf` load was the slowest step in the probe.
 - **No `eval`, no Node APIs** in the extractor. Only `crypto.subtle` (SHA-256), `TextDecoder` and `fflate`.
 
@@ -104,7 +104,7 @@ The repo has no `minimumReleaseAge` override and pnpm 11.7.0 accepted both (defa
 
 ## Open decisions
 
-1. **Q7 limits.** Confirm 25 MB per file, about 10 files and 100 MB per project. Today only the 10 MB upload cap is enforced; the extractor accepts up to 25 MB. Raising the upload cap and adding the project caps belongs in `files.server.ts` (Zihao).
+1. **Q7 limits.** Eli decided on 25 MB total per project (about 10 files). Today only the 10 MB per-file upload cap is enforced, and the extractor reuses it. Enforcing the project total belongs in `files.server.ts` (Zihao).
 2. **`extracted/` cleanup** when a file or project is deleted (see Cache).
 3. **Should an accepted file value fill the input?** `applyProposal` for backing never changes `value`, and `find_evidence` makes no proposal when the file's number differs from the form's. If the form value is empty (`FORM_VALUE_UNKNOWN`), the card could offer "use 12.4 from the file" as a separate, user-confirmed value proposal. Not built.
 4. **`note` and `period_months`** are the model's words and reading. Keep them on the card with a "check this" label, or drop them.
@@ -115,6 +115,6 @@ The repo has no `minimumReleaseAge` override and pnpm 11.7.0 accepted both (defa
 
 - The two new dependencies (above).
 - `app/server/file-text.server.ts`: access check, project scoping and the R2 key-prefix check; cache keys under `extracted/`; the missing `extracted/` cleanup.
-- The 25 MB and per-project limits (Q7) and whether uploads should enforce them.
+- Whether uploads should enforce the 25 MB per-project total (Q7).
 - That `app/server/tests/cf-workers-stub.ts` now also stubs `env.FILES` and `env.GEMINI_API_KEY` for unit tests.
 - Worker size and memory when this is wired into the agent.
