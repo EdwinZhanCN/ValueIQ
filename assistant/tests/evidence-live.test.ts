@@ -1,8 +1,8 @@
-// F1 file evidence: the manual live script's dry mode runs on the same code path, with no key.
+// K17 file evidence: the manual live script's dry mode runs on the same code path, with no key.
 import { describe, expect, it } from "vitest";
 import { main } from "../evidence-live";
 
-describe("F1 live-evidence script (dry mode)", () => {
+describe("K17 live-evidence script (dry mode)", () => {
   it("verifies three sample quotes, rejects the invented one, and needs no key", async () => {
     const lines: string[] = [];
     const code = await main(["--dry"], {}, (l) => lines.push(l));

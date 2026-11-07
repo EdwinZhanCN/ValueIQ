@@ -1,4 +1,4 @@
-// F1 file evidence: deterministic text extraction (no model, no Cloudflare).
+// K17 file evidence: deterministic text extraction (no model, no Cloudflare).
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import {
@@ -34,7 +34,7 @@ const refused = async (p: Promise<unknown>, code: string) => {
 const seg = (x: ExtractedText, loc: string) =>
   x.segments.find((s) => s.loc === loc);
 
-describe("F1 extract: DOCX", () => {
+describe("K17 extract: DOCX", () => {
   it("reads paragraphs, heading paths and table rows in order", async () => {
     const x = await run(
       "report.docx",
@@ -84,7 +84,7 @@ describe("F1 extract: DOCX", () => {
   });
 });
 
-describe("F1 extract: XLSX", () => {
+describe("K17 extract: XLSX", () => {
   const book = () =>
     buildXlsx([
       {
@@ -214,7 +214,7 @@ describe("F1 extract: XLSX", () => {
   });
 });
 
-describe("F1 extract: text, markdown, CSV, TSV, PDF", () => {
+describe("K17 extract: text, markdown, CSV, TSV, PDF", () => {
   it("txt: paragraphs with line locations; md: heading paths", async () => {
     const t = await run(
       "a.txt",
@@ -274,7 +274,7 @@ describe("F1 extract: text, markdown, CSV, TSV, PDF", () => {
   });
 });
 
-describe("F1 extract: hostile and unsupported input is refused", () => {
+describe("K17 extract: hostile and unsupported input is refused", () => {
   it("refuses a zip bomb by declared size, ratio, and by lying about size", async () => {
     const huge = buildBombZip("word/document.xml", MAX_PART_BYTES + 1024);
     await refused(run("a.docx", huge), "ZIP_BOMB");

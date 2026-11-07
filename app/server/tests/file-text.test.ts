@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await -- async stand-ins for host and bucket calls */
-// F1 file evidence: the server layer (access, project scoping, size limit, cache) on the real
+// K17 file evidence: the server layer (access, project scoping, size limit, cache) on the real
 // Drizzle queries and migrations over the D1 shim, with an in-memory R2 bucket.
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -62,7 +62,7 @@ const doc = () =>
     { p: `Each analyst saved 5 hours per week. ${SECRET}` },
   ]);
 
-describe("F1 server: access, scoping and limits", () => {
+describe("K17 server: access, scoping and limits", () => {
   it("reads a project file and returns a bounded, located, untrusted excerpt", async () => {
     const id = await upload("pilot.docx", doc());
     const r = await readProjectFileForModel(owner(), id);
@@ -163,7 +163,7 @@ describe("F1 server: access, scoping and limits", () => {
   });
 });
 
-describe("F1 server: cache keyed by content", () => {
+describe("K17 server: cache keyed by content", () => {
   it("extracts once, stores under the extracted/ prefix, and hits the cache next time", async () => {
     const id = await upload("pilot.docx", doc());
     const events: FileEvent[] = [];
@@ -211,7 +211,7 @@ describe("F1 server: cache keyed by content", () => {
   });
 });
 
-describe("F1 server: logs carry ids and hashes only", () => {
+describe("K17 server: logs carry ids and hashes only", () => {
   it("no event holds file text", async () => {
     const id = await upload("pilot.docx", doc());
     const events: unknown[] = [];

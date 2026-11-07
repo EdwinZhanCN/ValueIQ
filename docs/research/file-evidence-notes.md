@@ -20,7 +20,7 @@ Flow: upload (unchanged) -> `getExtractedText` (deterministic, cached in R2) -> 
 | Host interface for the tools               | `assistant/evidence/host.ts` (`FileEvidenceHost`, passed as `ctx.files`)                                       |
 | Server layer (access, scoping, cache)      | `app/server/file-text.server.ts`: `getExtractedText`, `readProjectFileForModel`, `makeFileHost`                |
 | Prompt and tool list for the evidence step | `EVIDENCE_SYSTEM`, `EVIDENCE_TOOLS` in `assistant/prompts.ts` (not part of `ASSISTANT_TOOLS`)                  |
-| Tests                                      | `assistant/tests/evidence-*.test.ts`, `app/server/tests/file-text.test.ts` (KPI F1 in `pnpm test:engine`)      |
+| Tests                                      | `assistant/tests/evidence-*.test.ts`, `app/server/tests/file-text.test.ts` (KPI K17 in `pnpm test:engine`)      |
 | Manual live check                          | `node assistant/scripts/live-evidence.mjs` (or `--dry`)                                                        |
 
 Nothing in the Worker entry, the agent or the workflow calls this yet. To use it: in the agent, build `makeFileHost({ projectId, userId }, geminiCompleter({ apiKey, model: resolveModels(env).assistant }))`, pass it as `files` to `createContext`, offer `EVIDENCE_TOOLS` with `EVIDENCE_SYSTEM`, and show the proposals on a card.

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await -- async stand-ins for host and bucket calls */
-// F1 file evidence: prompt-injection resilience. A file is untrusted data. These tests drive the real
+// K17 file evidence: prompt-injection resilience. A file is untrusted data. These tests drive the real
 // tool loop (the guarded one) through the real AI SDK client with a scripted fake model, and show
 // that text planted in a file cannot reach the system prompt, cannot add tool calls by itself, and
 // cannot change the form even if a model were fooled into asking for an override.
@@ -81,7 +81,7 @@ const honestExtractor: StructuredCompleter = async () => ({
   model: DEFAULT_MODEL_ASSISTANT,
 });
 
-describe("F1 injection: text in a file cannot change what the assistant does", () => {
+describe("K17 injection: text in a file cannot change what the assistant does", () => {
   it("scripted honest model: calls are exactly read_project_file then find_evidence, and the file text stays out of the system prompt", async () => {
     const ctx = setup(honestExtractor, await poisoned());
     const before = JSON.stringify(ctx.form);
