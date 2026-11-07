@@ -43,6 +43,30 @@ const TARGETS = [
     },
   },
   {
+    name: "clarify step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/clarify` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
+    name: "process step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/process` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
+    name: "report step page",
+    request: (fx) => ({ path: `/projects/${fx.projectId}/report` }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert(result.body.includes(fx.projectName), "Project name missing");
+    },
+  },
+  {
     name: "persisted result page",
     setup: async (fx) => {
       const output = JSON.parse(
@@ -65,6 +89,24 @@ const TARGETS = [
       assert.equal(result.status, 200, result.body.slice(0, 400));
       assert.match(result.body, /127,956\.73/);
       assert.match(result.body, /STUB/);
+      assert.match(result.body, /Continue to report/);
+    },
+  },
+  {
+    name: "report builder page",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/report?run=${fx.runId}`,
+    }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      assert.match(result.body, /127,956\.73/);
+      assert.match(result.body, /STUB/);
+      assert(
+        result.body.includes(
+          `/projects/${fx.projectId}/runs/${fx.runId}/reports`,
+        ),
+        "Report builder lost the PDF action",
+      );
     },
   },
   {
@@ -75,10 +117,9 @@ const TARGETS = [
     }),
     allowed: (result, fx) => {
       assert.equal(result.status, 302, result.body.slice(0, 400));
-      fx.reportId = new URL(
-        result.location,
-        "http://local.test",
-      ).searchParams.get("report");
+      const location = new URL(result.location, "http://local.test");
+      assert.equal(location.pathname, `/projects/${fx.projectId}/report`);
+      fx.reportId = location.searchParams.get("report");
       assert(fx.reportId);
     },
   },
@@ -104,6 +145,22 @@ const TARGETS = [
       // The round trip: the owner loads what this actor saved.
       const page = await call("owner", { path: `/projects/${fx.projectId}` });
       assert(page.body.includes(`${fx.run}-${actor}`), "Saved form not loaded");
+    },
+  },
+  {
+    name: "form save resource",
+    request: (fx, actor) => ({
+      path: `/projects/${fx.projectId}/form`,
+      method: "POST",
+      form: { formJson: JSON.stringify({ marker: `${fx.run}-${actor}-step` }) },
+    }),
+    allowed: async (result, fx, actor, call) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      const page = await call("owner", { path: `/projects/${fx.projectId}` });
+      assert(
+        page.body.includes(`${fx.run}-${actor}-step`),
+        "Saved form not loaded",
+      );
     },
   },
   {
@@ -268,7 +325,9 @@ try {
       `SELECT form_json, updated_by FROM project_forms WHERE project_id = '${projectId}'`,
     ).then((output) => output.slice(output.indexOf("["))),
   )[0].results[0];
-  assert.deepEqual(JSON.parse(saved.form_json), { marker: `${run}-owner` });
+  assert.deepEqual(JSON.parse(saved.form_json), {
+    marker: `${run}-owner-step`,
+  });
   assert.equal(saved.updated_by, users.owner);
 
   // Denied uploads left nothing behind either.
@@ -360,10 +419,11 @@ try {
   // it as MODEL_ERROR, and the run row, event and agent state say so. Nothing
   // is faked. Delete the key from .dev.vars to run this block.
   if (!/^GEMINI_API_KEY=/m.test(readFileSync(".dev.vars", "utf8"))) {
+    // The sample cites file "f1"; point it at this project's real upload.
     const form = readFileSync(
       "docs/research/samples/sample-result.form.json",
       "utf8",
-    );
+    ).replaceAll('"f1"', JSON.stringify(fx.fileId));
     const saved = await call("owner", {
       path: `/projects/${projectId}`,
       method: "POST",
@@ -371,6 +431,23 @@ try {
     });
     assert.equal(saved.status, 200, "save sample form");
     const live = await openAgentSocket(origin, agentPath, cookies.owner, {});
+    // A saved draft is refused at the run boundary, before any run row.
+    const draft = { ...JSON.parse(form), inputs: [] };
+    const draftSaved = await call("owner", {
+      path: `/projects/${projectId}`,
+      method: "POST",
+      form: { formJson: JSON.stringify(draft) },
+    });
+    assert.equal(draftSaved.status, 200, "save draft form");
+    const refused = await live.rpc("startRun", []);
+    assert.equal(refused.ok, false, JSON.stringify(refused));
+    assert.equal(refused.error.code, "BAD_INPUT", JSON.stringify(refused));
+    const resaved = await call("owner", {
+      path: `/projects/${projectId}`,
+      method: "POST",
+      form: { formJson: form },
+    });
+    assert.equal(resaved.status, 200, "save sample form again");
     const start = await live.rpc("startRun", []);
     assert.equal(start.ok, true, JSON.stringify(start));
     const runId = start.value.run_id;

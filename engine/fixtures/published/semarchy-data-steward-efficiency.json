@@ -1,0 +1,84 @@
+{
+  "id": "semarchy-data-steward-efficiency",
+  "case_ref": "T11",
+  "kind": "driver",
+  "driver": "time_savings",
+  "tests": "driver formulas (time savings, recapture 100%, FTE-equivalents repurposed)",
+  "source": {
+    "title": "The Total Economic Impact of Semarchy Data Platform",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "May 2025",
+    "url": "https://tei.forrester.com/go/semarchy/dataplatform",
+    "status": "READ",
+    "how_opened": "page HTML fetched with curl and text-extracted; table 'Data Steward Workflow Efficiencies' (Ref A1-A6, At, Atr)",
+    "table": "Data Steward Workflow Efficiencies",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Published A4 (FTEs repurposed) is 1.5 / 3.9 / 6.0 at $100,000 each. The printed A2 for Year 2 (7 FTEs) times 55% gives 3.85, not 3.9, so A2 is printed rounded; we start from the published A4 and use adoption_by_year = A4 / 6 = 25 / 65 / 100.",
+    "The value is repurposed FTE capacity at full salary, so recapture is 100%. We use 6 staff x 40 hours x 50 weeks x $50 per hour = $600,000 at full scale."
+  ],
+  "engine_config": {
+    "flat_haircut": 0.1,
+    "published_risk_adjustment": "10% downward"
+  },
+  "horizon_years": 3,
+  "discount_rate_pct": 10,
+  "runs": [
+    {
+      "name": "data steward efficiencies",
+      "horizon_years": 3,
+      "inputs": [
+        {
+          "id": "adoption_by_year",
+          "value": [25, 65, 100],
+          "tier": "estimate",
+          "published_as": "A4 1.5 / 3.9 / 6.0 FTEs repurposed divided by 6.0"
+        },
+        {
+          "id": "staff_affected",
+          "value": 6,
+          "tier": "estimate",
+          "published_as": "A4 Year 3 FTEs repurposed"
+        },
+        {
+          "id": "hours_saved_per_staff_week",
+          "value": 40,
+          "tier": "estimate",
+          "published_as": "a full FTE is repurposed (our convention)"
+        },
+        {
+          "id": "weeks_per_year",
+          "value": 50,
+          "tier": "estimate",
+          "published_as": "our convention: 40 x 50 = 2,000 hours"
+        },
+        {
+          "id": "loaded_hourly_cost",
+          "value": 50,
+          "tier": "estimate",
+          "published_as": "A6 $100,000 / 2,000 hours"
+        },
+        {
+          "id": "recapture_pct",
+          "value": 100,
+          "tier": "benchmark",
+          "published_as": "capacity repurposed is valued at full salary"
+        }
+      ]
+    }
+  ],
+  "combine": "concat",
+  "outside_engine_by_year": null,
+  "expected": {
+    "annual_benefit": [135000, 351000, 540000],
+    "pv": 818520,
+    "published_total": 1026000,
+    "rounding": "whole dollars"
+  },
+  "tolerance": {
+    "annual_abs": 0.5,
+    "pv_abs": 1.5,
+    "why": "whole-dollar rounding; arithmetic exact once A4 is taken as printed"
+  }
+}

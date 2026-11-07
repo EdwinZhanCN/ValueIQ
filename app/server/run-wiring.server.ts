@@ -54,7 +54,7 @@ export function makeOrchestrator(o: {
   if (!apiKey)
     throw new OrchestratorError(
       "MODEL_ERROR",
-      "The model key is not configured for this environment",
+      "The AI service is not set up for this environment (no Gemini key). Ask an admin to add it.",
       false,
     );
   const thinking = resolveThinking(vars);
@@ -118,6 +118,7 @@ export async function startRunRecord(
     settings_version: v.settings,
     started_by: caller.userId,
     started_at: new Date().toISOString(),
+    form,
   });
   return { run, created: true };
 }

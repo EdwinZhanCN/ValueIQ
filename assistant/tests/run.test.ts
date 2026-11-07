@@ -265,6 +265,7 @@ describe("K16 memory run store enforces the table constraints", () => {
       settings_version: "s1",
       started_by: "u",
       started_at: NOW,
+      form: goldenResultForm(),
     });
     await s.appendRunEvent({
       run_id: "r",

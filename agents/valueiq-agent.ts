@@ -15,11 +15,14 @@ import {
   startRunRecord,
 } from "../app/server/run-wiring.server";
 import { getProjectForm } from "../app/server/projects.server";
+import { listProjectFiles } from "../app/server/files.server";
+import { validateFormFile } from "../app/lib/intake-form";
 import { USER_ID_HEADER } from "../app/server/agent-gate.server";
 import { RunAccessError } from "../app/server/run-store.server";
 import type { RunView } from "../shared/types";
 import type { RunError } from "../shared/types";
 import type { RunProgress } from "./calculation-run";
+import { errorFromWorkflowText } from "../assistant/run/error-text";
 
 type ConnState = { userId: string };
 export type CallResult<T> =
@@ -144,6 +147,21 @@ export class ValueIQAgent extends Agent<Env, RunView> {
 
     const saved = await getProjectForm(this.name);
     if (!saved) return fail("BAD_INPUT", "No form has been saved yet");
+    // Drafts are saved leniently; a run needs the complete form. File ids
+    // are checked against this project's own uploads, not the client's list.
+    const files = await listProjectFiles(this.name);
+    const issues = validateFormFile(saved.formJson, {
+      projectId: this.name,
+      files: files.map((file) => ({ id: file.id, projectId: this.name })),
+    });
+    if (issues.length > 0)
+      return fail(
+        "BAD_INPUT",
+        `Finish the form before starting a run: ${issues
+          .slice(0, 3)
+          .map((issue) => issue.message)
+          .join(" ")}`,
+      );
     let form;
     try {
       form = asFormFile(saved.formJson);
@@ -295,14 +313,9 @@ export class ValueIQAgent extends Agent<Env, RunView> {
     }
     if (rec?.status === "cancelled") return;
     const failedView = rec ? viewOf(rec) : this.state;
-    const err: RunError = failedView.error ?? {
-      code: "MODEL_ERROR",
-      message: "The run failed",
-      retryable: true,
-    };
+    const err: RunError = failedView.error ?? errorFromWorkflowText(error);
     this.setState({ ...failedView, status: "failed", error: err });
-    // `error` is the runtime's text and can hold anything: only the code is stored below
-    void error;
+    // Only the code is stored below; the runtime's text is never logged as is.
     await this.eventFor(workflowId, "workflow_error", {
       code: err.code,
       retryable: err.retryable,

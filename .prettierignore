@@ -1,6 +1,11 @@
 pnpm-lock.yaml
+# Git symlink to AGENTS.md; Windows checkouts may expose its target as text.
+CLAUDE.md
 worker-configuration.d.ts
 build/
 .react-router/
 .wrangler/
 drizzle/meta/
+# Copied verbatim from the Mock UI canvas; regenerate, do not reformat.
+docs/mock-ui/*.dc.html
+docs/mock-ui/canvas.json

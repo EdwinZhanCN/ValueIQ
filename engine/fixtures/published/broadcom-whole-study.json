@@ -1,0 +1,40 @@
+{
+  "id": "broadcom-whole-study",
+  "case_ref": "T21",
+  "kind": "finance",
+  "tests": "finance layer on a whole published business case: PV, NPV, ROI, payback (published flat risk adjustments already applied)",
+  "source": {
+    "title": "The Total Economic Impact of Symantec Endpoint Security Complete (Broadcom)",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "September 2025",
+    "url": "https://tei.forrester.com/go/broadcom/sescomplete/",
+    "status": "READ",
+    "how_opened": "page HTML fetched with curl and text-extracted; 'Cash Flow Analysis (Risk-Adjusted)'",
+    "table": "Cash Flow Analysis (Risk-Adjusted)",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Benefits and costs are the published risk-adjusted rows; Forrester discounts the Initial column at time 0 and Years 1-3 at year end, the same convention as engine/finance.ts.",
+    "All benefit lines are taken as printed; this case tests the finance layer, not the driver formulas."
+  ],
+  "discount_rate_pct": 10,
+  "c0": 277440,
+  "benefits": [3125286, 3534277, 3735368],
+  "costs": [1117338, 1117338, 1117338],
+  "expected": {
+    "pv_benefits": 8568496,
+    "pv_costs": 3056094,
+    "npv": 5512402,
+    "total_benefits": 10394931,
+    "total_costs": 3629454,
+    "roi_published_pct": 180,
+    "payback_published": "<6 months",
+    "payback_years_below": 0.5
+  },
+  "tolerance": {
+    "pv_abs": 1.5,
+    "npv_abs": 1.5,
+    "roi_points": 0.5,
+    "why": "Forrester prints rounded whole dollars and computes PV from unrounded values"
+  }
+}

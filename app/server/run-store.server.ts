@@ -14,7 +14,7 @@ import { env } from "cloudflare:workers";
 import { createDb } from "../../db/client";
 import { runEvents, runs } from "../../db/schema";
 import { checkRunOutput } from "../../engine/schema";
-import type { RunOutput } from "../../engine/types";
+import type { FormFile, RunOutput } from "../../engine/types";
 import type {
   NewRun,
   QuestionRow,
@@ -126,6 +126,7 @@ export class D1RunStore implements RunStore {
       contractVersion: r.contract_version,
       formulaVersion: r.formula_version,
       settingsVersion: r.settings_version,
+      formJson: r.form,
       startedBy: r.started_by,
       status: "running",
     });
@@ -135,6 +136,12 @@ export class D1RunStore implements RunStore {
   async getRun(id: string): Promise<RunRecord | null> {
     const row = await this.own(id);
     return row ? this.toRecord(row) : null;
+  }
+
+  async getRunForm(id: string): Promise<FormFile | null> {
+    const row = await this.own(id);
+    // Checked with asFormFile before the run row was written.
+    return row?.formJson == null ? null : (row.formJson as FormFile);
   }
 
   async findRunByFormHash(

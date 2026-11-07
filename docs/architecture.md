@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; a user-facing Start Run control is still pending. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work.
+ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; a user-facing Start Run control is still pending. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work. The Input team's form wire type and serializer/validator (`shared/form.ts`, `app/lib/intake-form.ts`) back the Intake and Clarify steps, which save the project form; `startRun` refuses a form that does not validate.
 
 ## Stack
 
@@ -17,17 +17,20 @@ ValueIQ has account/team/project pages, private file storage, a deterministic en
 
 ## Surfaces
 
-| Route                  | Layout                            | Contents                                                                                    |
-| ---------------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
-| `/`                    | `app/routes/site-layout.tsx`      | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
-| `/workspace`           | `app/routes/workspace-layout.tsx` | Labeled STUB output preview; chat example at `?view=chat`                                   |
-| `/sign-up`, `/sign-in` | `app/routes/auth-layout.tsx`      | One centred form; `redirectTo` is honoured only for same-site paths                         |
-| `/teams/new`, `/team`  | `app/routes/app-layout.tsx`       | The signed-in shell: header with the current team, nav, and sign-out                        |
-| `/projects/*`          | `app/routes/app-layout.tsx`       | The current team's projects, a new-project form, and a project page with its form file      |
+| Route                        | Layout                                                | Contents                                                                                    |
+| ---------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `/`                          | `app/routes/site-layout.tsx`                          | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
+| `/workspace`                 | `app/routes/workspace-layout.tsx`                     | Labeled STUB output preview; chat example at `?view=chat`                                   |
+| `/sign-up`, `/sign-in`       | `app/routes/auth-layout.tsx`                          | One centred form; `redirectTo` is honoured only for same-site paths                         |
+| `/teams/new`, `/team`        | `app/routes/app-layout.tsx`                           | The signed-in shell: sidebar with the current team, nav, and the account row                |
+| `/projects`, `/projects/new` | `app/routes/app-layout.tsx`                           | The current team's projects and the new-project form                                        |
+| `/projects/:projectId/*`     | `app/routes/project-layout.tsx` (inside `app-layout`) | The assessment steps: Intake, `clarify`, `process`, `results` (Review), `report`            |
+
+Signed-in screens follow the [Mock UI](mock-ui/README.md) (screens 01–10 with owner notes; 08 and 09 are cut for Beta).
 
 `app/root.tsx` renders the document only: html/body, theme provider, tooltip provider, and the grain overlay. Page chrome belongs to the surface layouts, and error pages bring their own frame.
 
-Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders supplied STUB outputs without server calls. `/projects/:projectId/results` uses the full-screen output layout and loads a pinned/latest stored outcome after project access checks. Private report resource routes generate/download a PDF from that immutable snapshot.
+Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders supplied STUB outputs without server calls. `/projects/:projectId/results` renders inside the project step layout and loads a pinned/latest stored outcome after project access checks. Private report resource routes generate/download a PDF from that immutable snapshot.
 
 ## Identity, data, and access
 
@@ -40,7 +43,11 @@ Neither marketing surface has a loader or an action. `/api/auth/*` is a resource
 
 `/projects/:projectId` shows the saved form file as plain JSON, labelled as a placeholder until the Input team's intake form mounts there.
 
+The fixture generator also covers the 19 second-wave input cases. `scripts/form-wave2-cases.ts` constructs typed submissions independently of the pinned reference forms; `scripts/form-wave2.test.ts` compares complete serializer output against each reference. This adds input coverage without changing runtime/UI behavior.
+
 ## Runs and the agent gate
+
+The Input team's pre-integration wire type is `shared/form.ts`. `app/lib/intake-form.ts` owns serialization, parsing, field/evidence validation and preserving accepted state on rejected edits; it imports no engine or storage code. `pnpm fixtures:forms` produces deterministic engine handoff files from typed form state, including explicit rejected candidates for negative tests. `pnpm test:forms` runs the boundary checks and detects stale generated fixtures. The Intake step (goals, decision, files) and the Clarify step (numbers, defaults, evidence) edit this form as a lenient draft (`readFormDraft`); `validateFormFile` decides completeness before Process. [Fixture handoff and compatibility notes](../engine/fixtures/forms/README.md) record differences from the old research skeleton and #127 proposal.
 
 - `shared/types.ts` — run states, `RunView`, and `Question` from the [integration contract](../.agents/exec-plans/active/integration-contract.md) section 3.
 - `db/schema.ts` — `runs`, `run_events` (append-only, `seq` from the agent), `run_questions`, and `run_results` (CHECK: a result or a gap list, never both).

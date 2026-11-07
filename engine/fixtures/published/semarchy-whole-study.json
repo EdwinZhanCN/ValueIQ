@@ -1,0 +1,40 @@
+{
+  "id": "semarchy-whole-study",
+  "case_ref": "T20",
+  "kind": "finance",
+  "tests": "finance layer on a whole published business case: PV, NPV, ROI, payback (published flat risk adjustments already applied)",
+  "source": {
+    "title": "The Total Economic Impact of Semarchy Data Platform",
+    "publisher": "Forrester Consulting (commissioned study)",
+    "date": "May 2025",
+    "url": "https://tei.forrester.com/go/semarchy/dataplatform",
+    "status": "READ",
+    "how_opened": "page HTML fetched with curl and text-extracted; 'Cash Flow Analysis (Risk-Adjusted)'",
+    "table": "Cash Flow Analysis (Risk-Adjusted)",
+    "caveat": "Forrester Total Economic Impact study, commissioned by the vendor (vendor-favourable by design)"
+  },
+  "mapping_notes": [
+    "Benefits and costs are the published risk-adjusted rows; Forrester discounts the Initial column at time 0 and Years 1-3 at year end, the same convention as engine/finance.ts.",
+    "All benefit lines are taken as printed; this case tests the finance layer, not the driver formulas."
+  ],
+  "discount_rate_pct": 10,
+  "c0": 406987,
+  "benefits": [1292985, 2873970, 4220955],
+  "costs": [358000, 463000, 673000],
+  "expected": {
+    "pv_benefits": 6721889,
+    "pv_costs": 1620720,
+    "npv": 5101169,
+    "total_benefits": 8387910,
+    "total_costs": 1900987,
+    "roi_published_pct": 315,
+    "payback_published": "<6 months",
+    "payback_years_below": 0.5
+  },
+  "tolerance": {
+    "pv_abs": 1.5,
+    "npv_abs": 1.5,
+    "roi_points": 0.5,
+    "why": "Forrester prints rounded whole dollars and computes PV from unrounded values"
+  }
+}
