@@ -2,6 +2,8 @@
 // what the engine saved, so these pin the formatting, the null handling, and
 // the button/label state for each run status.
 import { describe, expect, it } from "vitest";
+import { CATALOG } from "../../../engine/catalog";
+import { sectionsFor, type Paths } from "../../components/clarify/draft";
 import sampleGap from "../../../docs/research/samples/sample-gap-list.json";
 import sampleResult from "../../../docs/research/samples/sample-result.json";
 import type { RunView } from "../../../shared/types";
@@ -12,7 +14,9 @@ import {
   checklistItems,
   clampPct,
   connectionNote,
-  intakeHref,
+  cancelControl,
+  inputStep,
+  inputStepHref,
   missingInputs,
   money,
   percent,
@@ -29,6 +33,24 @@ import {
   type ResultSummary,
 } from "../../lib/run-ui";
 
+const ALL_GOALS = [
+  "time_savings",
+  "data_quality",
+  "decision_speed",
+  "risk_reduction",
+] as const;
+const PATHS_A: Paths = {
+  time: "hours",
+  quality: "counts",
+  errorCost: "direct",
+  risk: "direct",
+};
+const PATHS_B: Paths = {
+  time: "tasks",
+  quality: "rates",
+  errorCost: "derived",
+  risk: "asset",
+};
 const LABELS = ["Files read", "Haircuts", "Drivers"];
 function view(over: Partial<RunView> = {}): RunView {
   return {
@@ -188,7 +210,10 @@ describe("run view labels", () => {
     ] as const;
     for (const status of statuses)
       expect(runHeading(view({ status })).title.length).toBeGreaterThan(0);
-    expect(runHeading(view({ status: "gap_list" })).tone).toBe("attention");
+    expect(runHeading(view({ status: "gap_list" })).tone).toBe("neutral");
+    expect(runHeading(view({ status: "gap_list" })).title).toBe(
+      "Not enough evidence yet",
+    );
     expect(runHeading(view({ status: "failed" })).tone).toBe("error");
     expect(runHeading(view({ status: "blocked_on_question" })).detail).toMatch(
       /not supported yet/,
@@ -350,13 +375,124 @@ describe("summarizeOutput: unreadable input", () => {
   });
 });
 
-describe("links", () => {
-  it("builds the intake deep link from return_to", () => {
-    expect(intakeHref("p1", "hours_saved_per_staff_week")).toBe(
-      "/projects/p1?input=hours_saved_per_staff_week#intake",
+describe("input links", () => {
+  it("sends name, decision, goals and files to Intake", () => {
+    for (const id of ["project_name", "decision_statement", "goals", "files"])
+      expect(inputStepHref("p1", id)).toBe("/projects/p1?input=" + id);
+  });
+  it("sends numbers and settings to Clarify with the field focused", () => {
+    expect(inputStepHref("p1", "hours_saved_per_staff_week")).toBe(
+      "/projects/p1/clarify?input=hours_saved_per_staff_week",
     );
-    expect(intakeHref("p1", null)).toBe("/projects/p1#intake");
-    expect(intakeHref("p1", "a b")).toBe("/projects/p1?input=a%20b#intake");
+    expect(inputStepHref("p1", "currency")).toBe(
+      "/projects/p1/clarify?input=currency",
+    );
+    expect(inputStepHref("p1", "measurement_plan.time_savings")).toBe(
+      "/projects/p1/clarify?input=measurement_plan",
+    );
+  });
+  it("falls back to Clarify for a missing or unknown id", () => {
+    expect(inputStepHref("p1", null)).toBe("/projects/p1/clarify");
+    expect(inputStepHref("p1", "")).toBe("/projects/p1/clarify");
+    expect(inputStep("$")).toBe("clarify");
+    expect(inputStepHref("p1", "a b")).toBe("/projects/p1/clarify?input=a%20b");
+  });
+  it("maps every engine catalog id to Intake or Clarify", () => {
+    for (const id of Object.keys(CATALOG)) {
+      const href = inputStepHref("p1", id);
+      expect(href).toMatch(
+        new RegExp("^/projects/p1(/clarify)?\?[?]input=" + id + "$"),
+      );
+      expect(["intake", "clarify"]).toContain(inputStep(id));
+    }
+  });
+  it("every Clarify target is a field the Clarify step can show", () => {
+    const shown = new Set<string>(["currency", "horizon_years", "other_notes"]);
+    for (const goals of [ALL_GOALS, []])
+      for (const paths of [PATHS_A, PATHS_B])
+        for (const sec of sectionsFor(goals, paths))
+          for (const id of sec.ids) shown.add(id);
+    for (const id of Object.keys(CATALOG))
+      if (inputStep(id) === "clarify") expect(shown.has(id)).toBe(true);
+  });
+});
+
+describe("Cancel run button", () => {
+  const c = (status: RunView["status"], over = {}) =>
+    cancelControl({ view: view({ status }), connection: "open", ...over });
+  it("shows only while a run is active", () => {
+    for (const status of [
+      "preflight",
+      "running",
+      "blocked_on_question",
+    ] as const)
+      expect(c(status)).toMatchObject({ show: true, enabled: true });
+    for (const status of [
+      "idle",
+      "released",
+      "gap_list",
+      "failed",
+      "cancelled",
+    ] as const)
+      expect(c(status).show).toBe(false);
+  });
+  it("is disabled while a cancel is in flight or the socket is down", () => {
+    expect(c("running", { cancelling: true })).toMatchObject({
+      enabled: false,
+      label: "Cancelling...",
+    });
+    const down = c("running", { connection: "reconnecting" });
+    expect(down.enabled).toBe(false);
+    expect(down.reason).toMatch(/Reconnecting/);
+  });
+});
+
+describe("gap list on the Process screen", () => {
+  const g = summarizeOutput(sampleGap) as GapSummary;
+  it("lists the dropped drivers with labels and formatted figures", () => {
+    expect(g.dropped).toEqual([
+      {
+        id: "time_savings",
+        label: "Time savings",
+        confidence: "61.5%",
+        floor: "80.0%",
+      },
+    ]);
+  });
+  it("links every ranked item to the step that edits it", () => {
+    for (const item of g.items)
+      expect(inputStepHref("p1", item.inputId)).toMatch(
+        new RegExp("^/projects/p1(/clarify)?[?]input="),
+      );
+  });
+});
+
+describe("grouped steps for cancelled and failed runs", () => {
+  const full = (state: "done" | "doing" | "error" | "todo", n: number) =>
+    [
+      "Files read",
+      "Haircuts",
+      "Drivers",
+      "Project",
+      "Scenarios",
+      "Confidence",
+      "Gate",
+      "Narrative",
+    ].map((label, i) => ({
+      label,
+      state: i < n ? ("done" as const) : i === n ? state : ("todo" as const),
+    }));
+  it("keeps four rows and the progress made when cancelled", () => {
+    const rows = phaseItems(
+      view({ status: "cancelled", checklist: full("doing", 3) }),
+    );
+    expect(rows.map((r) => r.state)).toEqual(["done", "doing", "todo", "todo"]);
+  });
+  it("marks the failing row as error", () => {
+    const rows = phaseItems(
+      view({ status: "failed", checklist: full("error", 4) }),
+    );
+    expect(rows.map((r) => r.state)).toEqual(["done", "error", "todo", "todo"]);
   });
 });
 
@@ -458,7 +594,7 @@ describe("Process screen", () => {
     expect(act(view(), { missing: 2 })).toEqual({
       kind: "fix",
       label: "Go to Clarify",
-      href: "/projects/p1/clarify",
+      href: "/projects/p1/clarify?input=f0",
     });
     expect(act(view(), { hasForm: false })).toMatchObject({
       href: "/projects/p1",
@@ -472,9 +608,11 @@ describe("Process screen", () => {
       label: "View results",
       href: "/projects/p1/results?run=r%201",
     });
-    expect(act(view({ status: "gap_list", run_id: "r1" })).label).toBe(
-      "See what to add",
-    );
+    expect(act(view({ status: "gap_list", run_id: "r1" }))).toEqual({
+      kind: "back",
+      label: "Back to Clarify",
+      href: "/projects/p1/clarify",
+    });
     const failed = (retryable: boolean) =>
       view({
         status: "failed",

@@ -10,6 +10,7 @@
 import { formatMoney, formatPct } from "../../engine/present";
 import type { FormIssue } from "../../shared/form";
 import type { RunError, RunStatus, RunView } from "../../shared/types";
+import { INTAKE_FIELDS } from "../components/intake/intake-draft";
 import { GOAL_LABELS, LABELS } from "./intake-fields";
 
 // ---------- connection ----------
@@ -180,7 +181,11 @@ export function runHeading(view: RunView): RunHeading {
     case "released":
       return { title: "Result ready", detail: null, tone: "success" };
     case "gap_list":
-      return { title: "More evidence needed", detail: null, tone: "attention" };
+      return {
+        title: "Not enough evidence yet",
+        detail: null,
+        tone: "neutral",
+      };
     case "failed":
       return { title: "The run did not finish", detail: null, tone: "error" };
     case "cancelled":
@@ -189,6 +194,42 @@ export function runHeading(view: RunView): RunHeading {
 }
 
 // ---------- buttons ----------
+
+export interface CancelControl {
+  show: boolean;
+  enabled: boolean;
+  label: string;
+  /** Why the button is disabled, or null. */
+  reason: string | null;
+}
+
+/**
+ * The Cancel run button (agent method `cancelRun`). It shows while a run is
+ * active (checking, running, or waiting on a question) and is disabled while
+ * the socket is down or a cancel call is already in flight.
+ */
+export function cancelControl(args: {
+  view: RunView;
+  connection: ConnectionState;
+  /** A cancel call is in flight. */
+  cancelling?: boolean;
+}): CancelControl {
+  const { view, connection, cancelling = false } = args;
+  const show = isActive(view.status);
+  const connected = connection === "open";
+  return {
+    show,
+    enabled: show && connected && !cancelling,
+    label: cancelling ? "Cancelling..." : "Cancel run",
+    reason: !show
+      ? null
+      : cancelling
+        ? "Cancelling the run..."
+        : connected
+          ? null
+          : connectionNote(connection),
+  };
+}
 
 export interface RunControls {
   start: { show: boolean; enabled: boolean; label: string };
@@ -234,7 +275,9 @@ export function runControls(args: {
 
   return {
     start: { show: !active && !retryable, enabled: canStart, label },
-    cancel: { show: active, enabled: connected && !cancelling },
+    cancel: (({ show, enabled }) => ({ show, enabled }))(
+      cancelControl({ view, connection, cancelling }),
+    ),
     retry: { show: retryable, enabled: canStart },
     preflight: { show: !active, enabled: canStart },
     reason,
@@ -314,6 +357,8 @@ export function shownView(
 export type ProcessAction =
   | { kind: "start"; label: string; enabled: boolean }
   | { kind: "fix"; label: string; href: string }
+  /** A gap list: nothing is wrong, the user adds evidence on Clarify. */
+  | { kind: "back"; label: string; href: string }
   | { kind: "results"; label: string; href: string }
   | { kind: "waiting"; label: string }
   | { kind: "cancel"; label: string; enabled: boolean };
@@ -337,24 +382,33 @@ export function processAction(args: {
       enabled: connected && !args.cancelling,
     };
   if (isActive(view.status)) return { kind: "waiting", label: "View results" };
-  if ((view.status === "released" || view.status === "gap_list") && view.run_id)
+  if (view.status === "released" && view.run_id)
     return {
       kind: "results",
-      label: view.status === "released" ? "View results" : "See what to add",
+      label: "View results",
       href: resultsHref(projectId, view.run_id),
+    };
+  if (view.status === "gap_list" && view.run_id)
+    return {
+      kind: "back",
+      label: "Back to Clarify",
+      href: clarifyHref(projectId),
     };
   if (!hasForm)
     return {
       kind: "fix",
       label: "Go to Intake",
-      href: `/projects/${projectId}`,
+      href: intakeStepHref(projectId),
     };
-  if (missing.length > 0)
+  if (missing.length > 0) {
+    const first = missing[0]!;
     return {
       kind: "fix",
-      label: "Go to Clarify",
-      href: clarifyHref(projectId),
+      label:
+        inputStep(first.field) === "intake" ? "Go to Intake" : "Go to Clarify",
+      href: inputStepHref(projectId, first.field),
     };
+  }
   const label =
     view.status === "failed"
       ? view.error?.retryable
@@ -385,6 +439,45 @@ export function canRerun(args: {
 
 export function clarifyHref(projectId: string): string {
   return `/projects/${projectId}/clarify`;
+}
+
+export function intakeStepHref(projectId: string): string {
+  return `/projects/${projectId}`;
+}
+
+/** The two steps that edit inputs. */
+export type InputStep = "intake" | "clarify";
+
+/**
+ * Which step edits an engine input id (or a form validator field). The engine
+ * still says `return_to.screen: "intake"`; since the form was split, only the
+ * name, decision, goals and files stay on Intake. A numeric input, setting or
+ * unknown id goes to Clarify, which always exists, so a link never breaks.
+ */
+export function inputStep(inputId: string): InputStep {
+  const id = inputId.split(".")[0]!.split("[")[0]!;
+  return (INTAKE_FIELDS as readonly string[]).includes(id)
+    ? "intake"
+    : "clarify";
+}
+
+/**
+ * Where "fix this input" sends the user: the Intake or Clarify step with
+ * `?input=<id>` so the page focuses that field. A null or empty id opens the
+ * Clarify step as a whole.
+ */
+export function inputStepHref(
+  projectId: string,
+  inputId: string | null | undefined,
+): string {
+  if (!inputId) return clarifyHref(projectId);
+  const base =
+    inputStep(inputId) === "intake"
+      ? intakeStepHref(projectId)
+      : clarifyHref(projectId);
+  // Field paths ("measurement_plan.time_savings") focus their parent field.
+  const field = inputId.split(".")[0]!;
+  return `${base}?input=${encodeURIComponent(field)}`;
 }
 
 // ---------- numbers (format only) ----------
@@ -459,7 +552,15 @@ export interface GapSummary {
   confidence: string;
   floor: string;
   items: GapItemSummary[];
+  /** Drivers left out of the estimate for lack of evidence. */
+  dropped: DroppedDriverSummary[];
   generatedAt: string;
+}
+export interface DroppedDriverSummary {
+  id: string;
+  label: string;
+  confidence: string;
+  floor: string;
 }
 export type OutcomeSummary = ResultSummary | GapSummary;
 
@@ -543,6 +644,17 @@ export function summarizeOutput(stored: unknown): OutcomeSummary | null {
       });
     }
     items.sort((a, b) => a.rank - b.rank);
+    const dropped: DroppedDriverSummary[] = [];
+    if (Array.isArray(gap.dropped_drivers))
+      for (const raw of gap.dropped_drivers as unknown[]) {
+        if (!isObj(raw) || typeof raw.id !== "string") continue;
+        dropped.push({
+          id: raw.id,
+          label: GOAL_LABELS[raw.id as keyof typeof GOAL_LABELS] ?? raw.id,
+          confidence: share(numOrNull(raw.confidence)),
+          floor: share(numOrNull(raw.floor)),
+        });
+      }
     return {
       kind: "gap_list",
       ...base,
@@ -550,6 +662,7 @@ export function summarizeOutput(stored: unknown): OutcomeSummary | null {
       confidence: share(numOrNull(gap.project_confidence)),
       floor: share(numOrNull(gap.project_floor)),
       items,
+      dropped,
     };
   }
 
@@ -646,10 +759,4 @@ export type LatestOutcome = {
 /** The Review step for one run. */
 export function resultsHref(projectId: string, runId: string): string {
   return `/projects/${projectId}/results?run=${encodeURIComponent(runId)}`;
-}
-
-/** Where "what to add" sends the user: the input on the Intake step. */
-export function intakeHref(projectId: string, inputId: string | null): string {
-  const query = inputId ? `?input=${encodeURIComponent(inputId)}` : "";
-  return `/projects/${projectId}${query}#intake`;
 }

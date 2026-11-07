@@ -15,8 +15,17 @@ export const STEPS: { key: StepKey; label: string; path: string }[] = [
 
 const INTAKE = STEPS[0]!;
 
-export const stepPath = (projectId: string, key: StepKey) =>
-  `/projects/${projectId}${STEPS.find((step) => step.key === key)!.path}`;
+/** Review and Report show one run; `runId` keeps the run the user is viewing. */
+export const stepPath = (
+  projectId: string,
+  key: StepKey,
+  runId?: string | null,
+) =>
+  `/projects/${projectId}${STEPS.find((step) => step.key === key)!.path}${
+    runId && (key === "review" || key === "report")
+      ? `?run=${encodeURIComponent(runId)}`
+      : ""
+  }`;
 
 /** The step a project-flow URL belongs to (Intake for the project root). */
 export function stepFor(pathname: string, projectId: string) {
@@ -36,7 +45,9 @@ export function ProjectSteps({
   projectId,
   current,
   done,
+  runId,
 }: {
+  runId?: string | null;
   projectId: string;
   current: StepKey;
   done: Record<string, StepState>;
@@ -52,7 +63,7 @@ export function ProjectSteps({
         return (
           <li key={step.key} className="flex items-center gap-2">
             <Link
-              to={stepPath(projectId, step.key)}
+              to={stepPath(projectId, step.key, runId)}
               aria-current={isCurrent ? "step" : undefined}
               className={cn(
                 "flex items-center gap-2 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
