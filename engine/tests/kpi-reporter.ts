@@ -17,6 +17,7 @@ const NAMES: Record<string, string> = {
   K14: "Agreement with Python oracle",
   K15: "Performance",
   K16: "Tool contracts",
+  K17: "File evidence (verified quotes)",
 };
 
 interface Count {
@@ -54,7 +55,7 @@ export default class KpiReporter implements Reporter {
     const counts = (s?: Count): string =>
       s ? ` (${s.pass} passed, ${s.fail} failed, ${s.skip} skipped)` : "";
     const lines = ["", "KPI summary (engine-test-plan.md)", "-".repeat(70)];
-    for (let k = 1; k <= 16; k++) {
+    for (let k = 1; k <= 17; k++) {
       const key = `K${k}`;
       const s = stat.get(key);
       lines.push(
