@@ -7,11 +7,18 @@ import {
   Check,
   ChevronDown,
   ListChecks,
-  Plus,
   ShieldCheck,
   Sigma,
 } from "lucide-react";
 import type { GapOutput } from "../../../shared/output";
+import {
+  confidenceSummary,
+  inputLabel,
+  isNotCountedInHard,
+  isSpecified,
+  paybackHeadline,
+  plainLanguage,
+} from "../../lib/output-presentation";
 import { cn } from "../../lib/utils";
 import {
   AdjustmentChart,
@@ -19,7 +26,7 @@ import {
   HardCapacityChart,
   SensitivityChart,
 } from "./charts";
-import { type ChartId, useReportChoices } from "./report-choices";
+import type { ChartId } from "./report-choices";
 import {
   confidence,
   labels,
@@ -38,8 +45,6 @@ export type OutputNavigation = {
   editLink?: string;
   /** "Continue to report" (project mode only). */
   reportLink?: string;
-  /** localStorage key for the report chart/section choices. */
-  choicesKey: string;
   /** Inside the project shell, which already renders the page H1. */
   embedded: boolean;
 };
@@ -47,7 +52,6 @@ export type OutputNavigation = {
 export const OutputContext = createContext<OutputNavigation>({
   resultLink: () => "/workspace",
   intakeLink: () => "/workspace",
-  choicesKey: "valueiq.report.sample",
   embedded: false,
 });
 
@@ -123,9 +127,10 @@ function MathLink({ reference }: { reference: string }) {
 }
 
 export function Narrative({ value }: { value: string }) {
+  const displayValue = plainLanguage(value);
   return (
     <p className="output-narrative">
-      {value.split(/(\[[A-Z0-9,\s]+\])/).map((part, index) =>
+      {displayValue.split(/(\[[A-Z0-9,\s]+\])/).map((part, index) =>
         /^\[/.test(part) ? (
           <span key={index}>
             {part
@@ -252,7 +257,13 @@ function MathButton({
 }
 
 /** Gross (as entered) vs adjusted, per driver and cost line, from the engine. */
-function GrossAdjusted({ output }: { output: ResultSample }) {
+function GrossAdjusted({
+  output,
+  basis,
+}: {
+  output: ResultSample;
+  basis: Basis;
+}) {
   const { currency, horizon_years: years } = output.meta;
   const { drivers, costs } = output.result;
   const group = (label: string) => (
@@ -288,10 +299,15 @@ function GrossAdjusted({ output }: { output: ResultSample }) {
           {group(`Benefits · ${years}-year total`)}
           {drivers.map((driver) => {
             const gross = driver.steps.find((step) => step.name === "gross");
+            const notCounted =
+              basis === "hard" && isNotCountedInHard(driver.label_class);
             return (
               <tr
                 key={driver.id}
-                className={driver.included ? "" : "opacity-60"}
+                className={cn(
+                  !driver.included && "opacity-60",
+                  notCounted && "bg-muted/35 text-muted-foreground",
+                )}
               >
                 <th scope="row" className="text-left font-medium">
                   {driver.label}
@@ -305,16 +321,18 @@ function GrossAdjusted({ output }: { output: ResultSample }) {
                 <td>
                   <StatusChip
                     tone={
-                      !driver.included
+                      !driver.included || notCounted
                         ? "muted"
                         : driver.label_class === "hard_savings"
                           ? "hard"
                           : "neutral"
                     }
                   >
-                    {driver.included
-                      ? (labels[driver.label_class] ?? driver.label_class)
-                      : "Excluded"}
+                    {!driver.included
+                      ? "Excluded"
+                      : notCounted
+                        ? "Not counted: freed time and avoided loss"
+                        : (labels[driver.label_class] ?? driver.label_class)}
                   </StatusChip>
                 </td>
                 <td>
@@ -414,13 +432,24 @@ export function NumbersView({ output }: { output: ResultSample }) {
         />
         <Headline
           label="Payback"
-          value={
-            payback.years === null ? "None" : `${payback.years.toFixed(1)} yr`
+          value={paybackHeadline(payback.text)}
+          note={
+            payback.years === null
+              ? "Within the selected horizon"
+              : "Uniform-flow estimate"
           }
-          note={payback.text}
         />
       </section>
-      <GrossAdjusted output={output} />
+      <div className="flex items-center gap-2 self-start rounded-full border border-primary/25 bg-primary/5 px-3 py-1.5 text-sm text-primary">
+        <ShieldCheck size={15} aria-hidden="true" />
+        <strong className="font-medium">
+          {confidenceSummary(
+            output.result.confidence.project.confidence,
+            output.meta.tier_counts,
+          )}
+        </strong>
+      </div>
+      <GrossAdjusted output={output} basis={basis} />
       <div className="flex flex-col gap-2 rounded-2xl border bg-card p-5">
         <Narrative value={narrative.summary} />
         <p className="output-caption">
@@ -432,7 +461,7 @@ export function NumbersView({ output }: { output: ResultSample }) {
         <Panel title="Engine warnings">
           {warnings.map((warning) => (
             <p key={warning.code}>
-              {warning.message}{" "}
+              {plainLanguage(warning.message)}{" "}
               {warning.refs.map((ref) => (
                 <MathLink key={ref} reference={ref} />
               ))}
@@ -467,44 +496,6 @@ export function NumbersView({ output }: { output: ResultSample }) {
     </>
   );
 }
-
-/** Toggle shown on each chart: does it go in the report? */
-function InReport({
-  id,
-  selected,
-  onToggle,
-}: {
-  id: ChartId;
-  selected: boolean;
-  onToggle: (id: ChartId) => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={() => onToggle(id)}
-      className={cn(
-        "inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-        selected
-          ? "border-primary/40 bg-primary/10 text-primary"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {selected ? (
-        <Check size={13} aria-hidden="true" />
-      ) : (
-        <Plus size={13} aria-hidden="true" />
-      )}
-      {selected ? "In report" : "Add to report"}
-    </button>
-  );
-}
-
-const EXTRA_CHARTS: { id: ChartId; label: string }[] = [
-  { id: "npv_adoption", label: "NPV by adoption" },
-  { id: "npv_haircut", label: "NPV by evidence haircut" },
-  { id: "hard_capacity", label: "Hard vs. capacity" },
-];
 
 /** One fixed chart by id; shared by the Charts tab and the report preview. */
 export function ChartById({
@@ -546,60 +537,28 @@ export function ChartById({
     case "npv_haircut":
       return (
         <SensitivityChart
-          title="NPV by evidence haircut"
+          title="NPV by evidence discount"
           points={result.sensitivity.haircut}
-          axisLabel={result.sensitivity.x_labels.haircut}
+          axisLabel={plainLanguage(result.sensitivity.x_labels.haircut)}
           {...props}
         />
       );
   }
 }
 
-/** Review · Charts (mock 06b): fixed charts, each can go in the report. */
+/** Review · Charts (mock 06b): the same three standard charts as the PDF. */
 export function ChartsView({ output }: { output: ResultSample }) {
   const navigation = useContext(OutputContext);
-  const { choices, toggleChart } = useReportChoices(navigation.choicesKey);
-  const [extra, setExtra] = useState<ChartId | null>(null);
-  const toggle = (id: ChartId) => (
-    <InReport
-      id={id}
-      selected={choices.charts.includes(id)}
-      onToggle={toggleChart}
-    />
-  );
   return (
     <>
+      <p className="output-muted">
+        These three standard charts are included in every PDF.
+      </p>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(30rem,100%),1fr))] gap-5">
         {(["waterfall", "npv_discount", "driver_mix"] as const).map((id) => (
-          <ChartById key={id} id={id} output={output} action={toggle(id)} />
+          <ChartById key={id} id={id} output={output} />
         ))}
       </div>
-      <div
-        role="group"
-        aria-label="More fixed charts"
-        className="flex flex-wrap gap-2"
-      >
-        {EXTRA_CHARTS.map((chart) => (
-          <button
-            key={chart.id}
-            type="button"
-            aria-pressed={extra === chart.id}
-            onClick={() => setExtra(extra === chart.id ? null : chart.id)}
-            className={cn(
-              "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              extra === chart.id
-                ? "border-primary bg-primary/10 font-medium text-primary"
-                : "bg-background text-foreground hover:bg-muted",
-            )}
-          >
-            {chart.label}
-            {choices.charts.includes(chart.id) && (
-              <Check size={13} aria-label="in report" />
-            )}
-          </button>
-        ))}
-      </div>
-      {extra && <ChartById id={extra} output={output} action={toggle(extra)} />}
       {navigation.reportLink && (
         <div className="flex justify-end border-t pt-5">
           <Link
@@ -629,7 +588,7 @@ export function DriverMath({
     >
       <div className="output-inline-facts">
         <span>
-          Haircut <strong>{percent(driver.haircut_pct)}</strong>
+          Evidence discount <strong>{percent(driver.haircut_pct)}</strong>
         </span>
         <span>
           Confidence <strong>{confidence(driver.confidence)}</strong>
@@ -654,15 +613,16 @@ export function DriverMath({
                 <td>
                   <span className="output-ref-label">{step.ref}</span>
                   <strong>
-                    {step.order}. {step.label}
+                    {step.order}. {plainLanguage(step.label)}
                   </strong>
                 </td>
                 <td>
-                  {step.formula}
+                  {plainLanguage(step.formula)}
                   <small>
                     {step.source_type} ·{" "}
-                    {step.evidence_tier ??
-                      "Calculated; no separate evidence tier"}
+                    {step.evidence_tier
+                      ? `Evidence level: ${step.evidence_tier}`
+                      : "Calculated; no separate evidence level"}
                   </small>
                 </td>
                 {step.by_year.map((value, i) => (
@@ -680,10 +640,15 @@ export function DriverMath({
         </summary>
         <ul className="output-list">
           {driver.risk_factors.map((risk) => (
-            <li key={risk}>{risk}</li>
+            <li key={risk}>{plainLanguage(risk)}</li>
           ))}
         </ul>
-        <p className="output-muted">Measurement: {driver.measured_by}</p>
+        <p className="output-muted">
+          Measurement:{" "}
+          {isSpecified(driver.measured_by)
+            ? plainLanguage(driver.measured_by)
+            : "Measurement method to confirm"}
+        </p>
       </details>
     </Panel>
   );
@@ -771,11 +736,11 @@ export function Proxies({ output }: { output: ResultSample }) {
       {output.result.proxies_used.map((proxy) => (
         <div className="output-proxy" key={proxy.input_id}>
           <span>
-            <strong>{proxy.input_id}</strong>
+            <strong>{inputLabel(proxy.input_id)}</strong>
             <small>{proxy.source}</small>
           </span>
           <span>
-            {proxy.value} · {proxy.tier}
+            {proxy.value} · evidence level: {proxy.tier}
           </span>
         </div>
       ))}
@@ -794,12 +759,12 @@ function Evidence({ output }: { output: ResultSample }) {
             {confidence(ledger.project.confidence)}
           </strong>
           <span className="text-sm text-muted-foreground">
-            confidence · floor {confidence(ledger.project.floor)}
+            confidence · minimum required {confidence(ledger.project.floor)}
           </span>
         </span>
         <TierCounts counts={output.meta.tier_counts} />
       </div>
-      <p className="output-muted">{ledger.band_note}</p>
+      <p className="output-muted">{plainLanguage(ledger.band_note)}</p>
       <details className="output-details">
         <summary>
           Engine integrity checks <ChevronDown size={14} aria-hidden="true" />
@@ -873,7 +838,8 @@ export function GapsView({ output }: { output: GapOutput }) {
           <strong>{confidence(gaps.project_confidence)}</strong>
         </span>
         <span>
-          Release floor <strong>{confidence(gaps.project_floor)}</strong>
+          Minimum confidence required{" "}
+          <strong>{confidence(gaps.project_floor)}</strong>
         </span>
       </div>
       <TierCounts counts={output.meta.tier_counts} />
@@ -906,7 +872,8 @@ export function GapsView({ output }: { output: GapOutput }) {
         {gaps.dropped_drivers.map((driver) => (
           <p key={driver.id}>
             {labels[driver.id] ?? driver.id}: confidence{" "}
-            {confidence(driver.confidence)} · floor {confidence(driver.floor)}
+            {confidence(driver.confidence)} · minimum required{" "}
+            {confidence(driver.floor)}
           </p>
         ))}
       </Panel>
