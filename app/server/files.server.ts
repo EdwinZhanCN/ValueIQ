@@ -120,11 +120,16 @@ export async function uploadProjectFile(
 export async function deleteProjectFiles(projectId: string): Promise<void> {
   const db = createDb(env.DB);
   const rows = await db
-    .select({ key: files.r2Key })
+    .select({ id: files.id, key: files.r2Key })
     .from(files)
     .where(eq(files.projectId, projectId))
     .all();
-  const keys = rows.map((row) => row.key);
+  // Each file also has a cached extraction at .../extracted/{fileId}.json (see file-text.server.ts);
+  // the key is derived per row, so no prefix listing is needed.
+  const keys = rows.flatMap((row) => [
+    row.key,
+    row.key.replace(/\/files\/[^/]+$/, `/extracted/${row.id}.json`),
+  ]);
   // R2 deletes at most 1000 keys per call.
   for (let i = 0; i < keys.length; i += 1000) {
     await env.FILES.delete(keys.slice(i, i + 1000));
