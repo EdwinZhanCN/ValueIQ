@@ -5,6 +5,7 @@ import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import type { FormIssue } from "../../../shared/form";
 import { INPUT_RULES } from "../../lib/intake-catalog";
+import { inputStep, inputStepHref } from "../../lib/run-ui";
 import { OPTIONAL } from "./draft";
 import { type Group, isAnswered, labelOf, valueOf } from "./progress";
 import type { FormDraft } from "./use-form-draft";
@@ -163,11 +164,12 @@ export function InputsPanel({
                   </button>
                 ) : (
                   <Link
-                    to={`/projects/${draft.projectId}?input=${encodeURIComponent(issue.field)}`}
+                    to={inputStepHref(draft.projectId, issue.field)}
                     className="underline-offset-2 hover:underline"
                   >
                     <span className="font-medium">{labelOf(issue.field)}</span>:{" "}
-                    {issue.message} (Intake)
+                    {issue.message}
+                    {inputStep(issue.field) === "intake" ? " (Intake)" : ""}
                   </Link>
                 )}
               </li>

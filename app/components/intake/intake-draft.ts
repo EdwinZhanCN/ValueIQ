@@ -1,14 +1,6 @@
 import type { FormFile, Goal, Input } from "../../../shared/form";
 import { INPUT_RULES } from "../../lib/intake-catalog";
-
-/** Form fields the Intake step edits. Every other field belongs to Clarify. */
-export const INTAKE_FIELDS = [
-  "project_name",
-  "decision_statement",
-  "goals",
-  "files",
-  "file_descriptions",
-] as const;
+import { INTAKE_FIELDS } from "../../lib/intake-fields";
 
 /** Envelope fields edited on Clarify that are not `inputs[]` ids. */
 const CLARIFY_ENVELOPE = [

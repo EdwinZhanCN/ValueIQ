@@ -85,3 +85,12 @@ export const DEFAULTS: Record<
     note: "Redman Rule of Ten proxy; see research source status before external citation.",
   },
 };
+
+/** Form fields the Intake step edits. Every other field belongs to Clarify. */
+export const INTAKE_FIELDS = [
+  "project_name",
+  "decision_statement",
+  "goals",
+  "files",
+  "file_descriptions",
+] as const;
