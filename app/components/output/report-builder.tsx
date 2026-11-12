@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { ArrowDown, ArrowUp, Download, FileText, Info } from "lucide-react";
 import type { ResultOutput } from "../../../shared/output";
+import { inputStepHref } from "../../lib/run-ui";
 import { cn } from "../../lib/utils";
 import {
   REPORT_CHARTS,
@@ -414,7 +415,7 @@ export function ReportBuilder({
     choicesKey: choicesKey(project.id, runId),
     resultLink: (tab = "numbers", reference) =>
       `${base}/results?${new URLSearchParams({ run: runId, tab })}${reference ? `#${encodeURIComponent(reference)}` : ""}`,
-    intakeLink: () => `${base}/clarify`,
+    intakeLink: (input) => inputStepHref(project.id, input),
   };
   const { choices, update, toggleChart } = useReportChoices(
     navigation.choicesKey,

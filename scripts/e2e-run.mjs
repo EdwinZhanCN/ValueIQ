@@ -379,7 +379,15 @@ try {
   );
 
   // ---- cancel a fresh run ----
-  await saveForm({ ...sampleForm, horizon_years: 4 });
+  // A valid variant: horizon 4 needs four adoption values (startRun now refuses
+  // an invalid form before it creates a run).
+  await saveForm({
+    ...sampleForm,
+    horizon_years: 4,
+    inputs: sampleForm.inputs.map((i) =>
+      i.id === "adoption_by_year" ? { ...i, value: [50, 80, 90, 90] } : i,
+    ),
+  });
   const cstart = await ws.rpc("startRun", [], 60000);
   check(
     "cancel candidate starts",
