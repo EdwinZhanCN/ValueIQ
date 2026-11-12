@@ -1,21 +1,8 @@
 // Small JSON Schema validator (subset) for tool arguments. Never coerces.
 
-export interface JsonSchema {
-  type?: "object" | "string" | "number" | "integer" | "boolean" | "array";
-  description?: string;
-  properties?: Record<string, JsonSchema>;
-  required?: string[];
-  additionalProperties?: boolean;
-  enum?: readonly (string | number)[];
-  minimum?: number;
-  maximum?: number;
-  minLength?: number;
-  maxLength?: number;
-  minItems?: number;
-  maxItems?: number;
-  items?: JsonSchema;
-  pattern?: string;
-}
+import type { JsonSchema } from "./evidence/json-schema";
+
+export type { JsonSchema };
 
 /** Returns a list of problems (empty = valid). */
 export function validateSchema(

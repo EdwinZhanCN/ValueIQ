@@ -38,7 +38,7 @@ describe("K16 ask_user is disabled by config for the model", () => {
   it("the tool and its tests stay, but the model is not offered it and cannot call it", async () => {
     expect(TOOLS.map((t) => t.name)).toContain("ask_user");
     expect(MODEL_TOOLS.map((t) => t.name)).not.toContain("ask_user");
-    expect(MODEL_TOOLS).toHaveLength(13);
+    expect(MODEL_TOOLS).toHaveLength(15);
     const calls: FakeCall[] = [];
     const f = fakeFetch(
       [

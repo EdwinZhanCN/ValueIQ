@@ -4,6 +4,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import {
   APICallError,
+  Output,
   generateText,
   jsonSchema,
   stepCountIs,
@@ -13,14 +14,14 @@ import {
   type ModelMessage,
   type ToolSet,
 } from "ai";
-import { toGeminiSchema } from "./schema";
+import { toGeminiSchema, validateSchema, type JsonSchema } from "./schema";
 import { assertExactModelId, type ThinkingSetting } from "./models";
 import { NarrativeRejectedError, assertModelText } from "./narrative-guard";
 import {
   ToolArgError,
   ToolRuntimeError,
   UnknownToolError,
-  callTool,
+  callToolDef,
   type ToolContext,
   type ToolDef,
 } from "./tools";
@@ -316,11 +317,11 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
     tools[t.name] = tool({
       description: t.description,
       inputSchema: jsonSchema(t.parameters as Parameters<typeof jsonSchema>[0]),
-      execute: (args: unknown): Record<string, unknown> => {
+      execute: async (args: unknown): Promise<Record<string, unknown>> => {
         let response: Record<string, unknown>;
         let code: string | undefined;
         try {
-          const out = callTool(t.name, args ?? {}, o.ctx);
+          const out = await callToolDef(t, args ?? {}, o.ctx);
           response = { output: out };
           const po = out as { pause?: boolean; questions?: unknown[] };
           if (po && typeof po === "object" && po.pause === true) {
@@ -465,4 +466,144 @@ function rebuildContents(start: Content[], steps: StepList): Content[] {
       });
   }
   return out;
+}
+
+// ---------- one structured (JSON) completion, for the file-evidence extractor ----------
+export interface StructuredOptions {
+  apiKey: string;
+  model: string;
+  /** Fixed instructions only. File text never goes here. */
+  system: string;
+  /** The user turn: the task plus any untrusted data inside a delimited block. */
+  prompt: string;
+  schema: JsonSchema;
+  fetch?: FetchLike;
+  baseUrl?: string;
+  thinking?: ThinkingSetting;
+  testModel?: LoopOptions["testModel"];
+  log?: (e: GeminiEvent) => void;
+  shouldStop?: () => boolean | Promise<boolean>;
+}
+export interface StructuredResult {
+  /** Parsed JSON that matched `schema`, or null when the model gave nothing usable. */
+  value: unknown;
+  /** Why value is null: no_object | schema_mismatch */
+  problem?: "no_object" | "schema_mismatch";
+  usage: { prompt: number; output: number; thoughts: number; total: number };
+}
+
+/**
+ * One model call that must return JSON matching `schema`. Same client, same strict modelVersion
+ * check and the same id-and-hash-only events as the tool loop. The result is validated again with
+ * our own validator; it is still untrusted data.
+ */
+export async function generateStructured(
+  o: StructuredOptions,
+): Promise<StructuredResult> {
+  assertExactModelId(o.model, "model");
+  const usage = { prompt: 0, output: 0, thoughts: 0, total: 0 };
+  const emit = (e: GeminiEvent) => o.log?.(e);
+  const provider = createGoogleGenerativeAI({
+    apiKey: o.apiKey,
+    ...(o.baseUrl ? { baseURL: o.baseUrl } : {}),
+    ...(o.fetch ? { fetch: toSdkFetch(o.fetch) } : {}),
+  });
+  const middleware: LanguageModelMiddleware = {
+    specificationVersion: "v4",
+    wrapGenerate: async ({ doGenerate, params }) => {
+      if (o.shouldStop && (await o.shouldStop())) throw new RunCancelledError();
+      emit({
+        type: "request",
+        model: o.model,
+        step: 1,
+        args_hash: hashOf(params.prompt),
+      });
+      const r = await doGenerate();
+      const raw = (r.usage.raw ?? {}) as RawUsage;
+      const prompt = raw.promptTokenCount ?? r.usage.inputTokens.total ?? 0;
+      const output = raw.candidatesTokenCount ?? r.usage.outputTokens.text ?? 0;
+      const thoughts =
+        raw.thoughtsTokenCount ?? r.usage.outputTokens.reasoning ?? 0;
+      usage.prompt += prompt;
+      usage.output += output;
+      usage.thoughts += thoughts;
+      usage.total += raw.totalTokenCount ?? prompt + output + thoughts;
+      const body = r.response?.body as { modelVersion?: unknown } | undefined;
+      const returned =
+        typeof body?.modelVersion === "string" ? body.modelVersion : null;
+      emit({
+        type: "response",
+        model: o.model,
+        step: 1,
+        returned_model: returned,
+        prompt_tokens: prompt,
+        output_tokens: output,
+        thought_tokens: thoughts,
+        total_tokens: usage.total,
+      });
+      if (returned !== o.model) {
+        emit({
+          type: "model_mismatch",
+          model: o.model,
+          step: 1,
+          returned_model: returned,
+        });
+        throw new ModelMismatchError(o.model, returned);
+      }
+      return r;
+    },
+  };
+  const model = wrapLanguageModel({
+    model: o.testModel ?? provider(o.model),
+    middleware,
+  });
+  const thinkingOptions =
+    o.thinking === undefined
+      ? {}
+      : {
+          providerOptions: {
+            google: {
+              thinkingConfig:
+                "level" in o.thinking
+                  ? { thinkingLevel: o.thinking.level }
+                  : { thinkingBudget: o.thinking.budget },
+            },
+          },
+        };
+  let value: unknown;
+  let problem: StructuredResult["problem"];
+  try {
+    const result = await generateText({
+      model,
+      system: o.system,
+      messages: [{ role: "user", content: o.prompt }],
+      output: Output.object({
+        schema: jsonSchema(o.schema as Parameters<typeof jsonSchema>[0]),
+      }),
+      maxRetries: 0,
+      ...thinkingOptions,
+    });
+    value = result.output;
+  } catch (e) {
+    if (APICallError.isInstance(e))
+      throw new GeminiHttpError(
+        e.statusCode ?? 0,
+        redact(e.message.slice(0, 300), [o.apiKey]),
+      );
+    if (
+      e instanceof ModelMismatchError ||
+      e instanceof RunCancelledError ||
+      e instanceof GeminiHttpError
+    )
+      throw e;
+    // no parsable object (the SDK's NoObjectGeneratedError and similar)
+    problem = "no_object";
+  }
+  if (value === undefined || value === null) value = null;
+  else if (validateSchema(o.schema, value).length > 0) {
+    value = null;
+    problem = "schema_mismatch";
+  }
+  emit({ type: "done", model: o.model, step: 1, tokens: usage.total });
+  return { value, ...(problem ? { problem } : {}), usage };
 }
