@@ -6,7 +6,7 @@
 //   node assistant/scripts/live-evidence.mjs --dry                  (scripted fake model, no key, no network)
 // The key comes from the environment or the gitignored .dev.vars and is never printed.
 import { goldenResultForm } from "../engine/tests/forms";
-import type { FormFile } from "../engine";
+import type { LegacyFormFile } from "../engine";
 import { geminiCompleter } from "./evidence-completer";
 import { extractFileText, type ExtractedText } from "./evidence/extract";
 import type {
@@ -154,7 +154,7 @@ export async function run(
     complete: counted,
     log: (e) => events.push(e),
   };
-  const form: FormFile = {
+  const form: LegacyFormFile = {
     ...goldenResultForm(),
     file_descriptions: {
       "sample-memo": "pilot memo",

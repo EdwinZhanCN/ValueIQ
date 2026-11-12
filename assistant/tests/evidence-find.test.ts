@@ -3,7 +3,7 @@
 // path. The cheap model is a scripted stand-in; no key, no network.
 import { describe, expect, it } from "vitest";
 import { goldenResultForm, NOW } from "../../engine/tests/forms";
-import type { FormFile } from "../../engine";
+import type { LegacyFormFile } from "../../engine";
 import { extractFileText, type ExtractedText } from "../evidence/extract";
 import {
   CANDIDATES_SCHEMA,
@@ -347,7 +347,7 @@ const scripted = (
     };
   };
 };
-const formWith = (files: Record<string, string>): FormFile => ({
+const formWith = (files: Record<string, string>): LegacyFormFile => ({
   ...goldenResultForm(),
   file_descriptions: files,
 });

@@ -5,6 +5,9 @@
  */
 import { data } from "react-router";
 import { readSmallForm } from "./form-body.server";
+import { listProjectFiles } from "./files.server";
+import { validateIntakeDraft } from "../lib/intake-draft";
+import { validateFormFile, serializeFormFile } from "../lib/intake-form";
 import { saveProjectForm } from "./projects.server";
 
 const MAX_BYTES = 256 * 1024;
@@ -42,6 +45,32 @@ export async function handleFormSave(
       { error: "Enter valid JSON.", saved: false },
       { status: 400 },
     );
+  }
+  // Both step editors post a versioned form; legacy scripted payloads retain
+  // their existing opaque-save compatibility.
+  if (
+    form.get("intakeEditor") === "structured" ||
+    (json && typeof json === "object" && "version" in json)
+  ) {
+    const files = await listProjectFiles(projectId);
+    const context = {
+      projectId,
+      files: files.map((file) => ({ id: file.id, projectId })),
+    };
+    const issues = validateIntakeDraft(json, context);
+    if (issues.length)
+      return data<FormSaveResult>(
+        {
+          error: issues
+            .map((issue) => `${issue.field}: ${issue.message}`)
+            .join(" "),
+          saved: false,
+        },
+        { status: 400 },
+      );
+    if (validateFormFile(json, context).length === 0) {
+      json = JSON.parse(serializeFormFile(json, context));
+    }
   }
   // The version the editor loaded: "" means it loaded no saved form. Scripted
   // clients that omit the field overwrite unconditionally.

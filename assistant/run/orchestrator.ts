@@ -6,7 +6,7 @@ import {
   DEFAULT_CONFIG,
   EngineIntegrityError,
   EngineValidationError,
-  type FormFile,
+  type LegacyFormFile,
   type RunOutput,
 } from "../../engine";
 import {
@@ -52,7 +52,7 @@ export interface OrchestratorDeps {
   store: RunStore;
   project_id: string;
   user_id: string;
-  getForm: () => Promise<FormFile>;
+  getForm: () => Promise<LegacyFormFile>;
   apiKey: string;
   models: ModelIds;
   thinking?: ThinkingSetting;
@@ -96,7 +96,7 @@ const TERMINAL = new Set<RunStatus>([
   "cancelled",
 ]);
 
-function canonicalForm(form: FormFile): unknown {
+function canonicalForm(form: LegacyFormFile): unknown {
   return {
     ...form,
     inputs: [...form.inputs].sort((a, b) => a.id.localeCompare(b.id)),
@@ -150,7 +150,7 @@ function httpMessage(status: number): string {
 }
 
 /** The idempotency key: the project's form (inputs sorted) plus the engine versions. */
-export function computeFormHash(form: FormFile): string {
+export function computeFormHash(form: LegacyFormFile): string {
   return hashOf({ form: canonicalForm(form), v: DEFAULT_CONFIG.versions });
 }
 
@@ -324,7 +324,7 @@ export class RunOrchestrator {
    * The form is the copy pinned on the run row, never the live project form: edits saved after
    * the run started must not change what it calculates (or what its form_hash claims).
    */
-  async executeRun(run_id: string, form?: FormFile): Promise<RunOutcome> {
+  async executeRun(run_id: string, form?: LegacyFormFile): Promise<RunOutcome> {
     await this.guardAccess();
     const { store } = this.d;
     const rec = await store.getRun(run_id);

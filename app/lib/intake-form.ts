@@ -331,6 +331,11 @@ export function validateFormFile(
     ["error_count_before", "error_count_after", false],
     ["aro_before", "aro_after", false],
   ] as const) {
+    if (
+      byId.get(before)?.tier === "user_unknown" ||
+      byId.get(after)?.tier === "user_unknown"
+    )
+      continue;
     const b = byId.get(before)?.value;
     const a = byId.get(after)?.value;
     if (finite(b) && finite(a) && (strict ? a >= b : a > b))
@@ -381,25 +386,32 @@ export class FormValidationError extends Error {
   }
 }
 
+class FormEncodingError extends TypeError {}
+
 function encode(candidate: unknown): string {
-  const json = JSON.stringify(
-    candidate,
-    (_key, value: unknown) => {
-      if (
-        value === undefined ||
-        typeof value === "function" ||
-        typeof value === "symbol" ||
-        (typeof value === "number" && !Number.isFinite(value))
-      )
-        throw new TypeError(
-          "Form values must be JSON-safe; unknown is null, never undefined or NaN.",
-        );
-      return value;
-    },
-    2,
-  );
-  if (json === undefined) throw new TypeError("Expected a form object.");
-  return `${json}\n`;
+  try {
+    const json = JSON.stringify(
+      candidate,
+      (_key, value: unknown) => {
+        if (
+          value === undefined ||
+          typeof value === "function" ||
+          typeof value === "symbol" ||
+          (typeof value === "number" && !Number.isFinite(value))
+        )
+          throw new TypeError(
+            "Form values must be JSON-safe; unknown is null, never undefined or NaN.",
+          );
+        return value;
+      },
+      2,
+    );
+    if (json === undefined) throw new TypeError("Expected a form object.");
+    return `${json}\n`;
+  } catch (error) {
+    if (error instanceof TypeError) throw new FormEncodingError(error.message);
+    throw error;
+  }
 }
 
 /** The form's reusable export path; never normalizes, clamps or invents values. */
@@ -472,6 +484,11 @@ export function applyFormEdit(
   } catch (error) {
     if (error instanceof FormValidationError)
       return { form: previous, issues: error.issues };
+    if (error instanceof FormEncodingError)
+      return {
+        form: previous,
+        issues: [{ code: "JSON_VALUE", field: "$", message: error.message }],
+      };
     throw error;
   }
 }

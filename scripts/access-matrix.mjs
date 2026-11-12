@@ -196,6 +196,113 @@ const TARGETS = [
       assert.equal(result.body, `${fx.run}-file`, "Downloaded bytes differ");
     },
   },
+  {
+    name: "incomplete structured draft save",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}`,
+      method: "POST",
+      form: {
+        intakeEditor: "structured",
+        formJson: JSON.stringify({
+          version: 1,
+          goals: [],
+          currency: "USD",
+          horizon_years: 0,
+          inputs: [],
+          file_descriptions: {},
+          other_notes: "Saved incomplete draft",
+          measurement_plan: {},
+          asked: [],
+        }),
+      },
+    }),
+    allowed: async (result, fx, actor, call) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      const page = await call(actor, { path: `/projects/${fx.projectId}` });
+      assert(
+        page.body.includes("Saved incomplete draft"),
+        "Incomplete draft lost on reload",
+      );
+    },
+  },
+  {
+    name: "structured intake save with persisted evidence",
+    request: (fx) => {
+      const form = JSON.parse(
+        readFileSync("docs/research/samples/sample-result.form.json", "utf8"),
+      );
+      form.file_descriptions = { [fx.fileId]: form.file_descriptions.f1 };
+      for (const input of form.inputs)
+        if (input.backing?.source_file_id === "f1")
+          input.backing.source_file_id = fx.fileId;
+      fx.expectedForm = form;
+      return {
+        path: `/projects/${fx.projectId}`,
+        method: "POST",
+        form: {
+          intakeEditor: "structured",
+          formJson: JSON.stringify(form),
+        },
+      };
+    },
+    allowed: async (result, fx, actor, call) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      const page = await call(actor, {
+        path: `/projects/${fx.projectId}/clarify?input=hours_saved_per_staff_week`,
+      });
+      assert.match(page.body, /Clarify/);
+      const savedAt = new Date().toISOString();
+      assert.match(page.body, /value-hours_saved_per_staff_week/);
+      assert(
+        page.body.includes(fx.fileId),
+        "Persisted evidence missing from editor",
+      );
+      const bad = await call(actor, {
+        path: `/projects/${fx.projectId}`,
+        method: "POST",
+        form: {
+          intakeEditor: "structured",
+          baseUpdatedAt: savedAt,
+          formJson: JSON.stringify({
+            version: 1,
+            goals: [],
+            currency: "USD",
+            horizon_years: 0,
+            inputs: [],
+            file_descriptions: { "foreign-file-id": "Forged evidence" },
+            other_notes: "",
+            measurement_plan: {},
+            asked: [],
+          }),
+        },
+      });
+      assert.equal(bad.status, 400, "Forged file must not save");
+      const stale = await call(actor, {
+        path: `/projects/${fx.projectId}`,
+        method: "POST",
+        form: {
+          intakeEditor: "structured",
+          baseUpdatedAt: "1970-01-01T00:00:00.000Z",
+          formJson: JSON.stringify({
+            version: 1,
+            goals: [],
+            currency: "USD",
+            horizon_years: 0,
+            inputs: [],
+            file_descriptions: {},
+            other_notes: "",
+            measurement_plan: {},
+            asked: [],
+          }),
+        },
+      });
+      assert.equal(
+        stale.status,
+        409,
+        "Stale structured save must not overwrite",
+      );
+    },
+  },
 ];
 
 let server;
@@ -325,9 +432,7 @@ try {
       `SELECT form_json, updated_by FROM project_forms WHERE project_id = '${projectId}'`,
     ).then((output) => output.slice(output.indexOf("["))),
   )[0].results[0];
-  assert.deepEqual(JSON.parse(saved.form_json), {
-    marker: `${run}-owner-step`,
-  });
+  assert.deepEqual(JSON.parse(saved.form_json), fx.expectedForm);
   assert.equal(saved.updated_by, users.owner);
 
   // Denied uploads left nothing behind either.
@@ -337,6 +442,27 @@ try {
     ).then((output) => output.slice(output.indexOf("["))),
   )[0].results.map((row) => row.uploaded_by);
   assert.deepEqual(uploaders.sort(), [users.member, users.owner].sort());
+
+  // Agent rejection checks below need an incomplete draft, not the canonical
+  // form just verified above. Never accidentally start a model run here.
+  const draftSaved = await call("owner", {
+    path: `/projects/${projectId}`,
+    method: "POST",
+    form: {
+      formJson: JSON.stringify({
+        version: 1,
+        goals: [],
+        currency: "USD",
+        horizon_years: 0,
+        inputs: [],
+        file_descriptions: {},
+        other_notes: "",
+        measurement_plan: {},
+        asked: [],
+      }),
+    },
+  });
+  assert.equal(draftSaved.status, 200);
 
   // Agent routes (integration contract section 7): the gate answers 401 and
   // 404 itself; team members get through to the agent, over HTTP and as a
@@ -400,7 +526,7 @@ try {
       const answer = await ws.rpc("answerQuestion", ["q1", "value"]);
       assert.equal(answer.ok, false);
       assert.equal(answer.error.code, "NOT_SUPPORTED");
-      // Before a form is saved the member gets BAD_INPUT, not ACCESS_DENIED:
+      // An incomplete draft gives BAD_INPUT, not ACCESS_DENIED:
       // the forged header above did not become the connection's user id.
       if (actor === "member") {
         const start = await ws.rpc("startRun", []);

@@ -1,5 +1,5 @@
 // System prompts and tool lists for the two model roles. No model names here.
-import { CATALOG, type FormFile } from "../engine";
+import { CATALOG, type LegacyFormFile } from "../engine";
 
 export const ASSISTANT_TOOLS = [
   "validate_inputs",
@@ -30,7 +30,7 @@ Report capacity-inclusive and hard-savings NPV separately, and label both ROIs (
 If release_gate fails, do not state any NPV, ROI or payback: say there is not enough backed evidence for a result and point to the gap list. You cannot raise confidence by wording.`;
 
 /** "Goals: a, b. Effect inputs: x, y." the line both roles receive with the request. */
-export function intro(form: FormFile): string {
+export function intro(form: LegacyFormFile): string {
   const effects = form.inputs
     .filter((i) => CATALOG[i.id]?.role === "effect" && i.value !== null)
     .map((i) => i.id);

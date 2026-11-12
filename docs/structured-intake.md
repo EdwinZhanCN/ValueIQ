@@ -12,6 +12,7 @@ The project form (`shared/form.ts`, FormFile v1) is filled in over two steps of 
 - Both steps POST the whole form to `/projects/:projectId/form` (`app/server/form-save.server.ts`) with `baseUpdatedAt`. A save over someone else's newer version answers 409 and keeps local edits.
 - Each step changes only its own fields and writes the rest back unchanged (`applyIntake` in `intake-draft.ts`, `useFormDraft` in `clarify/use-form-draft.ts`).
 - Drafts are read leniently with `readFormDraft` and may be incomplete. `validateFormFile` decides readiness: Clarify enables "Continue to Process" only on a valid form, and `startRun` refuses anything else on the server (#147). Essential costs and settings are required; benefit inputs may stay empty, which the engine reports as a gap list.
+- The server checks every versioned save against the project's uploaded file ids (`validateIntakeDraft` in `app/lib/intake-draft.ts`). Missing essential costs and settings may be saved. An out-of-range value, an adoption list that does not match the horizon, or a file id from outside the project answers 400 and keeps local edits. A complete form is stored through the canonical serializer; payloads without `version` (scripts) are stored as they are.
 
 ## Intake
 
@@ -23,6 +24,10 @@ The project form (`shared/form.ts`, FormFile v1) is filled in over two steps of 
 - The first card offers the labeled industry defaults and proxies for the chosen goals. Then one card per input group, in form order, beside a panel of what is entered so far and what still blocks Process.
 - Each field offers its value and unit, "Not sure" (unknown is explicit null, never zero), a labeled proxy where the catalog has one, the cost basis for costs, and the source file, quote and other evidence. Editing a default makes it a user estimate; editing evidenced values clears the quote confirmation.
 - Questions come from the field catalog (`app/lib/intake-catalog.ts`), not from a model. The assistant does not ask or prefill anything yet.
+
+## Form types
+
+`shared/form.ts` owns the wire schema. The engine re-exports that `FormFile`, with a compile-time equality check. Older engine and assistant callers use `LegacyFormFile`, derived from it. Both validators skip the before/after ordering check when either input is marked unknown.
 
 ## Checks
 

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { FormFile, RunOutput } from "../../engine";
+import type { LegacyFormFile, RunOutput } from "../../engine";
 import {
   goldenResultForm,
   inp,
@@ -41,10 +41,10 @@ import { call, fakeFetch, say, toolOutput, type FakeCall } from "./fake";
 
 const KEY = "AIzaSyFAKE_KEY_FOR_TESTS_0123456789abcdef";
 const ctxOf = (
-  form: FormFile = goldenResultForm(),
+  form: LegacyFormFile = goldenResultForm(),
   extra: Partial<Parameters<typeof createContext>[1]> = {},
 ): ToolContext => createContext(form, { run_id: "run_t", now: NOW, ...extra });
-const formWithNotes = (): FormFile => ({
+const formWithNotes = (): LegacyFormFile => ({
   ...goldenResultForm(),
   other_notes: "We expect a one-off migration cost of 4000 next year.",
 });
@@ -409,7 +409,7 @@ describe("K16 the model cannot edit a result", () => {
 
 describe("K16 ask_user: cap of 3, asked[] dedupe and the trigger rule", () => {
   // time savings without weeks_per_year / recapture_pct: both proxies matter (driver would vanish)
-  const missing = (): FormFile => {
+  const missing = (): LegacyFormFile => {
     const f = simpleForm();
     f.inputs = f.inputs.filter(
       (i) => i.id !== "weeks_per_year" && i.id !== "recapture_pct",

@@ -1,4 +1,4 @@
-import type { FormFile, RunOutput } from "../../engine";
+import type { LegacyFormFile, RunOutput } from "../../engine";
 import type {
   NewRun,
   QuestionRow,
@@ -17,7 +17,7 @@ export class MemoryRunStore implements RunStore {
   readonly events = new Map<string, RunEventRow[]>();
   readonly questions = new Map<string, QuestionRow>();
   readonly results = new Map<string, ResultRow>();
-  readonly forms = new Map<string, FormFile>();
+  readonly forms = new Map<string, LegacyFormFile>();
 
   createRun({ form, ...r }: NewRun): Promise<RunRecord> {
     if (this.runs.has(r.id))
@@ -39,7 +39,7 @@ export class MemoryRunStore implements RunStore {
     return Promise.resolve(r ? clone(r) : null);
   }
 
-  getRunForm(id: string): Promise<FormFile | null> {
+  getRunForm(id: string): Promise<LegacyFormFile | null> {
     const f = this.forms.get(id);
     return Promise.resolve(f ? clone(f) : null);
   }

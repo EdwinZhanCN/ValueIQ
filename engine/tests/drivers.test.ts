@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { ale, ruleOfTenCost } from "../drivers";
 import { computeProject } from "../project";
-import type { EngineConfig, FormFile, Input, RunOutput } from "../types";
+import type { EngineConfig, LegacyFormFile, Input, RunOutput } from "../types";
 import { OPTS, cost, inp } from "./forms";
 
 type Cfg = Partial<EngineConfig>;
-function run(form: FormFile, config?: Cfg): RunOutput {
+function run(form: LegacyFormFile, config?: Cfg): RunOutput {
   return computeProject(form, { ...OPTS, ...(config ? { config } : {}) });
 }
 function step(out: RunOutput, driver: string, name: string): number {
@@ -31,7 +31,7 @@ const withHaircut = (h: number): Cfg => ({
 
 describe("K3 driver formulas exact (T7, T8)", () => {
   it("Sprint 4: $100,000 gross, $50,000, $25,000, $20,000; NPV 8,181.82 at 10% and 9,417.48 at 3%", () => {
-    const form: FormFile = {
+    const form: LegacyFormFile = {
       goals: ["time_savings"],
       currency: "USD",
       horizon_years: 1,
@@ -62,7 +62,7 @@ describe("K3 driver formulas exact (T7, T8)", () => {
   });
 
   it("minutes-based time savings give the same gross", () => {
-    const form: FormFile = {
+    const form: LegacyFormFile = {
       goals: ["time_savings"],
       currency: "USD",
       horizon_years: 1,
@@ -86,7 +86,7 @@ describe("K3 driver formulas exact (T7, T8)", () => {
 
   it("Rule of Ten: 62 x $1 + 38 x $10 = $442, and the incremental error cost feeds the driver", () => {
     expect(ruleOfTenCost(62, 38, 1, 10)).toBe(442);
-    const form: FormFile = {
+    const form: LegacyFormFile = {
       goals: ["data_quality"],
       currency: "USD",
       horizon_years: 1,
@@ -107,7 +107,7 @@ describe("K3 driver formulas exact (T7, T8)", () => {
 
   it("ALE: $100,000 x 25% = $25,000 per event, ARO 3 gives $75,000", () => {
     expect(ale(3, 100000 * 0.25)).toBe(75000);
-    const form: FormFile = {
+    const form: LegacyFormFile = {
       goals: ["risk_reduction"],
       currency: "USD",
       horizon_years: 1,
@@ -126,7 +126,7 @@ describe("K3 driver formulas exact (T7, T8)", () => {
   });
 
   it("Priya components: $59,371 / $24,840 / $152,400 / $22,860 and cost PV about $209,249", () => {
-    const form: FormFile = {
+    const form: LegacyFormFile = {
       goals: ["time_savings", "data_quality"],
       currency: "USD",
       horizon_years: 3,
@@ -177,7 +177,7 @@ describe("K3 driver formulas exact (T7, T8)", () => {
     near(ts?.annual[0]?.benefit as number, 59371, 0.5); // year 1: gross x 60% x 50% x 95%
     near(step(out, "data_quality", "gross") / 3, 33120);
     // expedite line at the 75% adoption used in the source: 33,120 x 0.75 = 24,840
-    const dqForm: FormFile = {
+    const dqForm: LegacyFormFile = {
       ...form,
       goals: ["data_quality"],
       horizon_years: 1,
@@ -203,7 +203,7 @@ describe("K3 driver formulas exact (T7, T8)", () => {
       inp("cost_of_delay_per_day", 200, "documented"),
       inp("cost_of_delay_basis", basis),
     ];
-    const base = (basis: string): FormFile => ({
+    const base = (basis: string): LegacyFormFile => ({
       goals: ["decision_speed"],
       currency: "USD",
       horizon_years: 1,

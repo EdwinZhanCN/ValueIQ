@@ -2,73 +2,44 @@
 // RunOutput follows docs/research/plans/04-output.md plus the fixture additions
 // (Step.label/by_year, Driver.label/included, sensitivity.x_labels, year-0 cash row).
 
-export type Tier =
-  "measured" | "documented" | "benchmark" | "estimate" | "assumption";
-export type InputTier = Tier | "user_unknown";
-export type DriverId =
-  "time_savings" | "data_quality" | "decision_speed" | "risk_reduction";
+import type {
+  FormFile,
+  Goal,
+  Input as CanonicalInput,
+  MeasurementPlanEntry,
+  Origin,
+  Tier as InputTier,
+} from "../shared/form";
+export type {
+  Backing,
+  FormFile,
+  InputValue,
+  MeasurementPlanEntry,
+  Origin,
+} from "../shared/form";
+export type { Tier as InputTier } from "../shared/form";
+
+export type Tier = Exclude<InputTier, "user_unknown">;
+export type DriverId = Goal;
 export type LabelClass =
   | "hard_savings"
   | "capacity_value"
   | "avoided_loss"
   | "incremental_profit"
   | "customer_benefit";
-export type Origin =
-  "user" | "file" | "default" | "proxy_accepted" | "assistant_accepted";
-export type CostBasis = "quoted" | "estimated" | "assumed";
+export type CostBasis = NonNullable<CanonicalInput["basis"]>;
 export type ScenarioName = "conservative" | "expected" | "optimistic";
 
-// ---------- form file (01a-input-structure.md section 2) ----------
-export interface Backing {
-  source_file_id?: string;
-  quote?: string;
-  quote_confirmed?: boolean;
-  second_source_value?: number;
-  second_source_note?: string;
-  observations?: number;
-  period_months?: number;
-  source_date?: string;
-  verified?: boolean;
-  verified_by?: string;
-}
-
-export type InputValue = number | string | boolean | number[] | string[] | null;
-
-export interface Input {
-  id: string;
-  value: InputValue; // null = unknown, never zero
-  unit?: string;
-  period?: "per_year" | "per_week" | "per_event" | "one_time";
-  low?: number;
-  high?: number;
-  tier: InputTier;
-  origin?: Origin;
-  basis?: CostBasis;
-  backing?: Backing;
-  vendor_supplied?: boolean; // engine addition: feeds the vendor-numbers guardrail
-  note?: string;
-}
-
-export interface MeasurementPlanEntry {
-  metric: string;
-  baseline: string;
-  baseline_source: string;
-  owner: string;
-  frequency: string;
-}
-
-export interface FormFile {
-  version?: number;
-  goals: DriverId[];
-  currency?: string;
-  horizon_years?: number;
-  discount_rate_pct?: number;
-  inputs: Input[];
-  file_descriptions?: Record<string, string>;
-  other_notes?: string;
-  measurement_plan?: Partial<Record<DriverId, MeasurementPlanEntry>>;
-  asked?: string[];
-}
+/** Compatibility for pre-contract engine callers; canonical exports use FormFile.
+ * These adaptations preserve historical defaults without duplicating the wire schema.
+ */
+export type Input = Omit<CanonicalInput, "origin"> & { origin?: Origin };
+export type LegacyFormFile = Pick<FormFile, "goals"> &
+  Partial<Omit<FormFile, "goals" | "inputs" | "version">> & {
+    version?: number;
+    inputs: Input[];
+    discount_rate_pct?: number;
+  };
 
 // ---------- run output ----------
 export interface Meta {

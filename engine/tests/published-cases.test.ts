@@ -9,7 +9,7 @@ import { computeProject } from "../project";
 import type {
   DriverId,
   EngineConfig,
-  FormFile,
+  LegacyFormFile,
   Input,
   InputTier,
   RunOutput,
@@ -128,7 +128,7 @@ function flatConfig(h: number): Partial<EngineConfig> {
 function formFor(
   fx: DriverFixture,
   run: DriverFixture["runs"][number],
-): FormFile {
+): LegacyFormFile {
   const inputs: Input[] = run.inputs.map((i) => ({
     id: i.id,
     value: i.value,

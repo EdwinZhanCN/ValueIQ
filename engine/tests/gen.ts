@@ -1,4 +1,10 @@
-import type { Backing, DriverId, FormFile, Input, InputTier } from "../types";
+import type {
+  Backing,
+  DriverId,
+  LegacyFormFile,
+  Input,
+  InputTier,
+} from "../types";
 import { rng } from "./rng";
 import { FILES, cost, inp } from "./forms";
 
@@ -55,7 +61,7 @@ function eff(
 }
 
 /** A random VALID form: goal combos, horizon 1-20, delay, ramps, all tiers. */
-export function genForm(seed: number): FormFile {
+export function genForm(seed: number): LegacyFormFile {
   const r = rng(seed);
   const horizon = 1 + Math.floor(r() * 20);
   const all: DriverId[] = [
@@ -148,7 +154,7 @@ export function genForm(seed: number): FormFile {
 }
 
 /** Variant where every effect input is documented with strong backing, so the gate passes. */
-export function genStrongForm(seed: number): FormFile {
+export function genStrongForm(seed: number): LegacyFormFile {
   const f = genForm(seed);
   for (const i of f.inputs) {
     if (i.backing !== undefined) {

@@ -5,7 +5,7 @@
 // cannot change the form even if a model were fooled into asking for an override.
 import { describe, expect, it } from "vitest";
 import { goldenResultForm, NOW } from "../../engine/tests/forms";
-import type { FormFile } from "../../engine";
+import type { LegacyFormFile } from "../../engine";
 import { extractFileText, type ExtractedText } from "../evidence/extract";
 import type { FileEvidenceHost, StructuredCompleter } from "../evidence/host";
 import { buildExcerpt } from "../evidence/text";
@@ -31,7 +31,7 @@ async function poisoned(): Promise<ExtractedText> {
   });
 }
 
-const FORM: FormFile = {
+const FORM: LegacyFormFile = {
   ...goldenResultForm(),
   file_descriptions: { "file-1": "pilot notes" },
 };
