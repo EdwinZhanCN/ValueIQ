@@ -273,6 +273,6 @@ describe("K16 AI SDK adapter (REST-level fake fetch through the real Google prov
     expect(
       body.tools?.[0]?.functionDeclarations.map((d) => d.name),
     ).not.toContain("ask_user");
-    expect(TOOLS.length).toBe(14);
+    expect(TOOLS.length).toBe(16);
   });
 });

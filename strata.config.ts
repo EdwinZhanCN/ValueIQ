@@ -27,7 +27,8 @@ export default defineConfig({
       modules: ["assistant", "assistant/*"],
       uses: ["engine", "shared"],
       deps: {
-        assistant: ["tests"],
+        assistant: ["tests", "evidence"],
+        evidence: [],
         run: ["assistant"],
         tests: [],
       },

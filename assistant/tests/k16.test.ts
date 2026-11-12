@@ -85,6 +85,12 @@ const VALID: Record<string, Record<string, unknown>> = {
     reason: "reviewed",
     author: "eli",
   },
+  read_project_file: { file_id: "f1", start: 0, section: "Sheet1", query: "x" },
+  find_evidence: {
+    file_id: "f1",
+    input_id: "hours_saved_per_staff_week",
+    section: "Sheet1",
+  },
 };
 const wrongFor = (type: string | undefined): unknown =>
   type === "string"
@@ -100,7 +106,7 @@ const wrongFor = (type: string | undefined): unknown =>
             : null;
 
 describe("K16 every tool rejects schema-invalid arguments (100%)", () => {
-  it("there are exactly the 14 named tools", () => {
+  it("there are exactly the 16 named tools", () => {
     expect(TOOLS.map((t) => t.name).sort()).toEqual([
       "apply_override",
       "ask_user",
@@ -108,11 +114,13 @@ describe("K16 every tool rejects schema-invalid arguments (100%)", () => {
       "compute_haircut",
       "compute_project",
       "explain_step",
+      "find_evidence",
       "get_confidence",
       "get_defaults",
       "preflight_gate",
       "propose_adjustment",
       "propose_backing",
+      "read_project_file",
       "release_gate",
       "sensitivity",
       "validate_inputs",
@@ -168,6 +176,7 @@ describe("K16 every tool rejects schema-invalid arguments (100%)", () => {
   it("valid arguments run for every tool and never coerce (numeric string is rejected)", () => {
     for (const tool of TOOLS) {
       if (tool.name === "explain_step") continue; // needs a result first
+      if (tool.async) continue; // file tools run through callToolDef (evidence tests)
       expect(() =>
         callTool(tool.name, VALID[tool.name], ctxOf(formWithNotes())),
       ).not.toThrow();

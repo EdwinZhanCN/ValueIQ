@@ -1,6 +1,6 @@
 # Architecture
 
-ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The output UI can read those outcomes; the Process step supplies the user-facing Start Run control. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work. The Input team's form wire type and serializer/validator (`shared/form.ts`, `app/lib/intake-form.ts`) back the Intake and Clarify steps, which save the project form; `startRun` refuses a form that does not validate.
+ValueIQ has account/team/project pages, private file storage, a deterministic engine/assistant library, and persisted results with private R2 PDF reports. The engine is integrated as a pure library and tested against the output consumer. The merged Worker agent/workflow invoke the live orchestrator and publish validated D1 outcomes. The project flow starts runs from the Process step and reads their outcomes on Review. See [output pipeline](output-pipeline.md) for server methods and remaining orchestration work. The Input team's form wire type and serializer/validator (`shared/form.ts`, `app/lib/intake-form.ts`) back the Intake and Clarify steps, which save the project form; `startRun` refuses a form that does not validate.
 
 ## Stack
 
