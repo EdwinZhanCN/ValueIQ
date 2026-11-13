@@ -32,6 +32,7 @@ import {
 import { getProjectForm } from "./projects.server";
 import { dryFetch } from "../../assistant/dry-fetch";
 import type { FetchLike } from "../../assistant/gemini";
+import { getExtractedText } from "./file-text.server";
 
 /** Where model calls go: Gemini with the Worker key, or the local scripted model. */
 export type ModelSource =
@@ -156,6 +157,16 @@ export function makeOrchestrator(o: {
     },
     ...(o.onView ? { onView: o.onView } : {}),
     ...(o.config ? { config: o.config } : {}),
+    // Reads the run's cited files for the quote check (no model involved).
+    files: {
+      extractedText: async (fileId) => {
+        const r = await getExtractedText(
+          { projectId: o.projectId, userId: o.userId },
+          fileId,
+        );
+        return r.ok ? { ok: true, text: r.text, name: r.name } : r;
+      },
+    },
   });
 }
 

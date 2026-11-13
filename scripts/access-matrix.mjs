@@ -212,6 +212,58 @@ const TARGETS = [
       assert.equal(result.body, `${fx.run}-file`, "Downloaded bytes differ");
     },
   },
+  {
+    name: "file text summary",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/files/${fx.fileId}/text`,
+    }),
+    allowed: (result) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      const summary = JSON.parse(result.body);
+      assert.equal(summary.ok, true, result.body.slice(0, 400));
+      assert.match(summary.text, /passage/);
+    },
+  },
+  {
+    name: "file text summary for a file not in the project",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/files/${crypto.randomUUID()}/text`,
+    }),
+    allowed: (result) => assert.equal(result.status, 404),
+  },
+  {
+    name: "find evidence in a file",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/evidence`,
+      method: "POST",
+      form: {
+        inputId: "hours_saved_per_staff_week",
+        fileId: fx.fileId,
+        value: "5",
+      },
+    }),
+    // 200 with the scripted or live model; 502/503 when no model answers.
+    allowed: (result) => {
+      assert(
+        [200, 502, 503].includes(result.status),
+        result.body.slice(0, 400),
+      );
+      assert.equal(typeof JSON.parse(result.body).ok, "boolean");
+    },
+  },
+  {
+    name: "find evidence in a file not in the project",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/evidence`,
+      method: "POST",
+      form: {
+        inputId: "hours_saved_per_staff_week",
+        fileId: crypto.randomUUID(),
+        value: "5",
+      },
+    }),
+    allowed: (result) => assert.equal(result.status, 404),
+  },
 ];
 
 let server;

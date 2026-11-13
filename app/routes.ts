@@ -45,6 +45,11 @@ export default [
       "projects/:projectId/files/:fileId",
       "routes/projects.files.download.ts",
     ),
+    route(
+      "projects/:projectId/files/:fileId/text",
+      "routes/projects.files.text.ts",
+    ),
+    route("projects/:projectId/evidence", "routes/projects.evidence.ts"),
   ]),
   route("projects/:projectId/form", "routes/projects.form.ts"),
   route("projects/:projectId/runs/:runId/reports", "routes/project-reports.ts"),

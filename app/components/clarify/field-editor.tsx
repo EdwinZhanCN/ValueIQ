@@ -5,6 +5,7 @@ import { INPUT_RULES } from "../../lib/intake-catalog";
 import { LABELS } from "../../lib/intake-fields";
 import { OPTIONAL, SOURCE_CHOICES, TIER_LABELS, unitFor } from "./draft";
 import type { FormDraft } from "./use-form-draft";
+import { FindInFile } from "./find-in-file";
 
 export const control =
   "block w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -282,6 +283,16 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
                 ))}
               </select>
             </label>
+            {b.source_file_id &&
+              typeof record?.value === "number" &&
+              Number.isFinite(record.value) && (
+                <FindInFile
+                  id={id}
+                  fileId={b.source_file_id}
+                  value={record.value}
+                  draft={draft}
+                />
+              )}
             <label className="block text-xs">
               Quoted passage
               <textarea

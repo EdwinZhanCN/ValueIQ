@@ -28,6 +28,8 @@ import {
   intro,
 } from "../prompts";
 import { TOOLS, callTool, createContext, type ToolContext } from "../tools";
+import type { FileEvidenceHost } from "../evidence/host";
+import { quoteInFile } from "../evidence/find";
 import type { EngineConfig } from "../../engine/types";
 import {
   CHECKLIST_LABELS,
@@ -70,6 +72,13 @@ export interface OrchestratorDeps {
    * `versions.settings`). Must match the settings version on the run row.
    */
   config?: Partial<EngineConfig>;
+  /**
+   * Reads project files (`makeFileHost(...).extractedText` in the Worker).
+   * When present, the "Files read" step checks every confirmed quote against
+   * its file and records the result as a `quote_check` event. It never
+   * changes the calculation or fails the run.
+   */
+  files?: Pick<FileEvidenceHost, "extractedText">;
 }
 
 export interface PreflightReport {
@@ -228,6 +237,40 @@ export class RunOrchestrator {
   }
 
   /** Mark labels up to and including `label` done and the next one as doing. */
+  /**
+   * The "Files read" step: every confirmed quote is looked up, word for word,
+   * in the file it cites. One event per input, ids and result only. A file
+   * that cannot be read is recorded as such; nothing here throws.
+   */
+  private async checkQuotes(run_id: string, form: FormFile): Promise<void> {
+    const files = this.d.files;
+    if (!files) return;
+    const texts = new Map<
+      string,
+      Awaited<ReturnType<typeof files.extractedText>> | null
+    >();
+    for (const input of form.inputs) {
+      const b = input.backing;
+      if (!b?.source_file_id || !b.quote || !b.quote_confirmed) continue;
+      if (!texts.has(b.source_file_id))
+        texts.set(
+          b.source_file_id,
+          await files.extractedText(b.source_file_id).catch(() => null),
+        );
+      const got = texts.get(b.source_file_id);
+      const result = !got?.ok
+        ? "unreadable"
+        : quoteInFile(got.text, b.quote)
+          ? "found"
+          : "not_found";
+      await this.event(run_id, "Files read", "quote_check", {
+        input_id: input.id,
+        file_id: b.source_file_id,
+        result,
+      });
+    }
+  }
+
   private advance(label: (typeof CHECKLIST_LABELS)[number]): void {
     const idx = CHECKLIST_LABELS.indexOf(label);
     const checklist: RunView["checklist"] = CHECKLIST_LABELS.map((l, i) => ({
@@ -363,7 +406,12 @@ export class RunOrchestrator {
     this.seq = prior.reduce((m, e) => Math.max(m, e.seq), 0);
     this.cancelled = false;
     await this.event(run_id, null, "status", { status: "running" });
-    this.emitView({ ...this.blank("running", run_id), step: "Files read" });
+    const reading = this.blank("running", run_id);
+    reading.checklist = reading.checklist.map((c, i) =>
+      i === 0 ? { ...c, state: "doing" as const } : c,
+    );
+    this.emitView({ ...reading, step: "Files read" });
+    await this.checkQuotes(run_id, f);
     this.advance("Files read");
 
     const ctx: ToolContext = createContext(f, {

@@ -613,3 +613,16 @@ export async function findEvidence(a: FindArgs): Promise<FindResult> {
     ...(r.problem ? { problem: r.problem } : {}),
   };
 }
+
+// ---------- the run-time quote check ----------
+/**
+ * Is a confirmed quote still in the file, word for word (whitespace aside)?
+ * A quote may run across adjacent passages. No model; used when a run reads
+ * the files its inputs cite.
+ */
+export function quoteInFile(x: ExtractedText, quote: string): boolean {
+  const nq = normalizeWs(quote);
+  if (nq.length === 0) return false;
+  const texts = x.segments.map((s) => normalizeWs(s.text));
+  return texts.some((t) => t.includes(nq)) || texts.join(" ").includes(nq);
+}

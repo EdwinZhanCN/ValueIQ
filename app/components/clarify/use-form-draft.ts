@@ -220,6 +220,20 @@ export function useFormDraft({
     metadata(id, { backing: next });
   }
 
+  /**
+   * "Use this quote": the file and the checked quote go into the draft; the
+   * confirmation is left for the user to tick.
+   */
+  function applyQuote(id: string, fileId: string, quote: string) {
+    const next: Backing = {
+      ...byId.get(id)?.backing,
+      source_file_id: fileId,
+      quote,
+    };
+    delete next.quote_confirmed;
+    metadata(id, { backing: next });
+  }
+
   function range(id: string, key: "low" | "high", value: string) {
     const record: Input = {
       id,
@@ -387,6 +401,7 @@ export function useFormDraft({
     commit,
     metadata,
     backing,
+    applyQuote,
     range,
     notSure,
     acceptProxy,

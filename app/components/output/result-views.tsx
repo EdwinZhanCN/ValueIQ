@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import type { EnteredInputRow } from "~/lib/entered-inputs";
+import { QUOTE_CHECK_LABELS, type EnteredInputRow } from "~/lib/entered-inputs";
 import { Link } from "react-router";
 import {
   ArrowLeft,
@@ -814,6 +814,7 @@ function InputsUsed() {
               <th>Evidence</th>
               <th>Source</th>
               <th>File</th>
+              <th>Quote check</th>
             </tr>
           </thead>
           <tbody>
@@ -843,6 +844,16 @@ function InputsUsed() {
                 <td>{row.tier}</td>
                 <td>{row.source}</td>
                 <td>{row.file ?? "—"}</td>
+                <td
+                  data-quote-check={row.quoteCheck ?? undefined}
+                  className={
+                    row.quoteCheck && row.quoteCheck !== "found"
+                      ? "text-amber-700 dark:text-amber-400"
+                      : ""
+                  }
+                >
+                  {row.quoteCheck ? QUOTE_CHECK_LABELS[row.quoteCheck] : "—"}
+                </td>
               </tr>
             ))}
           </tbody>

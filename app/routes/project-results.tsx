@@ -12,6 +12,7 @@ import {
 import { settingsUsedByRun } from "../server/team-settings.server";
 import { listProjectFiles } from "../server/projects.server";
 import { enteredInputs } from "../lib/entered-inputs";
+import { quoteChecks } from "../server/evidence.server";
 import {
   TEAM_SETTING_KEYS,
   TEAM_SETTING_LABELS,
@@ -71,6 +72,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
             id,
             name,
           })),
+          await quoteChecks(access.projectId, snapshot.run.id),
         ),
       }
     : null;

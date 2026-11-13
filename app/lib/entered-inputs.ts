@@ -20,6 +20,16 @@ export type EnteredInputRow = {
   file: string | null;
   basis: string | null;
   note: string | null;
+  /** What the run found when it looked the confirmed quote up in its file. */
+  quoteCheck: QuoteCheck | null;
+};
+
+export type QuoteCheck = "found" | "not_found" | "unreadable";
+
+export const QUOTE_CHECK_LABELS: Record<QuoteCheck, string> = {
+  found: "found in file",
+  not_found: "not found",
+  unreadable: "file unreadable",
 };
 
 const ORIGIN_LABELS: Record<Origin, string> = {
@@ -50,6 +60,8 @@ function valueText(input: Input, currency: string): string {
 export function enteredInputs(
   formJson: unknown,
   files: readonly { id: string; name: string }[],
+  /** The run's `quote_check` results by input id (empty for older runs). */
+  checks: Readonly<Record<string, QuoteCheck>> = {},
 ): EnteredInputRow[] | null {
   const form = asForm(formJson);
   if (!form) return null;
@@ -70,6 +82,7 @@ export function enteredInputs(
         file: fileId ? (names.get(fileId) ?? FILE_GONE) : null,
         basis: input.basis ?? null,
         note: input.note?.trim() ? input.note.trim() : null,
+        quoteCheck: checks[input.id] ?? null,
       };
     });
 }
