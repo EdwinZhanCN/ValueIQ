@@ -295,7 +295,7 @@ describe("summarizeOutput: result", () => {
   });
   it("uses the engine's payback text", () => {
     expect(row("payback").capacity.text).toBe(
-      "1.0 years (uniform-flow assumption)",
+      "about 11 months (uniform-flow assumption)",
     );
     expect(row("payback").hard.text).toBe(
       "No payback within the selected horizon",

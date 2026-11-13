@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { plainLanguage } from "../../lib/output-presentation";
 import {
   confidence,
   labels,
@@ -8,7 +9,7 @@ import {
   type SensitivityPoint,
 } from "./samples";
 
-/** Optional control rendered in the chart header (e.g. "In report"). */
+/** Optional non-selection content rendered in the chart header. */
 export type ChartSlot = { action?: ReactNode };
 
 export function Chart({
@@ -55,7 +56,7 @@ export function AdjustmentChart({
         {points.map((point) => (
           <div key={point.label}>
             <div>
-              <span>{point.label}</span>
+              <span>{plainLanguage(point.label)}</span>
               <strong>{money(point.value, currency)}</strong>
             </div>
             <div className="output-bar-track">
@@ -67,10 +68,6 @@ export function AdjustmentChart({
           </div>
         ))}
       </div>
-      <p className="output-caption">
-        These are successive levels. Floating reduction bars require start/end
-        values from the engine.
-      </p>
     </Chart>
   );
 }

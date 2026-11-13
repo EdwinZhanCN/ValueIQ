@@ -10,7 +10,6 @@ import {
 import { BrandWordmark } from "../brand";
 import sampleReportUrl from "../../../docs/research/output/pdf-preview/sample-engine-report.pdf?url";
 import { inputStepHref } from "../../lib/run-ui";
-import { choicesKey } from "./report-choices";
 import {
   GapsView,
   OutputContext,
@@ -68,7 +67,6 @@ export function ProjectResultView({
   const base = `/projects/${project.id}`;
   const navigation: OutputNavigation = {
     embedded: true,
-    choicesKey: choicesKey(project.id, runId),
     resultLink: (tab = "numbers", reference) =>
       `${base}/results?${new URLSearchParams({ run: runId, tab })}${reference ? `#${encodeURIComponent(reference)}` : ""}`,
     // Gap items go to the step that edits the input (Intake for name, goals
@@ -106,7 +104,6 @@ export function OutputWorkspace() {
   const tab = resultTab(params.get("tab"));
   const navigation: OutputNavigation = {
     embedded: false,
-    choicesKey: choicesKey(undefined, meta.run_id),
     resultLink: (section = "numbers", reference) =>
       `/workspace?${new URLSearchParams({ view: "results", tab: section })}${reference ? `#${encodeURIComponent(reference)}` : ""}`,
     intakeLink: (input, from = "result") => {

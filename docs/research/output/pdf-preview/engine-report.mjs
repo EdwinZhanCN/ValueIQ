@@ -42,14 +42,54 @@ export async function renderEngineReport({
   const pages = [],
     layout = [];
   let page, y, group;
+  const withCase = (source, replacement) =>
+    /^[A-Z]/.test(source)
+      ? replacement.replace(/^./, (character) => character.toUpperCase())
+      : replacement;
+  const plainLanguage = (value) =>
+    String(value)
+      .replace(/weakest links?/gi, (match) =>
+        withCase(
+          match,
+          match.toLowerCase().endsWith("s")
+            ? "least-supported inputs"
+            : "least-supported input",
+        ),
+      )
+      .replace(/evidence haircuts/gi, (match) =>
+        withCase(match, "evidence discounts"),
+      )
+      .replace(/evidence haircut/gi, (match) =>
+        withCase(match, "evidence discount"),
+      )
+      .replace(/haircuts/gi, (match) => withCase(match, "evidence discounts"))
+      .replace(/haircut/gi, (match) => withCase(match, "evidence discount"))
+      .replace(/recapture_pct/gi, "freed time used productively")
+      .replace(/\brecapture\b/gi, "productive use of freed time")
+      .replace(/\bfloors\b/gi, "minimum confidence levels we require")
+      .replace(/\bfloor\b/gi, "minimum confidence we require")
+      .replace(/\btiers\b/gi, "evidence levels")
+      .replace(/\btier\b/gi, "evidence level");
+  const inputLabel = (id) =>
+    ({
+      recapture_pct: "Freed time used productively (%)",
+      discount_rate_pct: "Discount rate (%)",
+    })[id] ??
+    String(id)
+      .replaceAll("_pct", " percentage")
+      .replaceAll("_", " ")
+      .replace(/^./, (character) => character.toUpperCase());
+  const specified = (value) =>
+    !String(value).trim().toLowerCase().startsWith("not specified");
   const text = (s, x, top, size = 9, font = regular, color = C.ink) => {
+    const value = plainLanguage(s);
     if (
-      [...String(s)].some(
+      [...value].some(
         (character) => !glyphs.get(font).has(character.codePointAt(0)),
       )
     )
       throw new Error("Report font does not support the supplied text");
-    page.drawText(String(s), { x, y: H - top - size, size, font, color });
+    page.drawText(value, { x, y: H - top - size, size, font, color });
   };
   const right = (s, x, top, size = 9, font = regular, color = C.ink) =>
     text(
@@ -77,7 +117,7 @@ export async function renderEngineReport({
   const wrap = (value, width, size = 9, font = regular) => {
     const lines = [];
     let current = "";
-    for (const word of String(value).replaceAll("−", "-").split(/\s+/)) {
+    for (const word of plainLanguage(value).replaceAll("−", "-").split(/\s+/)) {
       const candidate = current ? `${current} ${word}` : word;
       if (font.widthOfTextAtSize(candidate, size) <= width) {
         current = candidate;
@@ -232,17 +272,32 @@ export async function renderEngineReport({
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
     }).format(n);
+  const ratioWhole = (n) =>
+    new Intl.NumberFormat("en-US", {
+      style: "percent",
+      maximumFractionDigits: 0,
+    }).format(n);
   const label = (s) =>
     ({
       hard_savings: "Hard savings",
       capacity_value: "Capacity value",
       avoided_loss: "Expected avoided loss",
+      time_savings: "Time savings",
+      data_quality: "Data quality",
+      risk_reduction: "Risk reduction",
       decision_speed: "Decision speed",
     })[s] ?? s;
   const tiers = (counts) =>
     Object.entries(counts)
       .map(([tier, n]) => `${n} ${tier}`)
       .join(" · ");
+  const confidenceSummary = (value, counts) => {
+    const evidence = Object.entries(counts)
+      .filter(([, count]) => count > 0)
+      .map(([level, count]) => `${count} ${level}`)
+      .join(", ");
+    return `Confidence ${ratioWhole(value)}, based on ${evidence || "the documented evidence"} inputs.`;
+  };
   const bars = (title, points) => {
     const height = 72 + points.length * 47;
     ensure(height + 12);
@@ -314,8 +369,8 @@ export async function renderEngineReport({
     ],
   );
   note(
-    `Project confidence ${ratio(result.confidence.project.confidence)} · floor ${ratio(result.confidence.project.floor)}`,
-    `${result.confidence.band_note} ${tiers(meta.tier_counts)}. ${result.confidence.project.capped_by ? `Capped by ${result.confidence.project.capped_by}.` : ""}`,
+    confidenceSummary(result.confidence.project.confidence, meta.tier_counts),
+    `${result.confidence.band_note} Minimum confidence required: ${ratio(result.confidence.project.floor)}. ${result.confidence.project.capped_by ? `Capped by ${label(result.confidence.project.capped_by)}.` : ""}`,
   );
   para(result.narrative.summary);
   note(
@@ -355,7 +410,7 @@ export async function renderEngineReport({
     ["Accepted proxy", "Value", "Source / tier"],
     [0.26, 0.14, 0.6],
     result.proxies_used.map((p) => [
-      p.input_id,
+      inputLabel(p.input_id),
       String(p.value),
       `${p.source} · ${p.tier}`,
     ]),
@@ -404,7 +459,9 @@ export async function renderEngineReport({
       ]),
     );
     note("What makes this vary", driver.risk_factors.join(" "));
-    para(`How measured: ${driver.measured_by}`);
+    para(
+      `How measured: ${specified(driver.measured_by) ? driver.measured_by : "Measurement method to confirm"}`,
+    );
     const narrative = result.narrative.by_driver[driver.id];
     if (narrative) para(narrative);
   }
@@ -463,11 +520,6 @@ export async function renderEngineReport({
     "Capacity value and expected avoided loss are distinct from documented hard savings. The net and cumulative figures include these benefits; they do not establish a cash reduction.",
   );
   bars("Adjustment stages · supplied horizon levels", result.charts.waterfall);
-  para(
-    "These are successive levels, not floating reduction bars. The engine will need to provide explicit starts and ends for a true waterfall.",
-    8.5,
-    C.muted,
-  );
 
   newPage("Scenarios and sensitivity");
   section(7, "Scenarios and sensitivity");
@@ -553,10 +605,12 @@ export async function renderEngineReport({
     ["Driver / metric", "Baseline / source", "Owner", "Frequency"],
     [0.35, 0.35, 0.17, 0.13],
     Object.entries(result.measurement_plan).map(([id, p]) => [
-      `${result.drivers.find((d) => d.id === id)?.label ?? id}: ${p.metric}`,
-      `${p.baseline}; ${p.baseline_source}`,
-      p.owner,
-      p.frequency,
+      `${result.drivers.find((d) => d.id === id)?.label ?? id}: ${specified(p.metric) ? p.metric : "Measurement details to confirm"}`,
+      specified(p.baseline)
+        ? `${p.baseline}${specified(p.baseline_source) ? `; ${p.baseline_source}` : ""}`
+        : "",
+      specified(p.owner) ? p.owner : "",
+      specified(p.frequency) ? p.frequency : "",
     ]),
   );
 

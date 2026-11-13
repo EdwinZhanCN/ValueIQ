@@ -1,8 +1,8 @@
 # Output: results, evidence, report builder and PDF
 
-Status: active - 2026-11-05. Supplied PR #123 samples drive the labeled `/workspace` preview. The local output-pipeline branch now implements authenticated persisted-result retrieval, saved opaque-intake round trips, shared version 1 validation, and fixed-template Worker PDF generation/private R2 persistence. The engine and PR #138 live Worker orchestration are now reconciled with the consumer. A user-facing Start Run control still waits. Structured intake, customizable report choices, owner contract freeze, remote deployment and mockup acceptance remain open. See [the concrete handoff](../../../docs/output-pipeline.md).
+Status: active - 2026-11-10. Supplied PR #123 samples drive the labeled `/workspace` preview. The output pipeline implements authenticated persisted-result retrieval, saved opaque-intake round trips, shared version 1 validation, and fixed-template Worker PDF generation/private R2 persistence. The report is intentionally fixed for the demo: all sections and the three standard charts are always included. See [the concrete handoff](../../../docs/output-pipeline.md).
 
-Goal: a released run opens an auditable pre-funding estimate, a failed confidence gate opens an actionable gap list, and a user can arrange a report, choose fixed charts and download its stored PDF. All financial values come from the engine.
+Goal: a released run opens an auditable pre-funding estimate, a failed confidence gate opens an actionable gap list, and a user can preview and download the fixed stored PDF. All financial values come from the engine.
 
 ## Non-goals
 
@@ -27,6 +27,8 @@ Confirmed by Ryan on 2026-11-05:
 1. Q9: offer waterfall, driver contribution and sensitivity only; exclude AI-requested charts and external integrations.
 2. Q11: Edit Inputs returns to saved intake with answers preserved. Submitting edits creates a new run and retains the earlier result. Claim this use case only after that round trip works. Sliders remain stretch.
 
+Confirmed by Ryan on 2026-11-10: report outline and chart controls stay hidden until they affect the generated file. The demo PDF always contains every section and the standard gross-to-adjusted, discount-rate sensitivity and driver-mix charts.
+
 Required by the brief:
 
 - Display hard savings and capacity value distinctly. Both ROI definitions must be labeled; never combine ROI, NPV and payback into a score.
@@ -48,7 +50,7 @@ All output issues below were open when inspected on 2026-11-05. Dates are tracke
 | [O3 #67](https://github.com/EdwinZhanCN/ValueIQ/issues/67) | Nov 5   | Two or three published cases with inputs and expected answers | Two complete reference ledgers are captured; engine adapter and comparison tests must still pass within 10% for nonzero references                                                   |
 | [O4 #68](https://github.com/EdwinZhanCN/ValueIQ/issues/68) | Nov 7   | Numbers, show-the-math and charts; gap-list outcome           | Complete released and gap fixtures render; every displayed metric has provenance; null reasons, confidence, costs and warnings are visible; keyboard and narrow-screen review passes |
 | [Z6 #62](https://github.com/EdwinZhanCN/ValueIQ/issues/62) | Nov 7   | Stored PDF through Zihao's access-checked API                 | Authorized save/download round trip returns a parseable PDF; signed-out and other-team requests are refused                                                                          |
-| [O5 #69](https://github.com/EdwinZhanCN/ValueIQ/issues/69) | Nov 10  | Arrange the report, select charts, download PDF               | Each chart can be included or excluded; section order changes; downloaded pages retain required evidence, labels and the chosen run's values                                         |
+| [O5 #69](https://github.com/EdwinZhanCN/ValueIQ/issues/69) | Nov 10  | Preview and download the fixed report                         | The preview and downloaded PDF contain all sections, the same three standard charts, required evidence, labels and the chosen run's values                                           |
 | [O6 #70](https://github.com/EdwinZhanCN/ValueIQ/issues/70) | Nov 10  | Review/back navigation and progress                           | Result and gap-list returns preserve intake; edited answers create a new run; reload restores the saved state; progress reflects run state                                           |
 | [O7 #71](https://github.com/EdwinZhanCN/ValueIQ/issues/71) | Stretch | Conservative/aggressive input edits                           | Only after O4-O6; engine reruns and retains computed value, override, reason, author and time                                                                                        |
 
@@ -83,19 +85,19 @@ Gate thresholds and ranking are engine decisions. The output validates the agree
 
 Status: fixed-template renderer and private storage are implemented locally for infrastructure-owner review. The Worker reads pinned D1 output, renders graphs/tables, writes the existing `FILES` binding, and records `run_reports`. No remote resources were changed. The exact methods and routes are documented in [output pipeline](../../../docs/output-pipeline.md).
 
-Use a server-only PDF renderer with `pdf-lib`, generating vector charts directly from the engine's prepared data. Use SVG for the web versions of the same three charts and a shared presentation specification for labels, colors and ordering. Chart geometry may scale values to page coordinates; it must not derive another financial value. The PDF can include the required cash-flow chart in the financial summary independently of the three selectable chart types.
+Use a server-only PDF renderer with `pdf-lib`, generating vector charts directly from the engine's prepared data. Use SVG for the web versions of the same three charts and a shared presentation specification for labels, colors and ordering. Chart geometry may scale values to page coordinates; it must not derive another financial value. The PDF can include the required cash-flow chart in the financial summary independently of the three standard chart types.
 
 The library documents pure JavaScript, embedded fonts and vector drawing; its page API exposes text, line and rectangle operations. A local workerd spike using `pdf-lib` 1.17.1 and `@pdf-lib/fontkit` 1.1.1 generated a nine-page PDF with a static Noto Sans font. Subsetting the existing variable Geist WOFF2 failed; use a tested static font and retain its license. The [research record](../../../docs/research/output/README.md#pdf-compatibility-spike) records the conditions and limits. Production CPU/memory use and the final layout remain unverified. [Library overview](https://pdf-lib.js.org/), [page drawing API](https://pdf-lib.js.org/docs/api/classes/pdfpage), [Worker limits](https://developers.cloudflare.com/workers/platform/limits/).
 
 Proposed generation flow:
 
-1. A project action authorizes the caller and accepts a run ID plus validated section order/chart IDs. It ignores client-submitted result numbers.
+1. A project action authorizes the caller and accepts a run ID. It ignores client-submitted result numbers and report layout choices.
 2. Load the immutable, supported released result for that project/run. A gap list cannot produce an assessment report. A stub produces a conspicuously labeled stub PDF.
 3. Build the ten-section report from that snapshot. Wrap text, repeat table headers, keep headings with content, number pages and embed a licensed font supporting the accepted input characters. Include run ID, generation time and contract/formula/settings/template versions.
 4. Generate PDF bytes and call Zihao's `saveReportPdf`. Store in the existing private `FILES` bucket under the integration contract's report key; Zihao owns `run_reports` and the R2 write.
-5. Download through `getReportPdf` after project access checks, with a safe filename and PDF content type. Treat generation/storage failures visibly and preserve builder choices for retry; never announce a stored report before save succeeds.
+5. Download through `getReportPdf` after project access checks, with a safe filename and PDF content type. Treat generation/storage failures visibly; never announce a stored report before save succeeds.
 
-Report ordering is a permutation of the ten required sections. Charts can be toggled individually. Whether the summary/appendix stay anchored is a review detail; section hiding is outside this initial scope. Persisting builder choices across reloads and exact report metadata storage need agreement with Zihao.
+Report ordering and chart inclusion are fixed. Customization can return only when those choices are carried through the generation and storage contract.
 
 Alternatives considered: browser print does not establish the stored-file flow and gives less control of pagination; screenshot charts reduce text/graphic quality; a hosted PDF service adds an external integration; headless-browser rendering introduces a runtime/service decision outside this slice. Revisit the choice if the Worker spike fails, rather than adopting another service implicitly.
 
@@ -153,13 +155,13 @@ Exit: a signed-in member opens the saved result, returns without losing answers,
 
 ### Phase 3 - Report and stored PDF (O1/O2/O5/Z6)
 
-Local evidence: fixed-template generation in workerd, private R2 save/download, owner/member access, outsider/signed-out rejection and immutable historical PDFs pass. Contract/publication tests reject malformed outputs and concurrent terminal overwrites. Selectable builder choices and remote deployment remain open; this phase is not complete.
+Local evidence: fixed-template generation in workerd, private R2 save/download, owner/member access, outsider/signed-out rejection and immutable historical PDFs pass. Contract/publication tests reject malformed outputs and concurrent terminal overwrites. Remote deployment remains open; this phase is not complete.
 
 - Extend the isolated PDF compatibility spike to the actual report layout and measure resource use in local workerd before committing a dependency.
 - Implement the builder and server-only renderer after agreement. Wire Zihao's storage APIs; exercise retry/failure states and the selected-run race.
-- Parse the saved download to check required sections, numbers, labels, versions and chart choices; visually inspect pagination and rendering. Avoid byte-for-byte PDF assertions because metadata may vary.
+- Parse the saved download to check required sections, numbers, labels, versions and standard charts; visually inspect pagination and rendering. Avoid byte-for-byte PDF assertions because metadata may vary.
 
-Exit: builder choices affect a downloaded stored PDF; every number matches the selected engine snapshot and all ten sections remain; access and failure checks pass.
+Exit: every number matches the selected engine snapshot, the fixed three charts and all ten sections remain, and access and failure checks pass.
 
 ### Phase 4 - Published comparisons and demo acceptance
 

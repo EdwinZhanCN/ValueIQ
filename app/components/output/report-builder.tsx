@@ -1,14 +1,17 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Download, FileText, Info } from "lucide-react";
+import { Download, FileText, Info } from "lucide-react";
 import type { ResultOutput } from "../../../shared/output";
+import {
+  inputLabel,
+  isSpecified,
+  plainLanguage,
+} from "../../lib/output-presentation";
 import { inputStepHref } from "../../lib/run-ui";
 import { cn } from "../../lib/utils";
 import {
-  REPORT_CHARTS,
   REPORT_SECTIONS,
-  choicesKey,
-  useReportChoices,
+  STANDARD_REPORT_CHARTS,
   type SectionId,
 } from "./report-choices";
 import {
@@ -23,9 +26,6 @@ import { labels, money, percent } from "./samples";
 import "./output.css";
 
 type SavedReport = { id: string; createdAt: string };
-
-const sectionLabel = (id: SectionId) =>
-  REPORT_SECTIONS.find((section) => section.id === id)!.label;
 
 function Section({
   id,
@@ -132,7 +132,7 @@ function Scenarios({ output }: { output: ResultOutput }) {
       {Object.entries(output.result.scenarios).map(([name, scenario]) => (
         <div
           key={name}
-          title={scenario.what_moved}
+          title={plainLanguage(scenario.what_moved)}
           className={cn(
             "flex flex-col gap-0.5 rounded-xl border p-4",
             name === output.meta.scenario && "border-2 border-primary",
@@ -169,7 +169,7 @@ function Assumptions({ output }: { output: ResultOutput }) {
               <strong className="font-medium">{driver.label}</strong>
               {gross && (
                 <span className="block text-muted-foreground">
-                  {gross.formula}
+                  {plainLanguage(gross.formula)}
                 </span>
               )}
             </span>
@@ -184,11 +184,13 @@ function Assumptions({ output }: { output: ResultOutput }) {
         >
           <span className="min-w-0">
             <strong className="font-medium">
-              {proxy.input_id} = {proxy.value}
+              {inputLabel(proxy.input_id)} = {proxy.value}
             </strong>
             <span className="block text-muted-foreground">{proxy.source}</span>
           </span>
-          <span className="text-muted-foreground">{proxy.tier}</span>
+          <span className="text-muted-foreground">
+            Evidence level: {proxy.tier}
+          </span>
         </li>
       ))}
     </ul>
@@ -198,13 +200,9 @@ function Assumptions({ output }: { output: ResultOutput }) {
 function Preview({
   output,
   project,
-  sections,
-  charts,
 }: {
   output: ResultOutput;
   project: { name: string };
-  sections: SectionId[];
-  charts: string[];
 }) {
   const { result, meta } = output;
   const render = (id: SectionId) => {
@@ -234,15 +232,9 @@ function Preview({
       case "charts":
         return (
           <Section key={id} id={id} title="Charts">
-            {charts.length === 0 ? (
-              <p className="output-muted">No charts chosen.</p>
-            ) : (
-              REPORT_CHARTS.filter((chart) => charts.includes(chart.id)).map(
-                (chart) => (
-                  <ChartById key={chart.id} id={chart.id} output={output} />
-                ),
-              )
-            )}
+            {STANDARD_REPORT_CHARTS.map((id) => (
+              <ChartById key={id} id={id} output={output} />
+            ))}
           </Section>
         );
       case "scenarios":
@@ -286,7 +278,7 @@ function Preview({
                 <h4 className="text-sm font-medium">Doing nothing</h4>
                 <ul className="output-list">
                   {result.doing_nothing_risks.map((risk) => (
-                    <li key={risk}>{risk}</li>
+                    <li key={risk}>{plainLanguage(risk)}</li>
                   ))}
                 </ul>
               </div>
@@ -294,7 +286,7 @@ function Preview({
                 <h4 className="text-sm font-medium">Proceeding</h4>
                 <ul className="output-list">
                   {result.proceeding_risks.map((risk) => (
-                    <li key={risk}>{risk}</li>
+                    <li key={risk}>{plainLanguage(risk)}</li>
                   ))}
                 </ul>
               </div>
@@ -319,16 +311,40 @@ function Preview({
                       <tr key={key}>
                         <td>
                           <strong>{labels[key] ?? key}</strong>
-                          <small>{plan.metric}</small>
+                          {isSpecified(plan.metric) && (
+                            <small>{plan.metric}</small>
+                          )}
                         </td>
-                        <td>
-                          {plan.baseline}
-                          <small>{plan.baseline_source}</small>
-                        </td>
-                        <td>
-                          {plan.owner}
-                          <small>{plan.frequency}</small>
-                        </td>
+                        {[
+                          plan.metric,
+                          plan.baseline,
+                          plan.baseline_source,
+                          plan.owner,
+                          plan.frequency,
+                        ].every((value) => !isSpecified(value)) ? (
+                          <td colSpan={2} className="text-muted-foreground">
+                            Measurement details to confirm
+                          </td>
+                        ) : (
+                          <>
+                            <td>
+                              {isSpecified(plan.baseline)
+                                ? plan.baseline
+                                : "Baseline to confirm"}
+                              {isSpecified(plan.baseline_source) && (
+                                <small>{plan.baseline_source}</small>
+                              )}
+                            </td>
+                            <td>
+                              {isSpecified(plan.owner)
+                                ? plan.owner
+                                : "Owner to confirm"}
+                              {isSpecified(plan.frequency) && (
+                                <small>{plan.frequency}</small>
+                              )}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ),
                   )}
@@ -386,16 +402,12 @@ function Preview({
         </div>
         <RunBadge meta={meta} />
       </header>
-      {sections.length === 0 ? (
-        <p className="output-muted">Choose at least one section.</p>
-      ) : (
-        sections.map(render)
-      )}
+      {REPORT_SECTIONS.map((section) => render(section.id))}
     </article>
   );
 }
 
-/** Report (mock 07): pick the structure and charts, then download the PDF. */
+/** Report (mock 07): preview the fixed report, then download the PDF. */
 export function ReportBuilder({
   output,
   project,
@@ -412,34 +424,12 @@ export function ReportBuilder({
   const reportAction = `${base}/runs/${runId}/reports`;
   const navigation: OutputNavigation = {
     embedded: true,
-    choicesKey: choicesKey(project.id, runId),
     resultLink: (tab = "numbers", reference) =>
       `${base}/results?${new URLSearchParams({ run: runId, tab })}${reference ? `#${encodeURIComponent(reference)}` : ""}`,
     intakeLink: (input) => inputStepHref(project.id, input),
   };
-  const { choices, update, toggleChart } = useReportChoices(
-    navigation.choicesKey,
-  );
   const [busy, setBusy] = useState(false);
   const fresh = reports.find((report) => report.id === savedReport);
-  const move = (index: number, by: -1 | 1) =>
-    update((current) => {
-      const sections = [...current.sections];
-      const target = index + by;
-      if (target < 0 || target >= sections.length) return current;
-      [sections[index], sections[target]] = [
-        sections[target]!,
-        sections[index]!,
-      ];
-      return { ...current, sections };
-    });
-  const toggleSection = (id: SectionId) =>
-    update((current) => ({
-      ...current,
-      sections: current.sections.map((section) =>
-        section.id === id ? { ...section, on: !section.on } : section,
-      ),
-    }));
   return (
     <OutputContext.Provider value={navigation}>
       <div className="output-root output-embedded">
@@ -483,82 +473,10 @@ export function ReportBuilder({
         </div>
         <p className="flex items-start gap-2 text-sm text-muted-foreground">
           <Info size={15} aria-hidden="true" className="mt-0.5 shrink-0" />
-          The PDF uses the standard layout for now: every section and its fixed
-          charts. Your outline and chart picks shape this preview only.
+          Your PDF includes all sections and the three standard charts.
         </p>
         <div className="flex flex-wrap items-start gap-6">
           <div className="flex min-w-0 flex-[1_1_14rem] flex-col gap-6 lg:sticky lg:top-6">
-            <nav aria-label="Report outline" className="flex flex-col gap-1">
-              <h2 className="px-1 pb-1 text-sm font-medium text-muted-foreground">
-                Outline
-              </h2>
-              {choices.sections.map((section, index) => (
-                <div
-                  key={section.id}
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg pr-1 text-sm",
-                    section.on ? "hover:bg-muted" : "text-muted-foreground",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={section.on}
-                    onChange={() => toggleSection(section.id)}
-                    aria-label={`Include ${sectionLabel(section.id)}`}
-                    className="ml-2 size-4 shrink-0 cursor-pointer accent-[var(--primary)]"
-                  />
-                  {section.on ? (
-                    <a
-                      href={`#report-${section.id}`}
-                      className="flex min-h-10 flex-1 items-center px-2"
-                    >
-                      {sectionLabel(section.id)}
-                    </a>
-                  ) : (
-                    <span className="flex min-h-10 flex-1 items-center px-2 line-through">
-                      {sectionLabel(section.id)}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => move(index, -1)}
-                    disabled={index === 0}
-                    aria-label={`Move ${sectionLabel(section.id)} up`}
-                    className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30"
-                  >
-                    <ArrowUp size={14} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(index, 1)}
-                    disabled={index === choices.sections.length - 1}
-                    aria-label={`Move ${sectionLabel(section.id)} down`}
-                    className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30"
-                  >
-                    <ArrowDown size={14} aria-hidden="true" />
-                  </button>
-                </div>
-              ))}
-            </nav>
-            <fieldset className="flex flex-col gap-1">
-              <legend className="px-1 pb-1 text-sm font-medium text-muted-foreground">
-                Charts
-              </legend>
-              {REPORT_CHARTS.map((chart) => (
-                <label
-                  key={chart.id}
-                  className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg px-2 text-sm hover:bg-muted"
-                >
-                  <input
-                    type="checkbox"
-                    checked={choices.charts.includes(chart.id)}
-                    onChange={() => toggleChart(chart.id)}
-                    className="size-4 accent-[var(--primary)]"
-                  />
-                  {chart.label}
-                </label>
-              ))}
-            </fieldset>
             {reports.length > 0 && (
               <details className="text-sm">
                 <summary className="cursor-pointer px-1 text-muted-foreground">
@@ -586,14 +504,7 @@ export function ReportBuilder({
               ← Back to review
             </Link>
           </div>
-          <Preview
-            output={output}
-            project={project}
-            sections={choices.sections
-              .filter((section) => section.on)
-              .map((section) => section.id)}
-            charts={choices.charts}
-          />
+          <Preview output={output} project={project} />
         </div>
       </div>
     </OutputContext.Provider>
