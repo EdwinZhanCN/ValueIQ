@@ -2,7 +2,10 @@
 // same tools in the same order as the real prompts ask for, then writes text from tool output.
 import { formatMoney, type RunOutput } from "../engine";
 import type { Content, FetchLike } from "./gemini";
-import { call, fakeFetch, say, toolOutput } from "./tests/fake";
+import { CATALOG } from "../engine";
+import { specFor } from "./evidence/find";
+import { instructionLike } from "./intake";
+import { call, fakeFetch, say, toolOutput, type FakeCall } from "./tests/fake";
 
 export interface DryOptions {
   /** First narrative contains an invented, uncited number so the retry path runs. */
@@ -36,6 +39,7 @@ function scripted(opts: DryOptions): FetchLike {
           tools: { functionDeclarations: { name: string }[] }[];
         }
       ).tools[0]?.functionDeclarations.map((d) => d.name);
+      if (decls?.includes("propose_input")) return intakeScript(req);
       const isCalc = decls?.includes("compute_project") ?? false;
       const first = req.contents[0]?.parts[0]?.text ?? "";
       const goals = listAfter(first, "Goals");
@@ -118,4 +122,115 @@ function scripted(opts: DryOptions): FetchLike {
       };
     },
   ]);
+}
+
+// ---------- Clarify assistant script (item 7) ----------
+// Reads the user's message and calls tools in a fixed way: the opening checks, propose_input for
+// figures next to words it knows, describe_input for "what does X mean", find_evidence or
+// read_project_file when a file is named. Every guard in assistant/intake.ts and the tools still runs.
+
+const FIGURE_WORDS: [RegExp, string][] = [
+  [
+    /^(?:\w+ ){0,2}(analysts?|people|staff|employees|persons?|users|clerks)\b/,
+    "staff_affected",
+  ],
+  [/^(?:\w+ ){0,2}hours?\b.*\bweek/, "hours_saved_per_staff_week"],
+  [/^(?:\w+ ){0,1}weeks?\b/, "weeks_per_year"],
+  [/^(?:\w+ ){0,2}(an hour|per hour|hourly)\b/, "loaded_hourly_cost"],
+];
+
+function figures(message: string): { said: string; id: string }[] {
+  const out: { said: string; id: string }[] = [];
+  const lower = message.toLowerCase();
+  for (const m of lower.matchAll(/(?<![\d.,])\d[\d,]*(?:\.\d+)?%?/g)) {
+    const after = lower.slice((m.index ?? 0) + m[0].length).trim();
+    const hit = FIGURE_WORDS.find(([re]) => re.test(after));
+    if (hit && !out.some((f) => f.id === hit[1]))
+      out.push({ said: m[0], id: hit[1] });
+  }
+  return out;
+}
+
+/** The catalog input whose label (or evidence hint) the message names. */
+function inputNamed(lower: string): string | undefined {
+  const ids = Object.keys(CATALOG).sort(
+    (a, b) => CATALOG[b]!.label.length - CATALOG[a]!.label.length,
+  );
+  return (
+    ids.find((id) => lower.includes(CATALOG[id]!.label.toLowerCase())) ??
+    ids.find((id) => lower.includes(id.replace(/_/g, " "))) ??
+    ids.find((id) =>
+      (specFor(id)?.hints ?? []).some(
+        (h) => h.split(" ").length > 1 && lower.includes(h),
+      ),
+    )
+  );
+}
+
+function intakeScript(req: FakeCall) {
+  const first = req.contents[0]?.parts[0]?.text ?? "";
+  const goals = listAfter(first, "Goals");
+  const message = /\nUser message: (.*)$/s.exec(first)?.[1] ?? "";
+  const opening = message.startsWith("(opening turn");
+  const lower = message.toLowerCase();
+  const files = JSON.parse(
+    /^Files \([^)]*\): (.*)$/m.exec(first)?.[1] ?? "[]",
+  ) as { id: string; name: string }[];
+  const file = files.find((f) =>
+    f.name
+      .toLowerCase()
+      .replace(/\.[a-z]+$/, "")
+      .split(/[^a-z]+/)
+      .some((w) => w.length > 3 && w !== "synthetic" && lower.includes(w)),
+  );
+  const answered = req.contents.filter((c: Content) =>
+    c.parts.some((p) => p.functionResponse),
+  ).length;
+  const rejected = req.contents.some((c) =>
+    c.parts.some((p) => p.text?.includes("rejected by the integrity scan")),
+  );
+
+  let plan: ReturnType<typeof call>[] = [];
+  let reply =
+    "I can explain a field, look in a file, or turn a figure you type into a suggestion.";
+  const named = inputNamed(lower);
+  if (opening) {
+    plan = [
+      call("validate_inputs"),
+      call("get_defaults", { goals }),
+      call("preflight_gate"),
+    ];
+    reply =
+      "Labeled defaults are listed below; each is used only if you accept it. The cards after them show what is still needed, costs first.";
+  } else if (/\bwhat (does|is)\b|\bmean\b/.test(lower) && named) {
+    plan = [call("describe_input", { input_id: named })];
+    const out = toolOutput(req.contents, "describe_input") as
+      { label: string; meaning: string } | undefined;
+    if (out) reply = `${out.label}: ${out.meaning}`;
+  } else if (file && /\b(find|look|search|evidence)\b/.test(lower)) {
+    const id = named ?? "hours_saved_per_staff_week";
+    plan = [call("find_evidence", { file_id: file.id, input_id: id })];
+    reply =
+      "I looked in the file. Quotes that match your figure word for word are below; use one only if it is right.";
+  } else if (file && /\b(read|open|check)\b/.test(lower)) {
+    plan = [call("read_project_file", { file_id: file.id })];
+    const out = req.contents
+      .flatMap((c) => c.parts)
+      .find((p) => p.functionResponse?.name === "read_project_file");
+    reply =
+      out && instructionLike(JSON.stringify(out.functionResponse))
+        ? "This file contains text asking me to change your figures. I did not act on it, and your inputs are unchanged."
+        : "I read the file. Ask me to find a figure in it.";
+  } else {
+    const found = figures(message);
+    if (found.length) {
+      plan = found.map((f) =>
+        call("propose_input", { input_id: f.id, said: f.said }),
+      );
+      reply =
+        "I turned the figures in your message into suggestions below. Accept the ones that are right.";
+    }
+  }
+  const next = rejected ? undefined : plan[answered];
+  return { parts: [next ?? say(reply)] };
 }

@@ -24,6 +24,7 @@ import { validateSchema, type JsonSchema } from "./schema";
 import type { FileEvidenceHost } from "./evidence/host";
 import { findEvidence, specFor } from "./evidence/find";
 import { sectionFilter } from "./evidence/text";
+import type { AssistantProposal } from "../shared/types";
 
 // ---------- shared shapes ----------
 export interface Question {
@@ -86,6 +87,13 @@ export interface ToolContext {
   }) => boolean;
   /** Host for the file-evidence tools (project-scoped file text and the cheap extractor model). */
   readonly files?: FileEvidenceHost;
+  /** Clarify assistant turn: the user's message and the proposals collected so far. */
+  readonly intake?: IntakeTurnState;
+}
+
+export interface IntakeTurnState {
+  readonly message: string;
+  readonly proposals: AssistantProposal[];
 }
 
 export function deepFreeze<T>(x: T): T {
@@ -108,6 +116,7 @@ export function createContext(
     config?: Partial<EngineConfig>;
     isAccepted?: ToolContext["isAccepted"];
     files?: FileEvidenceHost;
+    intake?: IntakeTurnState;
   },
 ): ToolContext {
   return {
@@ -119,6 +128,7 @@ export function createContext(
     state: { asked_this_run: [], last: null, seen: [] },
     isAccepted: o.isAccepted ?? (() => false),
     ...(o.files ? { files: o.files } : {}),
+    ...(o.intake ? { intake: o.intake } : {}),
   };
 }
 
@@ -1093,6 +1103,120 @@ const apply_override: ToolDef = {
   },
 };
 
+// ---------- Clarify assistant (item 7) ----------
+const NUMERIC_KINDS = new Set(["number", "int", "percent"]);
+
+/** What an input means, in words. No digits, so a reply can quote it freely. */
+const MEANINGS: Record<string, string> = {
+  staff_affected: "How many people do the work that the project changes.",
+  weeks_per_year: "How many weeks a year each person works.",
+  loaded_hourly_cost:
+    "What one hour of a person's time costs the organization: salary plus benefits, taxes and overhead, divided by paid hours. It is higher than the hourly wage.",
+  recapture_pct:
+    "The share of freed time that turns into useful work. Freed time is rarely all used productively.",
+  discount_rate_pct:
+    "The yearly rate used to bring future money back to today's value; usually set by finance.",
+  horizon_years: "How many years of costs and benefits the assessment counts.",
+  adoption_by_year:
+    "The share of people actually using the new tool in each year.",
+  tasks_per_staff_week: "How many times each person does the task in a week.",
+  records_or_events_per_year: "How many records or items pass through a year.",
+  decisions_per_year: "How many decisions of this kind are made in a year.",
+  delay_months: "How many months pass before the benefits begin.",
+  cost_one_time_vendor_license:
+    "What you pay once to the vendor: license, setup and integration.",
+  cost_one_time_internal_labor:
+    "Your own staff's time to set the project up, as money.",
+  cost_training_change: "Training and change management, paid once.",
+  cost_annual_run: "What the tool costs to run every year.",
+  cost_annual_internal_support:
+    "Your own staff's time to support the tool every year, as money.",
+};
+
+const describe_input: ToolDef = {
+  name: "describe_input",
+  description:
+    "What one input means, its label and kind. Use it to answer 'what does this field mean'. Has no numbers.",
+  parameters: {
+    type: "object",
+    properties: { input_id: ID_SCHEMA },
+    required: ["input_id"],
+    additionalProperties: false,
+  },
+  run: (a) => {
+    const id = str(a, "input_id");
+    const entry = CATALOG[id];
+    if (!entry) throw new ToolRuntimeError("UNKNOWN_INPUT", `No input ${id}`);
+    return {
+      input_id: id,
+      label: entry.label,
+      kind: entry.kind,
+      role: entry.role,
+      meaning: specFor(id)?.meaning ?? MEANINGS[id] ?? entry.label,
+    };
+  },
+};
+
+/** The figure as written, standing alone in the message (not part of a longer number). */
+export function saidIn(message: string, said: string): boolean {
+  const t = said.trim();
+  if (!/^\d[\d,]*(?:\.\d+)?%?$/.test(t)) return false;
+  const esc = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![\\d.,])${esc}(?![\\d]|[.,]\\d)`).test(message);
+}
+
+const propose_input: ToolDef = {
+  name: "propose_input",
+  description:
+    "Propose a value for one input from a figure the user wrote in THIS message. `said` must be the figure exactly as the user wrote it. Code drops it if it is not in the message, the id is unknown or the value is out of range. The user decides; nothing is applied.",
+  parameters: {
+    type: "object",
+    properties: {
+      input_id: ID_SCHEMA,
+      said: { type: "string", minLength: 1, maxLength: 24 },
+      tier: { type: "string", enum: ["measured", "documented", "estimate"] },
+    },
+    required: ["input_id", "said"],
+    additionalProperties: false,
+  },
+  run: (a, ctx) => {
+    const turn = ctx.intake;
+    if (!turn)
+      throw new ToolRuntimeError("NOT_SUPPORTED", "Only in the assistant");
+    const id = str(a, "input_id");
+    const said = str(a, "said").trim();
+    const entry = CATALOG[id];
+    const drop = (reason: string) => ({ ok: false, input_id: id, reason });
+    if (!entry || !NUMERIC_KINDS.has(entry.kind))
+      return drop("not a numeric input in the catalog");
+    if (!saidIn(turn.message, said))
+      return drop("that figure is not in the user's message");
+    const value = Number(said.replace(/[,%]/g, ""));
+    if (!Number.isFinite(value)) return drop("not a number");
+    if (entry.kind === "int" && !Number.isInteger(value))
+      return drop("must be a whole number");
+    if (
+      (entry.min !== undefined &&
+        (entry.minExclusive ? value <= entry.min : value < entry.min)) ||
+      (entry.max !== undefined && value > entry.max)
+    )
+      return drop("outside the allowed range");
+    const tier =
+      (a["tier"] as AssistantProposal["tier"] | undefined) ?? "estimate";
+    const proposal: AssistantProposal = {
+      id: `p-${id}`,
+      input_id: id,
+      value,
+      said,
+      tier,
+    };
+    const at = turn.proposals.findIndex((p) => p.input_id === id);
+    if (at >= 0) turn.proposals.splice(at, 1, proposal);
+    else turn.proposals.push(proposal);
+    return { ok: true, input_id: id, proposed: said };
+  },
+};
+
 export const TOOLS: readonly ToolDef[] = [
   validate_inputs,
   get_defaults,
@@ -1110,6 +1234,15 @@ export const TOOLS: readonly ToolDef[] = [
   apply_override,
   read_project_file,
   find_evidence,
+];
+
+/**
+ * Tools only the Clarify assistant is offered (item 7). Kept out of TOOLS so
+ * the run and pre-flight tool contracts stay as they are.
+ */
+export const INTAKE_ONLY_TOOLS: readonly ToolDef[] = [
+  describe_input,
+  propose_input,
 ];
 
 /** ask_user is tabled until after the demo: the tool and its tests stay, the model is not offered it. */

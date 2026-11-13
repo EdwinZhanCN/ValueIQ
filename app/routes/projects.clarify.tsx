@@ -1,12 +1,9 @@
 import { ClarifyStep } from "../components/clarify/clarify-step";
 import { requireProjectAccess } from "../server/access.server";
-import { getTeamSettings } from "../server/team-settings.server";
+import { offeredDefaults } from "../server/team-settings.server";
+import { assistantAvailability } from "../server/assistant.server";
 import { evidenceAvailability } from "../server/evidence.server";
 import { EvidenceContext } from "../components/clarify/evidence-context";
-import type {
-  OfferedDefault,
-  OfferedDefaults,
-} from "../../shared/team-settings";
 import { useProjectFlow } from "./project-layout";
 import type { Route } from "./+types/projects.clarify";
 
@@ -18,22 +15,12 @@ import type { Route } from "./+types/projects.clarify";
 export async function loader({ request, params }: Route.LoaderArgs) {
   const access = await requireProjectAccess(request, params.projectId);
   // The team's financial defaults (#88), offered as "Team default".
-  const settings = await getTeamSettings(access.teamId);
-  const offer = (key: keyof OfferedDefaults): OfferedDefault => ({
-    value: settings[key].value,
-    rationale: settings[key].rationale,
-    source: settings[key].source,
-    starting: settings[key].starting,
-  });
-  const teamDefaults: OfferedDefaults = {
-    discount_rate_pct: offer("discount_rate_pct"),
-    recapture_pct: offer("recapture_pct"),
-    horizon_years: offer("horizon_years"),
-  };
+  const teamDefaults = await offeredDefaults(access.teamId);
   return {
     target: new URL(request.url).searchParams.get("input"),
     teamDefaults,
     evidence: evidenceAvailability(),
+    assistant: assistantAvailability(),
   };
 }
 
@@ -48,6 +35,7 @@ export default function ProjectClarify({ loaderData }: Route.ComponentProps) {
         files={flow.files}
         target={loaderData.target}
         teamDefaults={loaderData.teamDefaults}
+        assistant={loaderData.assistant}
       />
     </EvidenceContext.Provider>
   );

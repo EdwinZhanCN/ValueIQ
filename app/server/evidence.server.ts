@@ -30,7 +30,11 @@ import type { Input } from "../../shared/form";
 import type { ProjectAccess } from "./access.server";
 import { getExtractedText, makeFileHost } from "./file-text.server";
 import { getProjectForm } from "./projects.server";
-import { NO_KEY_MESSAGE, modelSource } from "./run-wiring.server";
+import {
+  NO_KEY_MESSAGE,
+  modelSource,
+  type ModelSource,
+} from "./run-wiring.server";
 
 import type { EvidenceCandidate, EvidenceReply } from "../lib/evidence";
 import type { QuoteCheck } from "../lib/entered-inputs";
@@ -49,6 +53,19 @@ export function evidenceAvailability(): {
     scripted: source.kind === "dry",
     reason: source.kind === "none" ? NO_KEY_MESSAGE : null,
   };
+}
+
+/** The cheap model that proposes passages, or the local scripted one. */
+export function evidenceCompleter(
+  source: Exclude<ModelSource, { kind: "none" }>,
+) {
+  const vars = env as unknown as Record<string, string | undefined>;
+  return source.kind === "dry"
+    ? dryEvidenceCompleter()
+    : geminiCompleter({
+        apiKey: source.apiKey,
+        model: resolveModels(vars).assistant,
+      });
 }
 
 const FIND = TOOLS.find((tool) => tool.name === "find_evidence")!;
@@ -87,14 +104,7 @@ export async function findInFile(
 
   const source = modelSource();
   if (source.kind === "none") return fail("NO_MODEL", NO_KEY_MESSAGE);
-  const vars = env as unknown as Record<string, string | undefined>;
-  const complete =
-    source.kind === "dry"
-      ? dryEvidenceCompleter()
-      : geminiCompleter({
-          apiKey: source.apiKey,
-          model: resolveModels(vars).assistant,
-        });
+  const complete = evidenceCompleter(source);
 
   // The saved form, with this input's current (possibly unsaved) value; the
   // value is only used to say whether the file agrees with it.

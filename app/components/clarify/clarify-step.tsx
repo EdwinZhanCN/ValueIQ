@@ -13,6 +13,8 @@ import {
 import { readFormDraft, validateFormFile } from "../../lib/intake-form";
 import { DefaultsCard } from "./defaults-card";
 import type { OfferedDefaults } from "../../../shared/team-settings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { AssistantPanel, type AssistantAvailability } from "./assistant-panel";
 import { InputsPanel } from "./inputs-panel";
 import { OPTIONAL } from "./draft";
 import {
@@ -27,11 +29,18 @@ import { useFormDraft, type DraftFile } from "./use-form-draft";
 
 type Open = Group["key"] | "defaults" | null;
 
+const UNAVAILABLE: AssistantAvailability = {
+  available: false,
+  scripted: false,
+  reason: "The assistant is not set up here.",
+};
+
 /**
  * Step 2, Clarify (mock UI 04): the numbers behind the goals picked on
  * Intake, asked one group at a time beside a panel of what is entered so
- * far. Defaults (team and built-in) come first. No assistant: every value is typed or
- * an explicitly accepted, labeled proxy.
+ * far. Defaults (team and built-in) come first. Every value is typed, an
+ * explicitly accepted labeled proxy, or an assistant suggestion the user
+ * accepted (Assistant tab, item 7).
  */
 export function ClarifyStep({
   projectId,
@@ -40,6 +49,7 @@ export function ClarifyStep({
   files,
   target,
   teamDefaults,
+  assistant,
 }: {
   projectId: string;
   initial: unknown;
@@ -48,6 +58,7 @@ export function ClarifyStep({
   target: string | null;
   /** The team's financial defaults; built-in values when absent. */
   teamDefaults?: OfferedDefaults;
+  assistant?: AssistantAvailability;
 }) {
   if (!readFormDraft(initial).goals.length)
     return (
@@ -76,6 +87,7 @@ export function ClarifyStep({
       files={files}
       target={target}
       {...(teamDefaults ? { teamDefaults } : {})}
+      assistant={assistant ?? UNAVAILABLE}
     />
   );
 }
@@ -87,6 +99,7 @@ function ClarifyQuestions({
   files,
   target,
   teamDefaults,
+  assistant,
 }: {
   projectId: string;
   initial: unknown;
@@ -95,6 +108,7 @@ function ClarifyQuestions({
   target: string | null;
   /** The team's financial defaults; built-in values when absent. */
   teamDefaults?: OfferedDefaults;
+  assistant: AssistantAvailability;
 }) {
   const navigate = useNavigate();
   const draft = useFormDraft({
@@ -181,6 +195,12 @@ function ClarifyQuestions({
     const group = groupOf(id);
     if (group) setOpen(group.key);
     setFocus(id);
+  }
+
+  /** Open the card that asks for `id` (its group, or the defaults card) and focus it. */
+  function reveal(id: string) {
+    if (groupOf(id)) pick(id);
+    else show("defaults");
   }
 
   function confirm(group: Group) {
@@ -270,15 +290,34 @@ function ClarifyQuestions({
           ),
         )}
       </section>
-      <InputsPanel
-        draft={draft}
-        groups={groups}
-        problems={problems}
-        clarifyIds={clarifyIds}
-        onPick={pick}
-        onContinue={proceed}
-        continuing={continuing.current}
-      />
+      <Tabs defaultValue="assistant" className="min-w-0 flex-[1_1_17rem]">
+        <TabsList className="w-full">
+          <TabsTrigger value="assistant">Assistant</TabsTrigger>
+          <TabsTrigger value="inputs">Inputs</TabsTrigger>
+        </TabsList>
+        <TabsContent value="assistant" keepMounted>
+          <AssistantPanel
+            draft={draft}
+            problems={problems}
+            offered={defaults}
+            availability={assistant}
+            onReveal={reveal}
+            onAccepted={() => setSaveSoon(true)}
+            onContinue={proceed}
+          />
+        </TabsContent>
+        <TabsContent value="inputs" keepMounted>
+          <InputsPanel
+            draft={draft}
+            groups={groups}
+            problems={problems}
+            clarifyIds={clarifyIds}
+            onPick={pick}
+            onContinue={proceed}
+            continuing={continuing.current}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

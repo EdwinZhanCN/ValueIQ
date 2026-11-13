@@ -20,7 +20,8 @@ import { listProjectFiles } from "../app/server/files.server";
 import { validateFormFile } from "../app/lib/intake-form";
 import { USER_ID_HEADER } from "../app/server/agent-gate.server";
 import { RunAccessError } from "../app/server/run-store.server";
-import type { RunView } from "../shared/types";
+import type { AssistantReply, RunView } from "../shared/types";
+import { assistantChat } from "../app/server/assistant.server";
 import type { RunError } from "../shared/types";
 import type { RunProgress } from "./calculation-run";
 import { errorFromWorkflowText } from "../assistant/run/error-text";
@@ -143,6 +144,31 @@ export class ValueIQAgent extends Agent<Env, RunView> {
         e instanceof Error ? e.message : "Pre-flight failed",
       );
     }
+  }
+
+  /**
+   * One turn of the Clarify assistant (item 7). Advice only: the reply's
+   * cards and proposals change nothing until the user accepts them in the
+   * browser, and the conversation is not stored. The caller comes from the
+   * connection; `draft` is the caller's unsaved form, used only as context.
+   */
+  @callable()
+  async chat(
+    message: unknown,
+    history?: unknown,
+    draft?: unknown,
+  ): Promise<CallResult<AssistantReply>> {
+    const who = await this.memberOrError();
+    if (!who.ok) return who;
+    if (ACTIVE.has(this.state.status))
+      return fail(
+        "BAD_INPUT",
+        "A run is in progress; the assistant waits for it.",
+      );
+    return assistantChat(
+      { projectId: this.name, userId: who.userId },
+      { message, history, draft },
+    );
   }
 
   /**

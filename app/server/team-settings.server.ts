@@ -13,6 +13,8 @@ import {
   TEAM_SETTING_KEYS,
   parseSettingValue,
   settingsVersion,
+  type OfferedDefault,
+  type OfferedDefaults,
   type TeamSettingKey,
   type TeamSettingValues,
 } from "../../shared/team-settings";
@@ -230,4 +232,22 @@ export function engineConfigFor(
     versions: { settings: settingsVersion(values) } as EngineConfig["versions"],
   });
   return { cost_uplift_pct: merged.cost_uplift_pct, versions: merged.versions };
+}
+
+/** The team's financial defaults as Clarify offers them ("Team default"). */
+export async function offeredDefaults(
+  teamId: string,
+): Promise<OfferedDefaults> {
+  const settings = await getTeamSettings(teamId);
+  const offer = (key: keyof OfferedDefaults): OfferedDefault => ({
+    value: settings[key].value,
+    rationale: settings[key].rationale,
+    source: settings[key].source,
+    starting: settings[key].starting,
+  });
+  return {
+    discount_rate_pct: offer("discount_rate_pct"),
+    recapture_pct: offer("recapture_pct"),
+    horizon_years: offer("horizon_years"),
+  };
 }

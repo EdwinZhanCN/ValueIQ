@@ -234,6 +234,24 @@ export function useFormDraft({
     metadata(id, { backing: next });
   }
 
+  /**
+   * The user accepted a figure the assistant read from their own message. It
+   * goes in like a typed value, marked as an accepted assistant suggestion.
+   */
+  function applyProposal(id: string, value: number, tier: Input["tier"]) {
+    const previous = byId.get(id);
+    const next: Input = {
+      id,
+      ...previous,
+      value,
+      tier,
+      origin: "assistant_accepted",
+    };
+    if (next.note === NOT_SURE_NOTE) delete next.note;
+    replace(next);
+    setRaw((current) => ({ ...current, [id]: pretty(value) }));
+  }
+
   function range(id: string, key: "low" | "high", value: string) {
     const record: Input = {
       id,
@@ -402,6 +420,7 @@ export function useFormDraft({
     metadata,
     backing,
     applyQuote,
+    applyProposal,
     range,
     notSure,
     acceptProxy,

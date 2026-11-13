@@ -468,6 +468,21 @@ try {
       const answer = await ws.rpc("answerQuestion", ["q1", "value"]);
       assert.equal(answer.ok, false);
       assert.equal(answer.error.code, "NOT_SUPPORTED");
+      // The Clarify assistant (item 7): typed results for team members, bad
+      // arguments refused before any model call. With no model configured
+      // the answer is NO_MODEL; a paid-out key gives MODEL_ERROR.
+      const badChat = await ws.rpc("chat", [42, []]);
+      assert.equal(badChat.ok, false, JSON.stringify(badChat));
+      assert.equal(badChat.error.code, "BAD_INPUT");
+      const chat = await ws.rpc("chat", ["", [], null]);
+      assert(
+        chat.ok || ["NO_MODEL", "MODEL_ERROR"].includes(chat.error.code),
+        `${wsLabel}: chat ${JSON.stringify(chat)}`,
+      );
+      if (chat.ok) assert(Array.isArray(chat.value.cards));
+      rows.push(
+        `assistant chat as ${actor}: ${chat.ok ? "answered" : chat.error.code}; bad arguments BAD_INPUT`,
+      );
       // Before a form is saved the member gets BAD_INPUT, not ACCESS_DENIED:
       // the forged header above did not become the connection's user id.
       if (actor === "member") {
@@ -567,7 +582,11 @@ try {
     const start = await live.rpc("startRun", []);
     assert.equal(start.ok, false);
     assert.equal(start.error.code, "ACCESS_DENIED", JSON.stringify(start));
+    const chat = await live.rpc("chat", ["hello", []]);
+    assert.equal(chat.ok, false);
+    assert.equal(chat.error.code, "ACCESS_DENIED", JSON.stringify(chat));
     live.close();
+    rows.push("removed member: startRun and chat ACCESS_DENIED");
   }
 
   console.log(rows.join("\n"));
