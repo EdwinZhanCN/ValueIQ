@@ -5,10 +5,13 @@ import { requireProjectAccess } from "../server/access.server";
 import { getLatestResult, getRun } from "../server/output-runs.server";
 import { ProjectResultView } from "../components/output/output-workspace";
 import {
+  RunInputsContext,
   RunSettingsContext,
   type RunSettingsUsed,
 } from "../components/output/result-views";
 import { settingsUsedByRun } from "../server/team-settings.server";
+import { listProjectFiles } from "../server/projects.server";
+import { enteredInputs } from "../lib/entered-inputs";
 import {
   TEAM_SETTING_KEYS,
   TEAM_SETTING_LABELS,
@@ -59,11 +62,23 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         })),
       }
     : null;
-  return { snapshot, settingsUsed };
+  // The inputs this run pinned when it started, in form order (never the live form).
+  const inputs = snapshot
+    ? {
+        rows: enteredInputs(
+          snapshot.run.formJson,
+          (await listProjectFiles(access.projectId)).map(({ id, name }) => ({
+            id,
+            name,
+          })),
+        ),
+      }
+    : null;
+  return { snapshot, settingsUsed, inputs };
 }
 
 export default function ProjectResults({ loaderData }: Route.ComponentProps) {
-  const { snapshot, settingsUsed } = loaderData;
+  const { snapshot, settingsUsed, inputs } = loaderData;
   const { project } = useProjectFlow();
   const revalidator = useRevalidator();
   const pending = !!snapshot && PENDING.includes(snapshot.run.status);
@@ -111,10 +126,12 @@ export default function ProjectResults({ loaderData }: Route.ComponentProps) {
     );
   return (
     <RunSettingsContext.Provider value={settingsUsed}>
-      <ProjectResultView
-        output={snapshot.output}
-        project={{ id: project.id, name: project.name }}
-      />
+      <RunInputsContext.Provider value={inputs}>
+        <ProjectResultView
+          output={snapshot.output}
+          project={{ id: project.id, name: project.name }}
+        />
+      </RunInputsContext.Provider>
     </RunSettingsContext.Provider>
   );
 }

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import type { EnteredInputRow } from "~/lib/entered-inputs";
 import { Link } from "react-router";
 import {
   ArrowLeft,
@@ -729,10 +730,7 @@ export function CashFlows({ output }: { output: ResultSample }) {
 
 export function Proxies({ output }: { output: ResultSample }) {
   return (
-    <Panel
-      title="Inputs from proxies and defaults"
-      note="Entered inputs are not yet included in the engine output."
-    >
+    <Panel title="Inputs from proxies and defaults">
       {output.result.proxies_used.map((proxy) => (
         <div className="output-proxy" key={proxy.input_id}>
           <span>
@@ -779,6 +777,78 @@ function Evidence({ output }: { output: ResultSample }) {
         </ul>
       </details>
     </div>
+  );
+}
+
+/**
+ * The inputs a run pinned (`runs.form_json`) as display rows. `rows: null`
+ * means the run recorded no inputs; no provider (the `/workspace` sample)
+ * means the panel does not appear.
+ */
+export const RunInputsContext = createContext<{
+  rows: EnteredInputRow[] | null;
+} | null>(null);
+
+function InputsUsed() {
+  const inputs = useContext(RunInputsContext);
+  if (!inputs) return null;
+  if (!inputs.rows)
+    return (
+      <Panel title="Inputs used in this run">
+        <p className="text-sm text-muted-foreground" data-testid="no-inputs">
+          This run recorded no inputs.
+        </p>
+      </Panel>
+    );
+  return (
+    <Panel
+      title="Inputs used in this run"
+      note={`${inputs.rows.length} inputs`}
+    >
+      <div className="output-table-wrap">
+        <table aria-label="Inputs used in this run">
+          <thead>
+            <tr>
+              <th>Input</th>
+              <th>Value</th>
+              <th>Evidence</th>
+              <th>Source</th>
+              <th>File</th>
+            </tr>
+          </thead>
+          <tbody>
+            {inputs.rows.map((row) => (
+              <tr key={row.id} data-input={row.id}>
+                <td>
+                  {row.label}
+                  {row.note ? (
+                    <span
+                      className="block max-w-[28ch] truncate text-xs text-muted-foreground"
+                      title={row.note}
+                    >
+                      {row.note}
+                    </span>
+                  ) : null}
+                </td>
+                <td
+                  className={row.notSure ? "text-muted-foreground italic" : ""}
+                >
+                  {row.value}
+                  {row.basis ? (
+                    <span className="block text-xs text-muted-foreground">
+                      {row.basis}
+                    </span>
+                  ) : null}
+                </td>
+                <td>{row.tier}</td>
+                <td>{row.source}</td>
+                <td>{row.file ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
   );
 }
 
@@ -866,6 +936,7 @@ export function AssumptionsView({ output }: { output: ResultSample }) {
         ))}
       </div>
       <TeamDefaultsUsed />
+      <InputsUsed />
       <Evidence output={output} />
       {output.result.drivers.map((driver) => (
         <DriverMath key={driver.id} driver={driver} output={output} />
@@ -939,6 +1010,7 @@ export function GapsView({ output }: { output: GapOutput }) {
         The evidence options and their order are supplied by the engine.
         Improvements are alternatives, not amounts to add together.
       </p>
+      <InputsUsed />
     </>
   );
 }

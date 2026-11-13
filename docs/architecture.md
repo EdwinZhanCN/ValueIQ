@@ -30,7 +30,7 @@ Signed-in screens follow the [Mock UI](mock-ui/README.md) (screens 01–10 with 
 
 `app/root.tsx` renders the document only: html/body, theme provider, tooltip provider, and the grain overlay. Page chrome belongs to the surface layouts, and error pages bring their own frame.
 
-Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders supplied STUB outputs without server calls. `/projects/:projectId/results` renders inside the project step layout and loads a pinned/latest stored outcome after project access checks. Private report resource routes generate/download a PDF from that immutable snapshot.
+Neither marketing surface has a loader or an action. `/api/auth/*` is a resource route with no page. `/workspace` renders supplied STUB outputs without server calls. `/projects/:projectId/results` renders inside the project step layout and loads a pinned/latest stored outcome after project access checks. Review · Assumptions lists "Inputs used in this run" from the form the run pinned in `runs.form_json` (`app/lib/entered-inputs.ts`; "Not sure" never shows as 0, and a run without a pinned form says it recorded no inputs), plus the team defaults in force when it started; a gap list shows the same inputs table. The table is screen-only. Private report resource routes generate/download a PDF from that immutable snapshot.
 
 ## Identity, data, and access
 
