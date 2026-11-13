@@ -28,6 +28,7 @@ import {
   intro,
 } from "../prompts";
 import { TOOLS, callTool, createContext, type ToolContext } from "../tools";
+import type { EngineConfig } from "../../engine/types";
 import {
   CHECKLIST_LABELS,
   type RunError,
@@ -64,6 +65,11 @@ export interface OrchestratorDeps {
   checkAccess?: (user_id: string) => Promise<boolean>;
   onView?: (v: RunView) => void;
   maxSteps?: number;
+  /**
+   * Engine configuration from the team's settings (cost uplift and
+   * `versions.settings`). Must match the settings version on the run row.
+   */
+  config?: Partial<EngineConfig>;
 }
 
 export interface PreflightReport {
@@ -151,9 +157,19 @@ function httpMessage(status: number): string {
   return `The AI service rejected the request (HTTP ${status}).`;
 }
 
-/** The idempotency key: the project's form (inputs sorted) plus the engine versions. */
-export function computeFormHash(form: FormFile): string {
-  return hashOf({ form: canonicalForm(form), v: DEFAULT_CONFIG.versions });
+/**
+ * The idempotency key: the project's form (inputs sorted) plus the engine
+ * versions, including the team settings version the run would use. With the
+ * default settings version this is the same key as before team settings.
+ */
+export function computeFormHash(
+  form: FormFile,
+  settingsVersion: string = DEFAULT_CONFIG.versions.settings,
+): string {
+  return hashOf({
+    form: canonicalForm(form),
+    v: { ...DEFAULT_CONFIG.versions, settings: settingsVersion },
+  });
 }
 
 export class RunOrchestrator {
@@ -237,6 +253,7 @@ export class RunOrchestrator {
         run_id: "preflight",
         now: this.d.now(),
         mode: this.d.mode ?? "real",
+        ...(this.d.config ? { config: this.d.config } : {}),
       });
       const details = callTool("preflight_gate", {}, ctx);
       const r = await runGuarded({
@@ -283,8 +300,8 @@ export class RunOrchestrator {
     await this.guardAccess();
     const { store } = this.d;
     const form = await this.d.getForm();
-    const v = DEFAULT_CONFIG.versions;
-    const form_hash = computeFormHash(form);
+    const v = { ...DEFAULT_CONFIG.versions, ...this.d.config?.versions };
+    const form_hash = computeFormHash(form, v.settings);
 
     // idempotent: the same project, form and versions give back the existing run
     const existing = await store.findRunByFormHash(
@@ -353,6 +370,7 @@ export class RunOrchestrator {
       run_id,
       now: this.d.now(),
       mode: this.d.mode ?? "real",
+      ...(this.d.config ? { config: this.d.config } : {}),
     });
     let narrative: RunOutcome["narrative"] = null;
     try {

@@ -10,6 +10,7 @@ import { CHECKLIST_LABELS } from "../assistant/run/types";
 import type { RunRecord } from "../assistant/run/types";
 import {
   asFormFile,
+  currentEngineConfig,
   makeOrchestrator,
   runStoreFor,
   startRunRecord,
@@ -119,12 +120,21 @@ export class ValueIQAgent extends Agent<Env, RunView> {
     if (ACTIVE.has(this.state.status))
       return fail("BAD_INPUT", "A run is already in progress");
     const store = runStoreFor({ userId: who.userId, projectId: this.name });
-    const orch = makeOrchestrator({
-      projectId: this.name,
-      userId: who.userId,
-      store,
-      onView: (v) => this.setState(v),
-    });
+    let orch;
+    try {
+      orch = makeOrchestrator({
+        projectId: this.name,
+        userId: who.userId,
+        store,
+        onView: (v) => this.setState(v),
+        config: await currentEngineConfig(this.name),
+      });
+    } catch (e) {
+      return fail(
+        "MODEL_ERROR",
+        e instanceof Error ? e.message : "Pre-flight failed",
+      );
+    }
     try {
       return { ok: true, value: await orch.preflight() };
     } catch (e) {

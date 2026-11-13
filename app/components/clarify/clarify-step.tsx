@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/empty";
 import { readFormDraft, validateFormFile } from "../../lib/intake-form";
 import { DefaultsCard } from "./defaults-card";
+import type { OfferedDefaults } from "../../../shared/team-settings";
 import { InputsPanel } from "./inputs-panel";
 import { OPTIONAL } from "./draft";
 import {
@@ -29,7 +30,7 @@ type Open = Group["key"] | "defaults" | null;
 /**
  * Step 2, Clarify (mock UI 04): the numbers behind the goals picked on
  * Intake, asked one group at a time beside a panel of what is entered so
- * far. Industry defaults come first. No assistant: every value is typed or
+ * far. Defaults (team and built-in) come first. No assistant: every value is typed or
  * an explicitly accepted, labeled proxy.
  */
 export function ClarifyStep({
@@ -38,12 +39,15 @@ export function ClarifyStep({
   savedAt,
   files,
   target,
+  teamDefaults,
 }: {
   projectId: string;
   initial: unknown;
   savedAt: string | null;
   files: DraftFile[];
   target: string | null;
+  /** The team's financial defaults; built-in values when absent. */
+  teamDefaults?: OfferedDefaults;
 }) {
   if (!readFormDraft(initial).goals.length)
     return (
@@ -71,6 +75,7 @@ export function ClarifyStep({
       savedAt={savedAt}
       files={files}
       target={target}
+      {...(teamDefaults ? { teamDefaults } : {})}
     />
   );
 }
@@ -81,15 +86,24 @@ function ClarifyQuestions({
   savedAt,
   files,
   target,
+  teamDefaults,
 }: {
   projectId: string;
   initial: unknown;
   savedAt: string | null;
   files: DraftFile[];
   target: string | null;
+  /** The team's financial defaults; built-in values when absent. */
+  teamDefaults?: OfferedDefaults;
 }) {
   const navigate = useNavigate();
-  const draft = useFormDraft({ projectId, initial, savedAt, files });
+  const draft = useFormDraft({
+    projectId,
+    initial,
+    savedAt,
+    files,
+    ...(teamDefaults ? { teamDefaults } : {}),
+  });
   const groups = groupsOf(draft);
   const defaults = defaultFields(draft);
   const [declined, setDeclined] = useState<ReadonlySet<string>>(new Set());

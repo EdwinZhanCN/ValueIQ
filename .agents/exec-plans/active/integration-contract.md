@@ -8,7 +8,7 @@ Goal: a person on `valueiq-dev` saves a form, talks to the intake assistant, sta
 
 - The per-track plans (input form and defaults, intake assistant prompts, calculation tools and engine formulas, output/report design) and the research behind them. They follow in separate pull requests and may refine, never silently contradict, this plan.
 - Column details beyond section 4 (indexes, foreign-key actions). Zihao settles them in the migration pull request.
-- Identity, teams, and file storage design: owned by [`interim-foundation.md`](interim-foundation.md), whose scope and STOP 2 date this plan does not change. This plan builds on its Phases 1-3 and only states what it additionally needs from it.
+- Identity, teams, and file storage design: owned by [interim-foundation decision](../../decisions/2026-11-13-interim-foundation.md), whose scope and STOP 2 date this plan does not change. This plan builds on its Phases 1-3 and only states what it additionally needs from it.
 - Any real numbers. Until the engine plan lands, every run is a stub and must say so.
 
 ## Rules for every agent and human
@@ -74,7 +74,7 @@ No `any` across track boundaries.
 
 ### 4. Tables (Zihao implements)
 
-Already planned in [`interim-foundation.md`](interim-foundation.md): `projects`, `project_forms`, `files`, and `team_settings` (Q2, #88: the team's financial defaults, replacing `team_goals`; append-only, so `runs.settings_version` pins the settings a run used). Additions:
+Already planned in [interim-foundation decision](../../decisions/2026-11-13-interim-foundation.md): `projects`, `project_forms`, `files`, and `team_settings` (Q2, #88: the team's financial defaults, replacing `team_goals`; append-only, so `runs.settings_version` pins the settings a run used). Additions:
 
 | Table           | Columns                                                                                                                                      | Phase | Purpose                                                                                                                             |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -92,7 +92,7 @@ Every row is reached only through server functions that run the project access c
 
 Output release integration (2026-11-06): canonical infrastructure signatures remain in `runs.server.ts`. `finishRun` validates complete RunOutput envelopes and atomically prevents overwriting terminal data. Project-scoped consumer reads live in `output-runs.server.ts`; report generation/download live in `reports.server.ts`. The additive report migration follows merged `0001_runs.sql`. See [concrete handoff](../../../docs/output-pipeline.md). The pushed engine and PR #138 Worker orchestration are included; output UI launch wiring is still pending.
 
-Existing in [`interim-foundation.md`](interim-foundation.md): `getProjectForm`, `saveProjectForm`, `listProjectFiles`, `readProjectFile`, `requireProjectAccess`, and its core `checkProjectAccess(request, projectId)`, which returns `{ userId, role }` or `signed_out` / `forbidden` without building a response. Additions in Phase 1 (in `app/server/runs.server.ts`): `createRun`, `appendRunEvent`, `finishRun`, `getRun`, `getLatestResult`, plus `updateRunStatus`, `recordRunQuestion`, and `answerRunQuestion` for the `blocked_on_question` round trip, and `getProjectMembership(projectId, userId)` in `access.server.ts` for the section 6 re-check. Additions in Phase 2: `readProjectFileForModel(fileId)` (bytes or text plus mime for Gemini, project-scoped, size-limited), `saveReportPdf`, `getReportPdf`. Callers never receive a raw D1 or R2 handle outside these modules.
+Existing in [interim-foundation decision](../../decisions/2026-11-13-interim-foundation.md): `getProjectForm`, `saveProjectForm`, `listProjectFiles`, `readProjectFile`, `requireProjectAccess`, and its core `checkProjectAccess(request, projectId)`, which returns `{ userId, role }` or `signed_out` / `forbidden` without building a response. Additions in Phase 1 (in `app/server/runs.server.ts`): `createRun`, `appendRunEvent`, `finishRun`, `getRun`, `getLatestResult`, plus `updateRunStatus`, `recordRunQuestion`, and `answerRunQuestion` for the `blocked_on_question` round trip, and `getProjectMembership(projectId, userId)` in `access.server.ts` for the section 6 re-check. Additions in Phase 2: `readProjectFileForModel(fileId)` (bytes or text plus mime for Gemini, project-scoped, size-limited), `saveReportPdf`, `getReportPdf`. Callers never receive a raw D1 or R2 handle outside these modules.
 
 ### 6. Agent methods
 
@@ -134,7 +134,7 @@ await this.sendWorkflowEvent("RUN_WORKFLOW", runId, {
 | Track                                                         | Owner                        | Builds against                                         |
 | ------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------ |
 | Input form, upload UI                                         | Jonathan, Jeremiah           | `getProjectForm`, `saveProjectForm`, `FormFile`        |
-| Identity, tables, storage, access, deploy, secrets, PDF store | Zihao                        | this plan, `interim-foundation.md`                     |
+| Identity, tables, storage, access, deploy, secrets, PDF store | Zihao                        | this plan, the interim-foundation decision             |
 | Intake assistant, agent, workflow, loading page               | Eli                          | `ValueIQAgent`, run states, `Question`                 |
 | Engine and tools                                              | Ryan, Eli                    | pure TypeScript, result type from the engine plan      |
 | Results, report, PDF                                          | Ryan, with Zihao for storage | `getLatestResult`, `GapList`, never recomputes numbers |
@@ -149,7 +149,7 @@ await this.sendWorkflowEvent("RUN_WORKFLOW", runId, {
 
 ### Phase 1 - Stub end to end (Fri Nov 6 to Sat Nov 7)
 
-- Starts once `interim-foundation.md` Phases 1-3 (sign-in, projects, files) are on `develop`; if STOP 2 (Fri Nov 6) slips, this phase slips with it.
+- Starts once interim-foundation Phases 1-3 (sign-in, projects, files) are on `develop`; if STOP 2 (Fri Nov 6) slips, this phase slips with it.
 - `shared/types.ts`, the Phase 1 tables and server functions in sections 4 and 5, the `RUN_WORKFLOW` binding, the agent access gate, and a stub path: save form, `startRun`, fake steps, one `ask_user` question, `answerQuestion`, a stub result page labeled STUB. The pull request that adds `shared/types.ts` also lifts the "no domain types" rule in `AGENTS.md` and `docs/architecture.md`.
 - Exit: on `valueiq-dev`, a signed-in team member runs the stub through one question to a stub result; signed out and other-team callers are refused on every agent route.
 
@@ -166,12 +166,12 @@ await this.sendWorkflowEvent("RUN_WORKFLOW", runId, {
 ## Research record (Team Agreement format)
 
 - **Question:** what shape lets five people's work connect on Cloudflare with the least rework?
-- **Context:** `docs/architecture.md` shows an empty `ValueIQAgent`, no tables, no shared types; `interim-foundation.md` covers identity, form storage, and files but not orchestration.
-- **Sources reviewed:** Cloudflare Agents documentation: store and sync state, callable methods, run workflows (developers.cloudflare.com/agents/api-reference/); this repository's `AGENTS.md`, `docs/architecture.md`, `wrangler.jsonc`, `agents/valueiq-agent.ts`, `db/schema.ts`, and `interim-foundation.md`. For the VERIFY items (Zihao, Nov 5): the docs bundled with the installed Agents SDK 0.23.0 (`node_modules/agents/docs/routing.md`, `workflows.md`, `cross-domain-authentication.md`) and the `waitForApproval` source in `node_modules/agents/dist/workflows.js`.
+- **Context:** `docs/architecture.md` shows an empty `ValueIQAgent`, no tables, no shared types; the interim-foundation decision covers identity, form storage, and files but not orchestration.
+- **Sources reviewed:** Cloudflare Agents documentation: store and sync state, callable methods, run workflows (developers.cloudflare.com/agents/api-reference/); this repository's `AGENTS.md`, `docs/architecture.md`, `wrangler.jsonc`, `agents/valueiq-agent.ts`, `db/schema.ts`, and the interim-foundation decision. For the VERIFY items (Zihao, Nov 5): the docs bundled with the installed Agents SDK 0.23.0 (`node_modules/agents/docs/routing.md`, `workflows.md`, `cross-domain-authentication.md`) and the `waitForApproval` source in `node_modules/agents/dist/workflows.js`.
 - **Findings:** the SDK syncs agent state to connected clients over WebSocket; `@callable` exposes methods to clients and the docs say to treat arguments as untrusted; Workflows suit multi-step pipelines and human-in-the-loop waits, with durable steps and a progress callback to the agent; documented limits include 30 minutes per step, up to a year waiting for an event, and 10 MB per workflow state. `routeAgentRequest` takes `onBeforeConnect` and `onBeforeRequest` hooks that receive the instance name and can reject with a response before the Durable Object wakes; same-origin WebSocket handshakes carry cookies; `waitForApproval` wraps `step.waitForEvent` with a fixed `approval` event and throws on `approved: false`.
 - **Decided (Nov 5):** team-held Gemini key as a Worker secret (Q3, #89); all storage on Cloudflare (Q4, #90); roles `owner | member` (Q13, #99); team-level financial defaults in `team_settings` (Q2, #88).
 - **Assumptions:** one agent per project; one workflow run per calculation.
-- **Risks:** a run that sits blocked on a question (bounded by the 24-hour timeout); Phase 1 depends on `interim-foundation.md` reaching STOP 2 on Fri Nov 6.
+- **Risks:** a run that sits blocked on a question (bounded by the 24-hour timeout); Phase 1 depends on the interim foundation reaching STOP 2 on Fri Nov 6.
 - **Recommended next step:** merge, then the stub run (Phase 1).
 
 ## Resolved before freezing (Zihao, 2026-11-05)

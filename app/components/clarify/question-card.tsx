@@ -177,7 +177,7 @@ function SettingTile({ id, draft }: { id: string; draft: FormDraft }) {
           value={currency ? draft.currency : draft.horizon}
           maxLength={currency ? 3 : undefined}
           inputMode={currency ? undefined : "numeric"}
-          placeholder={currency ? "USD" : "3"}
+          placeholder={currency ? "USD" : draft.horizonDefaultValue}
           aria-invalid={errors.length > 0}
           aria-describedby={errors.length ? `errors-${id}` : undefined}
           onChange={(event) =>
@@ -204,7 +204,7 @@ function SettingTile({ id, draft }: { id: string; draft: FormDraft }) {
           className="self-start text-xs text-primary underline underline-offset-2"
           onClick={draft.acceptHorizonDefault}
         >
-          Use 3 years · team assumption
+          Use {draft.horizonDefaultValue} years · Team default
         </button>
       )}
     </div>

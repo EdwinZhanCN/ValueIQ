@@ -1,4 +1,4 @@
-// Access matrix (interim-foundation validation): every project route is
+// Access matrix (decision 2026-11-13-interim-foundation): every project route is
 // checked as four actors against a real local Worker and local D1.
 //
 //   signed out → redirect to /sign-in?redirectTo=<path>

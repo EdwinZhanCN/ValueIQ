@@ -8,7 +8,8 @@ import type {
   Goal,
   Input,
 } from "../../../shared/form";
-import { DEFAULTS } from "../../lib/intake-fields";
+import { defaultsFor } from "../../lib/intake-fields";
+import type { OfferedDefaults } from "../../../shared/team-settings";
 import { readFormDraft, validateFormFile } from "../../lib/intake-form";
 import {
   FIELD_ERROR_CODES,
@@ -38,13 +39,20 @@ export function useFormDraft({
   savedAt,
   files,
   onDirty,
+  teamDefaults,
 }: {
   projectId: string;
   initial: unknown;
   savedAt: string | null;
   files: readonly DraftFile[];
   onDirty?: () => void;
+  /** The team's financial defaults (#88); built-in values when absent. */
+  teamDefaults?: OfferedDefaults;
 }) {
+  // Offered, never filled in on their own: each still needs "Use".
+  const [defaults] = useState(() => defaultsFor(teamDefaults));
+  const horizonDefault = teamDefaults?.horizon_years ?? null;
+  const horizonDefaultValue = String(horizonDefault?.value ?? 3);
   const [start] = useState(() => {
     const form = readFormDraft(initial);
     return { form, paths: pathsOf(form) };
@@ -238,11 +246,18 @@ export function useFormDraft({
     setRaw((previous) => ({ ...previous, [id]: "" }));
   }
 
-  /** Accept the labeled proxy from `DEFAULTS`, with its source note. */
+  /** Accept the labeled default (team or built-in), with its note. */
   function acceptProxy(id: string) {
-    const proxy = DEFAULTS[id];
-    if (!proxy) return;
-    const next = { id, ...byId.get(id), ...proxy };
+    const offered = defaults[id];
+    if (!offered) return;
+    const next: Input = {
+      id,
+      ...byId.get(id),
+      value: offered.value,
+      tier: offered.tier,
+      origin: offered.origin,
+      ...(offered.note === undefined ? {} : { note: offered.note }),
+    };
     replace(next);
     setRaw((previous) => ({ ...previous, [id]: pretty(next.value) }));
   }
@@ -290,8 +305,8 @@ export function useFormDraft({
   }
 
   function acceptHorizonDefault() {
-    setHorizonState("3");
-    acceptedHorizon.current = "3";
+    setHorizonState(horizonDefaultValue);
+    acceptedHorizon.current = horizonDefaultValue;
     dirty("horizon_years");
   }
 
@@ -375,6 +390,9 @@ export function useFormDraft({
     range,
     notSure,
     acceptProxy,
+    defaults,
+    horizonDefault,
+    horizonDefaultValue,
     setPath,
     setGoals,
     setCurrency,

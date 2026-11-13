@@ -21,6 +21,14 @@ import type { RunView } from "../../shared/types";
 import { D1RunStore } from "./run-store.server";
 import type { RunRecord } from "../../assistant/run/types";
 import { DEFAULT_CONFIG } from "../../engine/config";
+import type { EngineConfig } from "../../engine/types";
+import {
+  engineConfigFor,
+  getTeamSettings,
+  runSettings,
+  teamOfProject,
+  valuesOf,
+} from "./team-settings.server";
 import { getProjectForm } from "./projects.server";
 import { dryFetch } from "../../assistant/dry-fetch";
 import type { FetchLike } from "../../assistant/gemini";
@@ -79,11 +87,47 @@ export async function loadForm(projectId: string): Promise<FormFile> {
   return asFormFile(saved.formJson);
 }
 
+/**
+ * The engine configuration a run uses: the team settings in effect when the
+ * run started. The version must equal the one recorded on the run row; a
+ * mismatch means the settings changed in the instant the run started.
+ */
+export async function runEngineConfig(
+  store: D1RunStore,
+  projectId: string,
+  runId: string,
+): Promise<Partial<EngineConfig>> {
+  const run = await store.getRun(runId);
+  if (!run) throw new OrchestratorError("BAD_INPUT", "No such run", false);
+  const teamId = await teamOfProject(projectId);
+  const { settings, version } = await runSettings(
+    teamId,
+    new Date(run.started_at),
+  );
+  if (version !== run.settings_version)
+    throw new OrchestratorError(
+      "BAD_INPUT",
+      "The team's financial defaults changed as this run started. Start it again.",
+      false,
+    );
+  return engineConfigFor(valuesOf(settings));
+}
+
+/** The engine configuration for the team's settings right now (pre-flight). */
+export async function currentEngineConfig(
+  projectId: string,
+): Promise<Partial<EngineConfig>> {
+  const settings = await getTeamSettings(await teamOfProject(projectId));
+  return engineConfigFor(valuesOf(settings));
+}
+
 export function makeOrchestrator(o: {
   projectId: string;
   userId: string;
   store: D1RunStore;
   onView?: (v: RunView) => void;
+  /** Team settings for the engine (cost uplift, settings version). */
+  config?: Partial<EngineConfig>;
 }): RunOrchestrator {
   const vars = env as unknown as Record<string, string | undefined>;
   const source = modelSource(vars);
@@ -111,6 +155,7 @@ export function makeOrchestrator(o: {
       }
     },
     ...(o.onView ? { onView: o.onView } : {}),
+    ...(o.config ? { config: o.config } : {}),
   });
 }
 
@@ -133,7 +178,14 @@ export async function startRunRecord(
   opts: { forceNew?: boolean } = {},
 ): Promise<{ run: RunRecord; created: boolean }> {
   const s = runStoreFor(caller);
-  const form_hash = computeFormHash(form);
+  // The team settings in effect now decide the run's settings version, and
+  // the version is part of the idempotency key: after a settings change the
+  // same form gets a new run instead of the old result.
+  const { version } = await runSettings(
+    await teamOfProject(caller.projectId),
+    new Date(),
+  );
+  const form_hash = computeFormHash(form, version);
   const existing = opts.forceNew
     ? null
     : await s.findRunByFormHash(caller.projectId, form_hash);
@@ -152,7 +204,7 @@ export async function startRunRecord(
     form_hash,
     contract_version: v.contract,
     formula_version: v.formula,
-    settings_version: v.settings,
+    settings_version: version,
     started_by: caller.userId,
     started_at: new Date().toISOString(),
     form,

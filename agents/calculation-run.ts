@@ -2,7 +2,11 @@ import { AgentWorkflow } from "agents/workflows";
 import type { AgentWorkflowEvent, AgentWorkflowStep } from "agents/workflows";
 import { NonRetryableError } from "cloudflare:workflows";
 import type { ValueIQAgent } from "./valueiq-agent";
-import { makeOrchestrator, runStoreFor } from "../app/server/run-wiring.server";
+import {
+  makeOrchestrator,
+  runEngineConfig,
+  runStoreFor,
+} from "../app/server/run-wiring.server";
 import { OrchestratorError } from "../assistant/run/orchestrator";
 import {
   RETRY_DELAY,
@@ -140,10 +144,12 @@ export class CalculationRun extends AgentWorkflow<
         const pending: Promise<void>[] = [];
         let out;
         try {
+          const config = await runEngineConfig(store, projectId, runId);
           const orch = makeOrchestrator({
             projectId,
             userId,
             store,
+            config,
             onView: (view) => {
               if (
                 view.status === "failed" &&

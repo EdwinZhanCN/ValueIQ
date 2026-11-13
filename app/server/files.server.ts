@@ -1,5 +1,5 @@
 /**
- * Project files (interim-foundation contract 4). Metadata lives in D1
+ * Project files (decision: 2026-11-13-interim-foundation). Metadata lives in D1
  * (`files`); the bytes live in the private `FILES` R2 bucket under
  * `teams/{teamId}/projects/{projectId}/files/{fileId}`.
  *

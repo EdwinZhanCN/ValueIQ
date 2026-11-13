@@ -1,4 +1,8 @@
 import type { Goal, Input } from "../../shared/form";
+import {
+  teamDefaultNote,
+  type OfferedDefaults,
+} from "../../shared/team-settings";
 export const GOAL_LABELS: Record<Goal, string> = {
   time_savings: "Time savings",
   data_quality: "Data quality",
@@ -85,6 +89,33 @@ export const DEFAULTS: Record<
     note: "Redman Rule of Ten proxy; see research source status before external citation.",
   },
 };
+
+/** A default Clarify offers; `team` marks one that comes from team settings. */
+export type DefaultProxy = Pick<Input, "value" | "tier" | "origin" | "note"> & {
+  team?: { rationale: string | null; source: string | null; starting: boolean };
+};
+
+/**
+ * The built-in defaults with the team's discount rate and recapture laid
+ * over them (#88). Weeks per year and the error cost multiplier stay built in.
+ */
+export function defaultsFor(
+  team?: OfferedDefaults,
+): Record<string, DefaultProxy> {
+  const out: Record<string, DefaultProxy> = { ...DEFAULTS };
+  if (!team) return out;
+  for (const id of ["discount_rate_pct", "recapture_pct"] as const) {
+    const base = DEFAULTS[id]!;
+    const t = team[id];
+    out[id] = {
+      ...base,
+      value: t.value,
+      note: teamDefaultNote(t),
+      team: { rationale: t.rationale, source: t.source, starting: t.starting },
+    };
+  }
+  return out;
+}
 
 /** Form fields the Intake step edits. Every other field belongs to Clarify. */
 export const INTAKE_FIELDS = [

@@ -11,6 +11,7 @@ import {
   type StepState,
 } from "../components/project/project-steps";
 import { requireProjectAccess } from "../server/access.server";
+import { runSettings } from "../server/team-settings.server";
 import { listProjectFiles } from "../server/files.server";
 import { getProject, getProjectForm } from "../server/projects.server";
 import { getLatestOutcome } from "../server/run-outcome.server";
@@ -26,16 +27,18 @@ import type { Route } from "./+types/project-layout";
  * `useProjectFlow()`.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireProjectAccess(request, params.projectId);
+  const access = await requireProjectAccess(request, params.projectId);
   const [project, form, files] = await Promise.all([
     getProject(params.projectId),
     getProjectForm(params.projectId),
     listProjectFiles(params.projectId),
   ]);
   if (!project) throw new Response("Not found", { status: 404 });
+  const { version: settingsNow } = await runSettings(access.teamId, new Date());
   const latest = await getLatestOutcome(
     params.projectId,
     form?.updatedAt ?? null,
+    settingsNow,
   );
   const facts = factsFor({
     projectId: params.projectId,

@@ -1,5 +1,5 @@
 /**
- * The project access rule (interim-foundation contract 2).
+ * The project access rule (decision: .agents/decisions/2026-11-13-interim-foundation.md).
  *
  * A caller may touch a project only when signed in and a member of the
  * project's team. Roles are `owner | member` and carry the same project

@@ -194,7 +194,9 @@ export function RunPanel(props: RunPanelProps) {
       {rerun ? (
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <InfoIcon className="size-4 shrink-0" aria-hidden />
-          Inputs changed since this run.
+          {latest?.formChangedSince
+            ? "Inputs changed since this run."
+            : "Team defaults changed since this run."}
         </p>
       ) : null}
 

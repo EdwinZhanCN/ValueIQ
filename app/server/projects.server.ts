@@ -1,5 +1,5 @@
 /**
- * Server API for projects and their form file (interim-foundation contract 6).
+ * Server API for projects and their form file (decision: 2026-11-13-interim-foundation).
  *
  * Nothing here checks access. Callers authorize first: `requireProjectAccess`
  * for anything about one project, `requireTeam` for a team's list.

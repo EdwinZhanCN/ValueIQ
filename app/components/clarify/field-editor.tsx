@@ -2,7 +2,7 @@ import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
 import type { Input } from "../../../shared/form";
 import { INPUT_RULES } from "../../lib/intake-catalog";
-import { DEFAULTS, LABELS } from "../../lib/intake-fields";
+import { LABELS } from "../../lib/intake-fields";
 import { OPTIONAL, SOURCE_CHOICES, TIER_LABELS, unitFor } from "./draft";
 import type { FormDraft } from "./use-form-draft";
 
@@ -51,7 +51,7 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
   const b = record?.backing ?? {};
   const label = LABELS[id] ?? id;
   const unit = unitFor(id, draft.currency);
-  const proxy = DEFAULTS[id];
+  const proxy = draft.defaults[id];
   const fileName = new Map(draft.files.map((file) => [file.id, file.name]));
   const describedBy = errors.length ? `errors-${id}` : undefined;
   return (
@@ -171,7 +171,8 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
             title={proxy.note}
             onClick={() => draft.acceptProxy(id)}
           >
-            Use proxy: {String(proxy.value)}
+            {proxy.team ? "Use team default" : "Use proxy"}:{" "}
+            {String(proxy.value)}
             {unit === "%" ? "%" : ""}
           </button>
         )}

@@ -445,7 +445,7 @@ export function canRerun(args: {
   return (
     (view.status === "released" || view.status === "gap_list") &&
     latest?.runId === view.run_id &&
-    latest.formChangedSince &&
+    (latest.formChangedSince || latest.settingsChangedSince === true) &&
     hasForm &&
     missing.length === 0
   );
@@ -764,6 +764,8 @@ export type LatestOutcome = {
   finishedAt: string | null;
   /** The form was saved after this run ended, so the outcome may be out of date. */
   formChangedSince: boolean;
+  /** The team's financial defaults changed since this run (#88). */
+  settingsChangedSince?: boolean;
   /** Null when the stored output could not be read. */
   summary: OutcomeSummary | null;
 };

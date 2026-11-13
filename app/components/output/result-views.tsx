@@ -782,6 +782,63 @@ function Evidence({ output }: { output: ResultSample }) {
   );
 }
 
+/** The team defaults a run used (#88), when the page knows them. */
+export type RunSettingsUsed = {
+  version: string;
+  /** False when today's records no longer give the version the run recorded. */
+  matches: boolean;
+  rows: {
+    key: string;
+    label: string;
+    shown: string;
+    rationale: string | null;
+    source: string | null;
+    starting: boolean;
+  }[];
+};
+
+export const RunSettingsContext = createContext<RunSettingsUsed | null>(null);
+
+function TeamDefaultsUsed() {
+  const used = useContext(RunSettingsContext);
+  if (!used) return null;
+  return (
+    <section
+      aria-label="Team defaults used"
+      className="flex flex-col gap-2 rounded-xl border bg-card p-4"
+    >
+      <h3 className="flex flex-wrap items-center gap-2 text-sm font-medium">
+        Team defaults used
+        <span
+          className="rounded-full border px-2 py-0.5 font-mono text-xs text-muted-foreground"
+          data-testid="settings-version"
+        >
+          {used.version}
+        </span>
+      </h3>
+      <ul className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        {used.rows.map((row) => (
+          <li key={row.key} data-setting={row.key} className="flex flex-col">
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="text-muted-foreground">{row.label}</span>
+              <strong>{row.shown}</strong>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {row.starting ? "Starting default" : row.rationale}
+              {row.source ? ` · ${row.source}` : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {used.matches ? null : (
+        <p className="text-xs text-destructive">
+          The saved settings no longer match this run's version.
+        </p>
+      )}
+    </section>
+  );
+}
+
 /** Review · Assumptions (mock 06a): settings, show-the-math steps, inputs. */
 export function AssumptionsView({ output }: { output: ResultSample }) {
   const { meta } = output;
@@ -808,6 +865,7 @@ export function AssumptionsView({ output }: { output: ResultSample }) {
           </span>
         ))}
       </div>
+      <TeamDefaultsUsed />
       <Evidence output={output} />
       {output.result.drivers.map((driver) => (
         <DriverMath key={driver.id} driver={driver} output={output} />

@@ -1,5 +1,10 @@
 import { ClarifyStep } from "../components/clarify/clarify-step";
 import { requireProjectAccess } from "../server/access.server";
+import { getTeamSettings } from "../server/team-settings.server";
+import type {
+  OfferedDefault,
+  OfferedDefaults,
+} from "../../shared/team-settings";
 import { useProjectFlow } from "./project-layout";
 import type { Route } from "./+types/projects.clarify";
 
@@ -9,8 +14,24 @@ import type { Route } from "./+types/projects.clarify";
  * focuses that field's question.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireProjectAccess(request, params.projectId);
-  return { target: new URL(request.url).searchParams.get("input") };
+  const access = await requireProjectAccess(request, params.projectId);
+  // The team's financial defaults (#88), offered as "Team default".
+  const settings = await getTeamSettings(access.teamId);
+  const offer = (key: keyof OfferedDefaults): OfferedDefault => ({
+    value: settings[key].value,
+    rationale: settings[key].rationale,
+    source: settings[key].source,
+    starting: settings[key].starting,
+  });
+  const teamDefaults: OfferedDefaults = {
+    discount_rate_pct: offer("discount_rate_pct"),
+    recapture_pct: offer("recapture_pct"),
+    horizon_years: offer("horizon_years"),
+  };
+  return {
+    target: new URL(request.url).searchParams.get("input"),
+    teamDefaults,
+  };
 }
 
 export default function ProjectClarify({ loaderData }: Route.ComponentProps) {
@@ -22,6 +43,7 @@ export default function ProjectClarify({ loaderData }: Route.ComponentProps) {
       savedAt={flow.savedAt}
       files={flow.files}
       target={loaderData.target}
+      teamDefaults={loaderData.teamDefaults}
     />
   );
 }
