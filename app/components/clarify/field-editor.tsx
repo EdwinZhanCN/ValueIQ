@@ -223,7 +223,14 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
             onChange={(event) =>
               draft.metadata(id, {
                 tier: event.target.value as Input["tier"],
-                origin: event.target.value === "measured" ? "file" : "user",
+                // A figure the user accepted from the assistant stays marked
+                // as such when only its evidence tier changes.
+                origin:
+                  event.target.value === "measured"
+                    ? "file"
+                    : record?.origin === "assistant_accepted"
+                      ? "assistant_accepted"
+                      : "user",
               })
             }
           >
