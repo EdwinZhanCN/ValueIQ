@@ -17,14 +17,14 @@ ValueIQ has account/team/project pages, private file storage, a deterministic en
 
 ## Surfaces
 
-| Route                        | Layout                                                | Contents                                                                                    |
-| ---------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `/`                          | `app/routes/site-layout.tsx`                          | Landing page sections from `app/components/landing/`, wrapped in the site header and footer |
-| `/workspace`                 | `app/routes/workspace-layout.tsx`                     | Labeled STUB output preview; chat example at `?view=chat`                                   |
-| `/sign-up`, `/sign-in`       | `app/routes/auth-layout.tsx`                          | One centred form; `redirectTo` is honoured only for same-site paths                         |
-| `/teams/new`, `/team`        | `app/routes/app-layout.tsx`                           | The signed-in shell: sidebar with the current team, nav, and the account row                |
-| `/projects`, `/projects/new` | `app/routes/app-layout.tsx`                           | The current team's projects and the new-project form                                        |
-| `/projects/:projectId/*`     | `app/routes/project-layout.tsx` (inside `app-layout`) | The assessment steps: Intake, `clarify`, `process`, `results` (Review), `report`            |
+| Route                        | Layout                                                | Contents                                                                                      |
+| ---------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `/`                          | `app/routes/site-layout.tsx`                          | Landing page sections from `app/components/landing/`, wrapped in the site header and footer   |
+| `/workspace`                 | `app/routes/workspace-layout.tsx`                     | Labeled STUB output preview; chat example at `?view=chat`                                     |
+| `/sign-up`, `/sign-in`       | `app/routes/auth-layout.tsx`                          | One centred form; `redirectTo` is honoured only for same-site paths                           |
+| `/teams/new`, `/team`        | `app/routes/app-layout.tsx`                           | The signed-in shell: sidebar with the current team, nav, and the account row                  |
+| `/projects`, `/projects/new` | `app/routes/app-layout.tsx`                           | The team's projects with status tabs (`?status=`) and step progress, and the new-project form |
+| `/projects/:projectId/*`     | `app/routes/project-layout.tsx` (inside `app-layout`) | The assessment steps: Intake, `clarify`, `process`, `results` (Review), `report`              |
 
 Signed-in screens follow the [Mock UI](mock-ui/README.md) (screens 01–10 with owner notes; 08 and 09 are cut for Beta).
 
@@ -66,6 +66,8 @@ The Input team's pre-integration wire type is `shared/form.ts`. `app/lib/intake-
 `app/server/run-store.server.ts` adapts the orchestrator to canonical D1 APIs. `run-wiring.server.ts` loads saved forms and Worker secrets. No mock replaces a missing model key.
 
 ## Runtime and generated artifacts
+
+Local only: `VALUEIQ_MODEL=dry` in `.dev.vars` swaps Gemini for the scripted model (`assistant/dry-fetch.ts`) and marks every run STUB; `scripts/local-demo/load.mjs` loads the synthetic Northline case into a local Worker. Both switches are declared off in the top-level `vars` and never set in a named environment.
 
 `pnpm dev` uses the Cloudflare Vite plugin to execute SSR and bindings in local workerd. D1 and Durable Object data persist under ignored `.wrangler/state/`. `pnpm build` produces client assets and a server Worker with a generated Wrangler deployment configuration. `pnpm deploy:check` packages that build without publishing it.
 
