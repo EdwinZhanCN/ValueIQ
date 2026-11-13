@@ -1,0 +1,1 @@
+ALTER TABLE `run_reports` ADD `layout_json` text;

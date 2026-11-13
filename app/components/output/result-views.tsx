@@ -547,13 +547,13 @@ export function ChartById({
   }
 }
 
-/** Review · Charts (mock 06b): the same three standard charts as the PDF. */
+/** Review · Charts (mock 06b): the three charts a new report starts with. */
 export function ChartsView({ output }: { output: ResultSample }) {
   const navigation = useContext(OutputContext);
   return (
     <>
       <p className="output-muted">
-        These three standard charts are included in every PDF.
+        A new report starts with these three charts; choose others on Report.
       </p>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(30rem,100%),1fr))] gap-5">
         {(["waterfall", "npv_discount", "driver_mix"] as const).map((id) => (

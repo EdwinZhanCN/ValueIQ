@@ -124,6 +124,22 @@ const TARGETS = [
     },
   },
   {
+    name: "report generation action with a layout",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/runs/${fx.runId}/reports`,
+      method: "POST",
+      form: {
+        sections: JSON.stringify(["summary", "charts"]),
+        charts: JSON.stringify(["npv_haircut"]),
+      },
+    }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 302, result.body.slice(0, 400));
+      const location = new URL(result.location, "http://local.test");
+      assert.equal(location.pathname, `/projects/${fx.projectId}/report`);
+    },
+  },
+  {
     name: "private report download",
     request: (fx) => ({
       path: `/projects/${fx.projectId}/runs/${fx.runId}/reports/${fx.reportId}`,

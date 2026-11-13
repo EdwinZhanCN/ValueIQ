@@ -29,6 +29,13 @@
       "when": 1793993202486,
       "tag": "0003_absent_sabretooth",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794552690271,
+      "tag": "0004_famous_puma",
+      "breakpoints": true
     }
   ]
 }
