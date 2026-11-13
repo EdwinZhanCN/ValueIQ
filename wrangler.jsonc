@@ -15,7 +15,10 @@
     "DEMO_CONTROLS": "off",
   },
   // Set locally in .dev.vars; per environment with `wrangler secret put`.
-  "secrets": { "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY"] },
+  // DEEPSEEK_API_KEY is local only (VALUEIQ_MODEL=deepseek); leave it empty otherwise.
+  "secrets": {
+    "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY", "DEEPSEEK_API_KEY"],
+  },
   "durable_objects": {
     "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
   },

@@ -3,11 +3,18 @@
 
 export const DEFAULT_MODEL_ASSISTANT = "gemini-3.5-flash-lite";
 export const DEFAULT_MODEL_CALC = "gemini-3.6-flash";
-/** Local alternative while Gemini is unavailable: VALUEIQ_MODEL=deepseek with DEEPSEEK_API_KEY. */
-export const DEFAULT_DEEPSEEK_ASSISTANT = "deepseek-v4-flash";
-export const DEFAULT_DEEPSEEK_CALC = "deepseek-v4-flash";
+/**
+ * Local alternative while Gemini is unavailable: VALUEIQ_MODEL=deepseek (or a DeepSeek model id
+ * such as deepseek-flash, used for both roles) with DEEPSEEK_API_KEY.
+ */
+export const DEFAULT_DEEPSEEK_ASSISTANT = "deepseek-flash";
+export const DEFAULT_DEEPSEEK_CALC = "deepseek-flash";
 
 export type ModelProvider = "gemini" | "deepseek";
+/** VALUEIQ_MODEL=deepseek or VALUEIQ_MODEL=deepseek-<model>. */
+export function usesDeepSeek(env: Record<string, string | undefined>): boolean {
+  return (env["VALUEIQ_MODEL"] ?? "").startsWith("deepseek");
+}
 /** The provider is part of the model id: deepseek-* goes to DeepSeek, everything else to Gemini. */
 export function providerOf(id: string): ModelProvider {
   return id.startsWith("deepseek-") ? "deepseek" : "gemini";
@@ -20,9 +27,10 @@ export class ModelConfigError extends Error {
   }
 }
 
-// exact, versioned ids only: gemini-<major>[.<minor>]-<variant...> or deepseek-v<major>[.<minor>]-<variant...>
+// exact ids only: gemini-<major>[.<minor>]-<variant...>, or DeepSeek's API ids
+// (deepseek-flash, deepseek-v4-pro); never a "-latest" alias
 const EXACT_ID =
-  /^(gemini-\d+(\.\d+)?|deepseek-v\d+(\.\d+)?)-[a-z0-9]+(-[a-z0-9.]+)*$/;
+  /^(gemini-\d+(\.\d+)?-[a-z0-9]+|deepseek-(v\d+(\.\d+)?-)?[a-z0-9]+)(-[a-z0-9.]+)*$/;
 
 /** Throws unless `id` is an exact model id (no `-latest`, no unversioned alias). */
 export function assertExactModelId(id: string, label = "model"): string {
@@ -49,9 +57,12 @@ export interface ModelIds {
 export function resolveModels(
   env: Record<string, string | undefined> = {},
 ): ModelIds {
-  if (env["VALUEIQ_MODEL"] === "deepseek") {
-    const a = env["DEEPSEEK_MODEL_ASSISTANT"] || DEFAULT_DEEPSEEK_ASSISTANT;
-    const c = env["DEEPSEEK_MODEL_CALC"] || DEFAULT_DEEPSEEK_CALC;
+  const pick = env["VALUEIQ_MODEL"] ?? "";
+  if (usesDeepSeek(env)) {
+    const named = pick === "deepseek" ? undefined : pick;
+    const a =
+      env["DEEPSEEK_MODEL_ASSISTANT"] || named || DEFAULT_DEEPSEEK_ASSISTANT;
+    const c = env["DEEPSEEK_MODEL_CALC"] || named || DEFAULT_DEEPSEEK_CALC;
     const ids = {
       assistant: assertExactModelId(a, "DEEPSEEK_MODEL_ASSISTANT"),
       calc: assertExactModelId(c, "DEEPSEEK_MODEL_CALC"),

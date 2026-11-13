@@ -8,7 +8,7 @@
  * `.dev.vars` swaps Gemini for the scripted model in `assistant/dry-fetch.ts`
  * and marks every run `stub`, so the UI and PDF carry the STUB label. The
  * deployed environments never set it (`scripts/check-deploy-target.test.mjs`).
- * `VALUEIQ_MODEL=deepseek` sends the same calls to DeepSeek with
+ * `VALUEIQ_MODEL=deepseek` (or a DeepSeek model id) sends the same calls to DeepSeek with
  * `DEEPSEEK_API_KEY` (real runs, DeepSeek model ids from `resolveModels`).
  */
 import { env } from "cloudflare:workers";
@@ -17,7 +17,11 @@ import {
   RunOrchestrator,
   computeFormHash,
 } from "../../assistant/run/orchestrator";
-import { resolveModels, resolveThinking } from "../../assistant/models";
+import {
+  resolveModels,
+  resolveThinking,
+  usesDeepSeek,
+} from "../../assistant/models";
 import type { FormFile } from "../../engine/types";
 import type { RunView } from "../../shared/types";
 import { D1RunStore } from "./run-store.server";
@@ -57,10 +61,9 @@ export function modelSource(
       // A short pause per answer so local progress and "Processing" are visible.
       fetch: dryFetch({ delayMs: 400 }),
     };
-  const apiKey =
-    vars.VALUEIQ_MODEL === "deepseek"
-      ? vars.DEEPSEEK_API_KEY
-      : vars.GEMINI_API_KEY;
+  const apiKey = usesDeepSeek(vars)
+    ? vars.DEEPSEEK_API_KEY
+    : vars.GEMINI_API_KEY;
   return apiKey
     ? { kind: "live", apiKey, mode: "real" }
     : { kind: "none", mode: "real" };

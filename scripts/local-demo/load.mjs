@@ -9,7 +9,8 @@
 // fresh set of accounts (owner, member, outsider) and a fresh team, then six
 // projects A-F in different states, and writes the logins to
 // .wrangler/local-demo/accounts.json. Runs need a model: with
-// VALUEIQ_MODEL=dry in .dev.vars they use the scripted model and are STUB.
+// VALUEIQ_MODEL=dry in .dev.vars they use the scripted model and are STUB;
+// with Gemini or DeepSeek they are real runs.
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -310,7 +311,11 @@ for (const key of ["E", "F"]) {
   const result = JSON.parse(row.result_json);
   const h = result.result.headline;
   const near = (a, b, tol = 0.01) => Math.abs(a - b) <= tol;
-  assert.equal(result.meta.mode, "stub", "scripted-model runs are STUB");
+  // STUB with VALUEIQ_MODEL=dry; real with a live model (Gemini or DeepSeek).
+  assert(
+    ["stub", "real"].includes(result.meta.mode),
+    `run mode ${result.meta.mode}`,
+  );
   assert(
     near(h.npv.capacity_inclusive, EXPECTED.npvCapacityInclusive),
     `NPV capacity ${h.npv.capacity_inclusive}`,

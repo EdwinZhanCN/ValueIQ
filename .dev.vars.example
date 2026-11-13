@@ -11,8 +11,8 @@ BETTER_AUTH_SECRET=replace-with-a-random-32-byte-secret
 # model (assistant/dry-fetch.ts): no network, no key, every run marked STUB.
 # VALUEIQ_MODEL=dry
 # `deepseek` sends the same model calls to DeepSeek instead of Gemini (real
-# runs). Model ids default to deepseek-v4-flash; override with
-# DEEPSEEK_MODEL_ASSISTANT / DEEPSEEK_MODEL_CALC.
+# runs). A model id works too (VALUEIQ_MODEL=deepseek-flash). The default is
+# deepseek-flash; override with DEEPSEEK_MODEL_ASSISTANT / DEEPSEEK_MODEL_CALC.
 # VALUEIQ_MODEL=deepseek
 # DEEPSEEK_API_KEY=
 
