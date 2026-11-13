@@ -61,6 +61,7 @@ The Input team's pre-integration wire type is `shared/form.ts`. `app/lib/intake-
 
 - `agents/valueiq-agent.ts` — per-project run state and access-checked preflight/start/cancel RPC. Mid-run questions return NOT_SUPPORTED.
 - `agents/calculation-run.ts` — workflow steps check access and invoke the orchestrator with retry/backoff; results use the canonical run API.
+- Demo control (L3 #80, local only): with `DEMO_CONTROLS=on`, Process shows a labelled "Simulate a failure" button; `startRun({ simulateFailure: true })` gets its own run row, the workflow moves past the first progress step and ends it `failed` with a retryable `MODEL_ERROR` event marked `simulated: true` (no model call). The agent refuses the argument when the switch is off (`app/lib/demo-controls.ts`).
 - `app/context.server.ts` — typed Worker bindings for loaders and actions.
 
 `app/server/run-store.server.ts` adapts the orchestrator to canonical D1 APIs. `run-wiring.server.ts` loads saved forms and Worker secrets. No mock replaces a missing model key.

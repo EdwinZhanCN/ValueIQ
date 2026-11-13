@@ -419,6 +419,21 @@ export function processAction(args: {
   return { kind: "start", label, enabled: connected && !busy };
 }
 
+/**
+ * The demo control's button (L3 #80): only where the server turned demo
+ * controls on, and only when an ordinary start would be allowed right now.
+ */
+export function simulateControl(args: {
+  demoControls: boolean;
+  action: ProcessAction;
+}): { show: boolean; enabled: boolean } {
+  const show = args.demoControls && args.action.kind === "start";
+  return {
+    show,
+    enabled: show && args.action.kind === "start" && args.action.enabled,
+  };
+}
+
 /** A finished run whose inputs were saved again since: offer a fresh run. */
 export function canRerun(args: {
   view: RunView;

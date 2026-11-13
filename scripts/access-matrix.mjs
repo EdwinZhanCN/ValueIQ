@@ -408,6 +408,22 @@ try {
         assert.equal(start.error.code, "BAD_INPUT", JSON.stringify(start));
         const cancel = await ws.rpc("cancelRun", []);
         assert.equal(cancel.ok, true);
+        // The demo control (L3 #80) is the server's call, never the
+        // client's: with DEMO_CONTROLS off the argument is refused before
+        // anything is read; with it on the request goes on to the usual
+        // form check (no form saved yet).
+        const demoOn = /^DEMO_CONTROLS=on\s*$/m.test(
+          readFileSync(".dev.vars", "utf8"),
+        );
+        const simulated = await ws.rpc("startRun", [{ simulateFailure: true }]);
+        assert.equal(simulated.ok, false, JSON.stringify(simulated));
+        assert.equal(simulated.error.code, "BAD_INPUT");
+        if (demoOn)
+          assert.doesNotMatch(simulated.error.message, /demo controls/i);
+        else assert.match(simulated.error.message, /Demo controls are off/);
+        rows.push(
+          `startRun with simulateFailure, DEMO_CONTROLS ${demoOn ? "on: reaches the form check" : "off: refused"}`,
+        );
       }
       ws.close();
     }

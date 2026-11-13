@@ -2,6 +2,7 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ClipboardListIcon,
+  FlaskConicalIcon,
   InfoIcon,
   ListChecksIcon,
   LoaderCircleIcon,
@@ -20,6 +21,7 @@ import { cn } from "~/lib/utils";
 import {
   canRerun,
   cancelControl,
+  simulateControl,
   clampPct,
   connectionNote,
   inputStep,
@@ -55,6 +57,9 @@ export interface RunPanelProps {
   latest: LatestOutcome | null;
   onStart: () => void;
   onCancel: () => void;
+  /** The server has demo controls on (local only). */
+  demoControls?: boolean;
+  onSimulateFailure: () => void;
 }
 
 const MAX_MISSING = 6;
@@ -81,6 +86,10 @@ export function RunPanel(props: RunPanelProps) {
     view,
     connection,
     cancelling: props.cancelling,
+  });
+  const simulate = simulateControl({
+    demoControls: props.demoControls ?? false,
+    action,
   });
   const blockedFromStart = action.kind === "fix";
   // A run that ended with a gap list: a result of its own, not an error.
@@ -226,6 +235,21 @@ export function RunPanel(props: RunPanelProps) {
           >
             {props.busy ? <Spinner /> : null}
             Run again
+          </Button>
+        ) : null}
+        {simulate.show ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={props.onSimulateFailure}
+            disabled={!simulate.enabled}
+            title="Demo control: starts a run that ends with a labelled, simulated error. No model is called."
+            data-testid="simulate-failure"
+          >
+            <FlaskConicalIcon aria-hidden />
+            Simulate a failure
+            <Badge variant="outline">Demo</Badge>
           </Button>
         ) : null}
         <Primary

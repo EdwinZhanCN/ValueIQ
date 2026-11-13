@@ -23,6 +23,7 @@ import type { RunView } from "../shared/types";
 import type { RunError } from "../shared/types";
 import type { RunProgress } from "./calculation-run";
 import { errorFromWorkflowText } from "../assistant/run/error-text";
+import { demoRefusal, parseStartOptions } from "../app/lib/demo-controls";
 
 type ConnState = { userId: string };
 export type CallResult<T> =
@@ -140,7 +141,15 @@ export class ValueIQAgent extends Agent<Env, RunView> {
    * the run id as the workflow instance id.
    */
   @callable()
-  async startRun(): Promise<CallResult<RunView>> {
+  async startRun(rawOptions?: unknown): Promise<CallResult<RunView>> {
+    // The optional argument is untrusted; the server decides whether demo
+    // controls exist here, never the client (L3 #80).
+    const options = parseStartOptions(rawOptions);
+    const refusal = demoRefusal(
+      options,
+      this.env as unknown as Record<string, unknown>,
+    );
+    if (refusal) return fail("BAD_INPUT", refusal);
     const who = await this.memberOrError();
     if (!who.ok) return who;
     const caller = { userId: who.userId, projectId: this.name };
@@ -169,7 +178,11 @@ export class ValueIQAgent extends Agent<Env, RunView> {
       return fail("BAD_INPUT", e instanceof Error ? e.message : "Bad form");
     }
 
-    const { run, created } = await startRunRecord(caller, form);
+    // A simulated failure always gets its own run row: it must never be
+    // answered with an earlier run for the same form.
+    const { run, created } = await startRunRecord(caller, form, {
+      forceNew: options.simulateFailure,
+    });
     if (!created) {
       // Same project, form and versions: the existing run is the answer.
       const view = viewOf(run);
@@ -188,7 +201,11 @@ export class ValueIQAgent extends Agent<Env, RunView> {
     try {
       await this.runWorkflow(
         "RUN_WORKFLOW",
-        { runId: run.id, projectId: this.name },
+        {
+          runId: run.id,
+          projectId: this.name,
+          ...(options.simulateFailure ? { simulateFailure: true } : {}),
+        },
         { id: run.id },
       );
     } catch {

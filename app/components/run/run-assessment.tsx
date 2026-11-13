@@ -36,6 +36,8 @@ export interface RunAssessmentProps {
   missing: readonly MissingInput[];
   /** The newest saved outcome (loader data), or null. */
   latest: LatestOutcome | null;
+  /** The server has demo controls on (`DEMO_CONTROLS=on`, local only). */
+  demoControls?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ export function RunAssessment(props: RunAssessmentProps) {
         notice={null}
         onStart={noop}
         onCancel={noop}
+        onSimulateFailure={noop}
       />
     );
   }
@@ -105,9 +108,12 @@ function ConnectedRunAssessment(props: RunAssessmentProps) {
     async (
       method: "startRun" | "cancelRun",
       timeout: number,
+      args: unknown[] = [],
     ): Promise<CallResult<RunView> | null> => {
       try {
-        return await agent.call<CallResult<RunView>>(method, [], { timeout });
+        return await agent.call<CallResult<RunView>>(method, args, {
+          timeout,
+        });
       } catch {
         setNotice(
           "The request did not reach the server. Check your connection and try again.",
@@ -135,6 +141,16 @@ function ConnectedRunAssessment(props: RunAssessmentProps) {
     setBusy(false);
   }, [call, hasForm, missing.length]);
 
+  // Demo control: the server ends this run with a labelled simulated failure.
+  const simulateFailure = useCallback(async () => {
+    if (!hasForm || missing.length > 0) return;
+    setBusy(true);
+    setNotice(null);
+    const res = await call("startRun", 60_000, [{ simulateFailure: true }]);
+    if (res && !res.ok) setNotice(callErrorText(res.error));
+    setBusy(false);
+  }, [call, hasForm, missing.length]);
+
   const cancel = useCallback(async () => {
     setCancelling(true);
     setNotice(null);
@@ -153,6 +169,7 @@ function ConnectedRunAssessment(props: RunAssessmentProps) {
       notice={notice}
       onStart={() => void start()}
       onCancel={() => void cancel()}
+      onSimulateFailure={() => void simulateFailure()}
     />
   );
 }

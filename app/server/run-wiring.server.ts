@@ -130,10 +130,13 @@ export function runStoreFor(caller: {
 export async function startRunRecord(
   caller: { userId: string; projectId: string },
   form: FormFile,
+  opts: { forceNew?: boolean } = {},
 ): Promise<{ run: RunRecord; created: boolean }> {
   const s = runStoreFor(caller);
   const form_hash = computeFormHash(form);
-  const existing = await s.findRunByFormHash(caller.projectId, form_hash);
+  const existing = opts.forceNew
+    ? null
+    : await s.findRunByFormHash(caller.projectId, form_hash);
   if (
     existing &&
     (existing.status === "running" ||
