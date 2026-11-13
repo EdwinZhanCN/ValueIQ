@@ -6,10 +6,18 @@ import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Textarea } from "../ui/textarea";
 import { PROJECT_DESCRIPTION } from "./intake-draft";
+import { MAX_FILE_BYTES, megabytes, usageText } from "../../lib/file-limits";
 
-const MAX_BYTES = 10 * 1024 * 1024;
 const DESCRIPTION_TYPES = ".pdf,.md,.docx";
 const describesProject = (name: string) => /\.(pdf|md|docx)$/i.test(name);
+
+/** The upload route's refusal when the project's 25 MB would be exceeded. */
+type ProjectFull = {
+  ok: false;
+  error: "project_full";
+  usedBytes: number;
+  limitBytes: number;
+};
 
 /** Upload each file through the existing project upload route. */
 async function uploadAll(
@@ -20,7 +28,7 @@ async function uploadAll(
   const failed: string[] = [];
   const left: File[] = [];
   for (const file of files) {
-    if (file.size > MAX_BYTES) {
+    if (file.size > MAX_FILE_BYTES) {
       failed.push(`${file.name} is over 10 MB`);
       left.push(file);
       continue;
@@ -33,7 +41,14 @@ async function uploadAll(
       body,
     }).catch(() => null);
     if (!response?.ok) {
-      failed.push(`${file.name} did not upload`);
+      const refusal = (await response
+        ?.json()
+        .catch(() => null)) as ProjectFull | null;
+      failed.push(
+        refusal?.error === "project_full"
+          ? `${file.name} (${megabytes(file.size)} MB) did not fit: the project has ${megabytes(refusal.limitBytes - refusal.usedBytes)} MB left of ${megabytes(refusal.limitBytes)} MB`
+          : `${file.name} did not upload`,
+      );
       left.push(file);
     }
   }
@@ -95,12 +110,17 @@ export function IntakeFiles({
         <h2 id="intake-files-heading" className="text-sm font-semibold">
           Files
         </h2>
-        <span
-          title="Only project members can open them."
-          className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground"
-        >
-          <Lock className="size-3.5" />
-          Project only
+        <span className="flex items-center gap-3 text-[13px] text-muted-foreground">
+          <span data-testid="project-usage" className="tabular-nums">
+            {usageText(files.reduce((sum, file) => sum + file.size, 0))}
+          </span>
+          <span
+            title="Only project members can open them."
+            className="inline-flex items-center gap-1.5"
+          >
+            <Lock className="size-3.5" />
+            Project only
+          </span>
         </span>
       </div>
       <ProjectDescription projectId={projectId} files={overview} />

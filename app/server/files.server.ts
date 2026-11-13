@@ -6,14 +6,15 @@
  * Callers authorize first with `requireProjectAccess`; these functions do no
  * access check of their own beyond keeping a file inside its project.
  */
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 import { createDb } from "../../db/client";
 import { files } from "../../db/schema";
 import type { ProjectAccess } from "./access.server";
 
-/** Default per-file cap until Q7 sets limits. */
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
+// 10 MB per file; 25 MB for all of one project's uploads (Q7, #93).
+export { MAX_FILE_BYTES, MAX_PROJECT_BYTES } from "../lib/file-limits";
+import { MAX_FILE_BYTES, MAX_PROJECT_BYTES } from "../lib/file-limits";
 
 export type ProjectFile = typeof files.$inferSelect;
 
@@ -65,7 +66,18 @@ export async function readProjectFile(
   return { file, object };
 }
 
-export type UploadError = "missing_file" | "missing_description" | "too_large";
+/** Bytes used by a project's uploads (the sum of `files.size`). */
+export async function projectBytes(projectId: string): Promise<number> {
+  const row = await createDb(env.DB)
+    .select({ total: sql<number>`coalesce(sum(${files.size}), 0)` })
+    .from(files)
+    .where(eq(files.projectId, projectId))
+    .get();
+  return Number(row?.total ?? 0);
+}
+
+export type UploadError =
+  "missing_file" | "missing_description" | "too_large" | "project_full";
 
 /**
  * Stores the object, then its row. If the row cannot be written, the object
@@ -79,6 +91,8 @@ export async function uploadProjectFile(
   const text = description.trim();
   if (!text) return "missing_description";
   if (upload.size > MAX_FILE_BYTES) return "too_large";
+  if ((await projectBytes(access.projectId)) + upload.size > MAX_PROJECT_BYTES)
+    return "project_full";
 
   const id = crypto.randomUUID();
   const key = fileKey(access.teamId, access.projectId, id);
@@ -99,6 +113,14 @@ export async function uploadProjectFile(
       })
       .returning()
       .get();
+    // Two uploads checked at the same time can both pass the check above.
+    // Re-count after writing; if the project is now over, this upload backs
+    // out (row and object), so the limit holds without a lock.
+    if ((await projectBytes(access.projectId)) > MAX_PROJECT_BYTES) {
+      await createDb(env.DB).delete(files).where(eq(files.id, id));
+      await env.FILES.delete(key);
+      return "project_full";
+    }
     return {
       id: row.id,
       name: row.name,

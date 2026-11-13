@@ -2,6 +2,8 @@ import { data } from "react-router";
 import { requireProjectAccess } from "../server/access.server";
 import {
   MAX_FILE_BYTES,
+  MAX_PROJECT_BYTES,
+  projectBytes,
   uploadProjectFile,
   type UploadError,
 } from "../server/files.server";
@@ -14,6 +16,7 @@ const status: Record<UploadError, number> = {
   missing_file: 400,
   missing_description: 400,
   too_large: 413,
+  project_full: 413,
 };
 
 function fail(error: UploadError) {
@@ -43,6 +46,16 @@ export async function action({ request, params }: Route.ActionArgs) {
     upload,
     typeof description === "string" ? description : "",
   );
+  if (result === "project_full")
+    return data(
+      {
+        ok: false as const,
+        error: result,
+        usedBytes: await projectBytes(access.projectId),
+        limitBytes: MAX_PROJECT_BYTES,
+      },
+      { status: 413 },
+    );
   if (typeof result === "string") return fail(result);
   return data({ ok: true as const, file: result }, { status: 201 });
 }

@@ -407,6 +407,35 @@ try {
     );
   }
 
+  // The 25 MB project total: the project now holds the CSV and one 10 MB
+  // file. Another 10 MB fits; then exactly the remainder fits and one byte
+  // more does not, and a refused upload leaves nothing behind.
+  const total = 25 * 1024 * 1024;
+  const sizedUpload = async (size, label) => {
+    const sized = new FormData();
+    sized.set("file", new Blob([new Uint8Array(size)]), "total.bin");
+    sized.set("description", label);
+    return upload(alpha, sized);
+  };
+  assert.equal((await sizedUpload(cap, "second 10 MB")).status, 201);
+  const remainder = total - 2 * cap - bytes.byteLength;
+  const over = await sizedUpload(remainder + 1, "one byte over the total");
+  assert.equal(over.status, 413, "upload past the project total");
+  const refusal = await over.json();
+  assert.equal(refusal.error, "project_full");
+  assert.equal(refusal.usedBytes, 2 * cap + bytes.byteLength);
+  assert.equal(refusal.limitBytes, total);
+  assert.equal(
+    (await sizedUpload(remainder, "exactly the remainder")).status,
+    201,
+    "upload filling the project total",
+  );
+  assert.equal(
+    (await sizedUpload(1, "one more byte")).status,
+    413,
+    "upload into a full project",
+  );
+
   assert.equal(
     (await download(alpha.projectId, fileId, beta.cookie)).status,
     404,
@@ -509,7 +538,7 @@ try {
   assert.match(ready.html, /Continue to Process/, "clarify continue");
 
   console.log(
-    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, account pages, /projects behind sign-in, file round trip, cap, and isolation.",
+    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, account pages, /projects behind sign-in, file round trip, file and project caps, and isolation.",
   );
 } catch (error) {
   console.error(logs);
