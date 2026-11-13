@@ -8,6 +8,8 @@
  * `.dev.vars` swaps Gemini for the scripted model in `assistant/dry-fetch.ts`
  * and marks every run `stub`, so the UI and PDF carry the STUB label. The
  * deployed environments never set it (`scripts/check-deploy-target.test.mjs`).
+ * `VALUEIQ_MODEL=deepseek` sends the same calls to DeepSeek with
+ * `DEEPSEEK_API_KEY` (real runs, DeepSeek model ids from `resolveModels`).
  */
 import { env } from "cloudflare:workers";
 import {
@@ -34,7 +36,7 @@ import { dryFetch } from "../../assistant/dry-fetch";
 import type { FetchLike } from "../../assistant/gemini";
 import { getExtractedText } from "./file-text.server";
 
-/** Where model calls go: Gemini with the Worker key, or the local scripted model. */
+/** Where model calls go: Gemini (or DeepSeek) with the Worker key, or the local scripted model. */
 export type ModelSource =
   | { kind: "live"; apiKey: string; mode: "real" }
   | { kind: "dry"; apiKey: string; mode: "stub"; fetch: FetchLike }
@@ -55,14 +57,17 @@ export function modelSource(
       // A short pause per answer so local progress and "Processing" are visible.
       fetch: dryFetch({ delayMs: 400 }),
     };
-  const apiKey = vars.GEMINI_API_KEY;
+  const apiKey =
+    vars.VALUEIQ_MODEL === "deepseek"
+      ? vars.DEEPSEEK_API_KEY
+      : vars.GEMINI_API_KEY;
   return apiKey
     ? { kind: "live", apiKey, mode: "real" }
     : { kind: "none", mode: "real" };
 }
 
 export const NO_KEY_MESSAGE =
-  "The AI service is not set up for this environment (no Gemini key). Ask an admin to add it.";
+  "The AI service is not set up for this environment (no model key). Ask an admin to add it.";
 
 /** The saved form must at least look like a form file; the engine validates the rest. */
 export function asFormFile(json: unknown): FormFile {

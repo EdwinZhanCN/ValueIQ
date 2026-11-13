@@ -1,6 +1,8 @@
-// Gemini client on the Vercel AI SDK (`ai` + `@ai-sdk/google`), used only as a library inside the Worker.
-// The API key is held in the provider, sent only in the x-goog-api-key header, and never logged.
+// Model client on the Vercel AI SDK (`ai` + `@ai-sdk/google`, and `@ai-sdk/deepseek` for deepseek-*
+// model ids), used only as a library inside the Worker. The API key is held in the provider, sent
+// only in its auth header (x-goog-api-key, or Authorization for DeepSeek), and never logged.
 // Same exported interface as before (runToolLoop, LoopOptions, LoopResult, events, errors).
+import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import {
   APICallError,
@@ -15,7 +17,7 @@ import {
   type ToolSet,
 } from "ai";
 import { toGeminiSchema, validateSchema, type JsonSchema } from "./schema";
-import { assertExactModelId, type ThinkingSetting } from "./models";
+import { assertExactModelId, providerOf, type ThinkingSetting } from "./models";
 import { NarrativeRejectedError, assertModelText } from "./narrative-guard";
 import {
   ToolArgError,
@@ -159,7 +161,9 @@ export function hashOf(x: unknown): string {
 export function redact(text: string, secrets: readonly string[]): string {
   let out = text;
   for (const s of secrets) if (s) out = out.split(s).join("[redacted]");
-  return out.replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]");
+  return out
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]")
+    .replace(/sk-[0-9A-Za-z]{24,}/g, "[redacted]");
 }
 
 export function buildRequest(
@@ -219,6 +223,75 @@ function toSdkFetch(f: FetchLike): typeof fetch {
   };
 }
 
+// ---------- provider choice (Gemini by default; DeepSeek for deepseek-* ids) ----------
+type SdkModel = ReturnType<ReturnType<typeof createGoogleGenerativeAI>>;
+type ProviderOptions = NonNullable<
+  Parameters<typeof generateText>[0]["providerOptions"]
+>;
+
+function providerModel(o: {
+  apiKey: string;
+  model: string;
+  baseUrl?: string;
+  fetch?: FetchLike;
+}): SdkModel {
+  const common = {
+    apiKey: o.apiKey,
+    ...(o.baseUrl ? { baseURL: o.baseUrl } : {}),
+    ...(o.fetch ? { fetch: toSdkFetch(o.fetch) } : {}),
+  };
+  return providerOf(o.model) === "deepseek"
+    ? createDeepSeek(common)(o.model)
+    : createGoogleGenerativeAI(common)(o.model);
+}
+
+/** The model the API says answered: Gemini's modelVersion, DeepSeek's model. */
+function returnedModel(model: string, body: unknown): string | null {
+  const b = body as { modelVersion?: unknown; model?: unknown } | undefined;
+  const v = providerOf(model) === "deepseek" ? b?.model : b?.modelVersion;
+  return typeof v === "string" ? v : null;
+}
+
+/**
+ * Thinking per provider. DeepSeek thinks by default; without a setting (the assistant and the
+ * evidence extractor) it is turned off, and a calc setting maps to its effort levels.
+ */
+function thinkingFor(
+  model: string,
+  t: ThinkingSetting | undefined,
+): { providerOptions?: ProviderOptions } {
+  if (providerOf(model) === "deepseek") {
+    const off =
+      t === undefined ||
+      ("level" in t ? t.level === "minimal" : t.budget === 0);
+    return {
+      providerOptions: {
+        deepseek: off
+          ? { thinking: { type: "disabled" as const } }
+          : {
+              thinking: { type: "enabled" as const },
+              reasoningEffort:
+                "level" in t && t.level === "high"
+                  ? ("high" as const)
+                  : ("low" as const),
+            },
+      },
+    };
+  }
+  return t === undefined
+    ? {}
+    : {
+        providerOptions: {
+          google: {
+            thinkingConfig:
+              "level" in t
+                ? { thinkingLevel: t.level }
+                : { thinkingBudget: t.budget },
+          },
+        },
+      };
+}
+
 function toMessages(contents: Content[]): ModelMessage[] {
   return contents.map((c) => {
     if (c.parts.some((p) => p.functionCall || p.functionResponse))
@@ -250,12 +323,6 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
   let paused = false;
   const questions: unknown[] = [];
 
-  const provider = createGoogleGenerativeAI({
-    apiKey: o.apiKey,
-    ...(o.baseUrl ? { baseURL: o.baseUrl } : {}),
-    ...(o.fetch ? { fetch: toSdkFetch(o.fetch) } : {}),
-  });
-
   // one place sees every model call: cancellation, events, tokens and the strict modelVersion check
   const middleware: LanguageModelMiddleware = {
     specificationVersion: "v4",
@@ -281,9 +348,7 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
       usage.thoughts += thoughts;
       usage.total += total;
       // the API's own modelVersion (the SDK only echoes the requested id in response.modelId)
-      const body = r.response?.body as { modelVersion?: unknown } | undefined;
-      const returned =
-        typeof body?.modelVersion === "string" ? body.modelVersion : null;
+      const returned = returnedModel(o.model, r.response?.body);
       emit({
         type: "response",
         model: o.model,
@@ -307,7 +372,7 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
     },
   };
   const model = wrapLanguageModel({
-    model: o.testModel ?? provider(o.model),
+    model: o.testModel ?? providerModel(o),
     middleware,
   });
 
@@ -354,19 +419,7 @@ export async function runToolLoop(o: LoopOptions): Promise<LoopResult> {
     });
   }
 
-  const thinkingOptions =
-    o.thinking === undefined
-      ? {}
-      : {
-          providerOptions: {
-            google: {
-              thinkingConfig:
-                "level" in o.thinking
-                  ? { thinkingLevel: o.thinking.level }
-                  : { thinkingBudget: o.thinking.budget },
-            },
-          },
-        };
+  const thinkingOptions = thinkingFor(o.model, o.thinking);
 
   const result = await generateText({
     model,
@@ -503,11 +556,6 @@ export async function generateStructured(
   assertExactModelId(o.model, "model");
   const usage = { prompt: 0, output: 0, thoughts: 0, total: 0 };
   const emit = (e: GeminiEvent) => o.log?.(e);
-  const provider = createGoogleGenerativeAI({
-    apiKey: o.apiKey,
-    ...(o.baseUrl ? { baseURL: o.baseUrl } : {}),
-    ...(o.fetch ? { fetch: toSdkFetch(o.fetch) } : {}),
-  });
   const middleware: LanguageModelMiddleware = {
     specificationVersion: "v4",
     wrapGenerate: async ({ doGenerate, params }) => {
@@ -528,9 +576,7 @@ export async function generateStructured(
       usage.output += output;
       usage.thoughts += thoughts;
       usage.total += raw.totalTokenCount ?? prompt + output + thoughts;
-      const body = r.response?.body as { modelVersion?: unknown } | undefined;
-      const returned =
-        typeof body?.modelVersion === "string" ? body.modelVersion : null;
+      const returned = returnedModel(o.model, r.response?.body);
       emit({
         type: "response",
         model: o.model,
@@ -554,28 +600,19 @@ export async function generateStructured(
     },
   };
   const model = wrapLanguageModel({
-    model: o.testModel ?? provider(o.model),
+    model: o.testModel ?? providerModel(o),
     middleware,
   });
-  const thinkingOptions =
-    o.thinking === undefined
-      ? {}
-      : {
-          providerOptions: {
-            google: {
-              thinkingConfig:
-                "level" in o.thinking
-                  ? { thinkingLevel: o.thinking.level }
-                  : { thinkingBudget: o.thinking.budget },
-            },
-          },
-        };
+  const thinkingOptions = thinkingFor(o.model, o.thinking);
   let value: unknown;
   let problem: StructuredResult["problem"];
   try {
     const result = await generateText({
       model,
-      system: o.system,
+      system:
+        providerOf(o.model) === "deepseek"
+          ? `${o.system}\nReply with one JSON object that matches this JSON schema:\n${JSON.stringify(o.schema)}`
+          : o.system,
       messages: [{ role: "user", content: o.prompt }],
       output: Output.object({
         schema: jsonSchema(o.schema as Parameters<typeof jsonSchema>[0]),

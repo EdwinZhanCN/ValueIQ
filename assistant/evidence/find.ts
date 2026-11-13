@@ -438,6 +438,16 @@ export function verifyCandidate(
     typeof raw.value_in_quote !== "string"
   )
     return { ok: false, reason: "invalid_shape" };
+  // Excerpts show each passage as "[loc] text"; a model may copy the tag into
+  // the location or the front of the quote. The words checked stay the same.
+  const tag = /^\[([^\]\n]{1,80})\]\s*/;
+  const at = raw.location.trim().replace(/^\[([^\]\n]{1,80})\]$/, "$1");
+  const tagged = tag.exec(raw.quote.trim());
+  const quote =
+    tagged && tagged[1]?.trim().toLowerCase() === at.toLowerCase()
+      ? raw.quote.trim().slice(tagged[0].length)
+      : raw.quote;
+  raw = { ...raw, quote, location: at };
   const nq = normalizeWs(raw.quote);
   if (nq.length === 0 || nq.length > MAX_QUOTE_CHARS)
     return { ok: false, reason: "quote_length" };

@@ -10,6 +10,11 @@ BETTER_AUTH_SECRET=replace-with-a-random-32-byte-secret
 # Local only, never in wrangler.jsonc. `dry` swaps Gemini for the scripted
 # model (assistant/dry-fetch.ts): no network, no key, every run marked STUB.
 # VALUEIQ_MODEL=dry
+# `deepseek` sends the same model calls to DeepSeek instead of Gemini (real
+# runs). Model ids default to deepseek-v4-flash; override with
+# DEEPSEEK_MODEL_ASSISTANT / DEEPSEEK_MODEL_CALC.
+# VALUEIQ_MODEL=deepseek
+# DEEPSEEK_API_KEY=
 
 # Local only. `on` shows the labelled "Simulate a failure" demo control on
 # the Process step; the agent refuses that request when it is not `on`.

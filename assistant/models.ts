@@ -3,6 +3,15 @@
 
 export const DEFAULT_MODEL_ASSISTANT = "gemini-3.5-flash-lite";
 export const DEFAULT_MODEL_CALC = "gemini-3.6-flash";
+/** Local alternative while Gemini is unavailable: VALUEIQ_MODEL=deepseek with DEEPSEEK_API_KEY. */
+export const DEFAULT_DEEPSEEK_ASSISTANT = "deepseek-v4-flash";
+export const DEFAULT_DEEPSEEK_CALC = "deepseek-v4-flash";
+
+export type ModelProvider = "gemini" | "deepseek";
+/** The provider is part of the model id: deepseek-* goes to DeepSeek, everything else to Gemini. */
+export function providerOf(id: string): ModelProvider {
+  return id.startsWith("deepseek-") ? "deepseek" : "gemini";
+}
 
 export class ModelConfigError extends Error {
   constructor(message: string) {
@@ -11,8 +20,9 @@ export class ModelConfigError extends Error {
   }
 }
 
-// exact, versioned ids only: gemini-<major>[.<minor>]-<variant...>
-const EXACT_ID = /^gemini-\d+(\.\d+)?-[a-z0-9]+(-[a-z0-9.]+)*$/;
+// exact, versioned ids only: gemini-<major>[.<minor>]-<variant...> or deepseek-v<major>[.<minor>]-<variant...>
+const EXACT_ID =
+  /^(gemini-\d+(\.\d+)?|deepseek-v\d+(\.\d+)?)-[a-z0-9]+(-[a-z0-9.]+)*$/;
 
 /** Throws unless `id` is an exact model id (no `-latest`, no unversioned alias). */
 export function assertExactModelId(id: string, label = "model"): string {
@@ -32,10 +42,27 @@ export interface ModelIds {
   calc: string;
 }
 
-/** Defaults, overridable by GEMINI_MODEL_ASSISTANT and GEMINI_MODEL_CALC. */
+/**
+ * Defaults, overridable by GEMINI_MODEL_ASSISTANT and GEMINI_MODEL_CALC. With VALUEIQ_MODEL=deepseek
+ * the DeepSeek ids are used instead, overridable by DEEPSEEK_MODEL_ASSISTANT and DEEPSEEK_MODEL_CALC.
+ */
 export function resolveModels(
   env: Record<string, string | undefined> = {},
 ): ModelIds {
+  if (env["VALUEIQ_MODEL"] === "deepseek") {
+    const a = env["DEEPSEEK_MODEL_ASSISTANT"] || DEFAULT_DEEPSEEK_ASSISTANT;
+    const c = env["DEEPSEEK_MODEL_CALC"] || DEFAULT_DEEPSEEK_CALC;
+    const ids = {
+      assistant: assertExactModelId(a, "DEEPSEEK_MODEL_ASSISTANT"),
+      calc: assertExactModelId(c, "DEEPSEEK_MODEL_CALC"),
+    };
+    for (const [k, v] of Object.entries(ids))
+      if (providerOf(v) !== "deepseek")
+        throw new ModelConfigError(
+          `DEEPSEEK_MODEL_${k.toUpperCase()}: not a DeepSeek model (${v})`,
+        );
+    return ids;
+  }
   const a = env["GEMINI_MODEL_ASSISTANT"] || DEFAULT_MODEL_ASSISTANT;
   const c = env["GEMINI_MODEL_CALC"] || DEFAULT_MODEL_CALC;
   return {
