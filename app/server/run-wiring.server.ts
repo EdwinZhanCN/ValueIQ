@@ -4,6 +4,10 @@
  * Worker env. Shared by `ValueIQAgent` (preflight) and `CalculationRun`.
  *
  * Nothing here reads or logs the key; a missing key is an error, never a mock.
+ * The one exception is explicit and local only: `VALUEIQ_MODEL=dry` in
+ * `.dev.vars` swaps Gemini for the scripted model in `assistant/dry-fetch.ts`
+ * and marks every run `stub`, so the UI and PDF carry the STUB label. The
+ * deployed environments never set it (`scripts/check-deploy-target.test.mjs`).
  */
 import { env } from "cloudflare:workers";
 import {
@@ -18,6 +22,38 @@ import { D1RunStore } from "./run-store.server";
 import type { RunRecord } from "../../assistant/run/types";
 import { DEFAULT_CONFIG } from "../../engine/config";
 import { getProjectForm } from "./projects.server";
+import { dryFetch } from "../../assistant/dry-fetch";
+import type { FetchLike } from "../../assistant/gemini";
+
+/** Where model calls go: Gemini with the Worker key, or the local scripted model. */
+export type ModelSource =
+  | { kind: "live"; apiKey: string; mode: "real" }
+  | { kind: "dry"; apiKey: string; mode: "stub"; fetch: FetchLike }
+  | { kind: "none"; mode: "real" };
+
+export function modelSource(
+  vars: Record<string, string | undefined> = env as unknown as Record<
+    string,
+    string | undefined
+  >,
+): ModelSource {
+  if (vars.VALUEIQ_MODEL === "dry")
+    return {
+      kind: "dry",
+      // Never sent anywhere: the scripted fetch answers every request.
+      apiKey: "scripted-model-no-key",
+      mode: "stub",
+      // A short pause per answer so local progress and "Processing" are visible.
+      fetch: dryFetch({ delayMs: 400 }),
+    };
+  const apiKey = vars.GEMINI_API_KEY;
+  return apiKey
+    ? { kind: "live", apiKey, mode: "real" }
+    : { kind: "none", mode: "real" };
+}
+
+export const NO_KEY_MESSAGE =
+  "The AI service is not set up for this environment (no Gemini key). Ask an admin to add it.";
 
 /** The saved form must at least look like a form file; the engine validates the rest. */
 export function asFormFile(json: unknown): FormFile {
@@ -50,20 +86,18 @@ export function makeOrchestrator(o: {
   onView?: (v: RunView) => void;
 }): RunOrchestrator {
   const vars = env as unknown as Record<string, string | undefined>;
-  const apiKey = vars.GEMINI_API_KEY;
-  if (!apiKey)
-    throw new OrchestratorError(
-      "MODEL_ERROR",
-      "The AI service is not set up for this environment (no Gemini key). Ask an admin to add it.",
-      false,
-    );
+  const source = modelSource(vars);
+  if (source.kind === "none")
+    throw new OrchestratorError("MODEL_ERROR", NO_KEY_MESSAGE, false);
   const thinking = resolveThinking(vars);
   return new RunOrchestrator({
     store: o.store,
     project_id: o.projectId,
     user_id: o.userId,
     getForm: () => loadForm(o.projectId),
-    apiKey,
+    apiKey: source.apiKey,
+    mode: source.mode,
+    ...(source.kind === "dry" ? { fetch: source.fetch } : {}),
     models: resolveModels(vars),
     ...(thinking ? { thinking } : {}),
     now: () => new Date().toISOString(),
@@ -111,7 +145,7 @@ export async function startRunRecord(
   const run = await s.createRun({
     id: crypto.randomUUID(),
     project_id: caller.projectId,
-    mode: "real",
+    mode: modelSource().mode,
     form_hash,
     contract_version: v.contract,
     formula_version: v.formula,

@@ -9,6 +9,8 @@ export interface DryOptions {
   badFirst?: boolean;
   /** Every narrative is bad, so the engine fallback runs. */
   badAlways?: boolean;
+  /** Wait this long before each answer, so local progress is visible (default 0). */
+  delayMs?: number;
 }
 
 function listAfter(prompt: string, label: string): string[] {
@@ -17,6 +19,16 @@ function listAfter(prompt: string, label: string): string[] {
 }
 
 export function dryFetch(opts: DryOptions = {}): FetchLike {
+  const answer = scripted(opts);
+  const delay = opts.delayMs ?? 0;
+  if (delay <= 0) return answer;
+  return (url, init) =>
+    new Promise((resolve) => setTimeout(resolve, delay)).then(() =>
+      answer(url, init),
+    );
+}
+
+function scripted(opts: DryOptions): FetchLike {
   return fakeFetch([
     (req) => {
       const decls = (

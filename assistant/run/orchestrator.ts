@@ -143,6 +143,8 @@ export function mapError(e: unknown): RunError {
 function httpMessage(status: number): string {
   if (status === 401 || status === 403)
     return "The AI service rejected the key. Ask an admin to check it.";
+  if (status === 402)
+    return "The AI service account has no credit left. Ask an admin to check its billing.";
   if (status === 429) return "The AI service is busy. Try again in a minute.";
   if (status >= 500)
     return `The AI service had a problem (HTTP ${status}). Try again.`;
