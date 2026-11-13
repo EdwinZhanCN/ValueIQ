@@ -3,6 +3,7 @@ import {
   CheckIcon,
   ClipboardListIcon,
   InfoIcon,
+  ListChecksIcon,
   LoaderCircleIcon,
   MessageCircleQuestionIcon,
   SaveIcon,
@@ -18,13 +19,18 @@ import { LABELS } from "~/lib/intake-fields";
 import { cn } from "~/lib/utils";
 import {
   canRerun,
+  cancelControl,
   clampPct,
   connectionNote,
+  inputStep,
+  inputStepHref,
   phaseItems,
   processAction,
+  resultsHref,
   runHeading,
   shownView,
   type ConnectionState,
+  type GapSummary,
   type LatestOutcome,
   type MissingInput,
   type PhaseItem,
@@ -71,7 +77,20 @@ export function RunPanel(props: RunPanelProps) {
     cancelling: props.cancelling,
   });
   const rerun = canRerun({ view, latest, hasForm: props.hasForm, missing });
+  const cancel = cancelControl({
+    view,
+    connection,
+    cancelling: props.cancelling,
+  });
   const blockedFromStart = action.kind === "fix";
+  // A run that ended with a gap list: a result of its own, not an error.
+  const gapRun = view.status === "gap_list";
+  const gap =
+    gapRun &&
+    latest?.runId === view.run_id &&
+    latest.summary?.kind === "gap_list"
+      ? latest.summary
+      : null;
   const fresh = view.status === "idle";
   const note = connection === "open" ? null : connectionNote(connection);
   const title =
@@ -86,7 +105,10 @@ export function RunPanel(props: RunPanelProps) {
   return (
     <section
       aria-labelledby="process-heading"
-      className="relative mx-auto flex w-full max-w-lg flex-col items-center gap-6 rounded-2xl border bg-card px-5 py-8 sm:gap-7 sm:px-9 sm:py-10"
+      className={cn(
+        "relative mx-auto flex w-full flex-col items-center gap-6 rounded-2xl border bg-card px-5 py-8 sm:gap-7 sm:px-9 sm:py-10",
+        gapRun ? "max-w-2xl" : "max-w-lg",
+      )}
     >
       {view.mode === "stub" ? (
         <Badge
@@ -98,7 +120,11 @@ export function RunPanel(props: RunPanelProps) {
         </Badge>
       ) : null}
 
-      {fresh && blockedFromStart ? (
+      {gapRun ? (
+        <span className="flex size-20 items-center justify-center rounded-full bg-accent text-primary">
+          <ListChecksIcon className="size-8" aria-hidden />
+        </span>
+      ) : fresh && blockedFromStart ? (
         <span className="flex size-20 items-center justify-center rounded-full bg-accent text-primary">
           <ClipboardListIcon className="size-8" aria-hidden />
         </span>
@@ -130,14 +156,30 @@ export function RunPanel(props: RunPanelProps) {
 
       {view.status === "failed" ? <FailureNote view={view} /> : null}
 
+      {view.status === "cancelled" ? (
+        <p role="status" className="text-center text-sm text-muted-foreground">
+          The run was stopped. Your form and files are saved; start a new run
+          whenever you are ready.
+        </p>
+      ) : null}
+
       {view.status === "blocked_on_question" ? (
         <OpenQuestion question={view.pending_question} />
       ) : blockedFromStart && fresh ? null : (
         <Steps items={phaseItems(view)} />
       )}
 
+      {gapRun ? (
+        <GapCard
+          projectId={projectId}
+          gap={gap}
+          loading={latest?.runId !== view.run_id}
+          runId={view.run_id}
+        />
+      ) : null}
+
       {blockedFromStart && props.hasForm ? (
-        <MissingList missing={missing} />
+        <MissingList projectId={projectId} missing={missing} />
       ) : null}
 
       {rerun ? (
@@ -161,16 +203,17 @@ export function RunPanel(props: RunPanelProps) {
         >
           Projects
         </Link>
-        {view.status === "running" || view.status === "preflight" ? (
+        {cancel.show && action.kind !== "cancel" ? (
           <Button
             type="button"
             variant="ghost"
             size="lg"
             onClick={props.onCancel}
-            disabled={connection !== "open" || props.cancelling}
+            disabled={!cancel.enabled}
+            title={cancel.reason ?? undefined}
           >
             {props.cancelling ? <Spinner /> : null}
-            Cancel run
+            {cancel.label}
           </Button>
         ) : null}
         {rerun ? (
@@ -219,6 +262,7 @@ function Primary({
   const arrow = <ArrowRightIcon data-icon="inline-end" aria-hidden />;
   switch (action.kind) {
     case "fix":
+    case "back":
     case "results":
       return (
         <Link to={action.href} className={buttonVariants({ size: "lg" })}>
@@ -255,7 +299,7 @@ function Primary({
           disabled={!action.enabled}
         >
           {cancelling ? <Spinner /> : null}
-          {action.label}
+          {cancelling ? "Cancelling..." : action.label}
         </Button>
       );
   }
@@ -342,7 +386,13 @@ function Steps({ items }: { items: PhaseItem[] }) {
   );
 }
 
-function MissingList({ missing }: { missing: readonly MissingInput[] }) {
+function MissingList({
+  projectId,
+  missing,
+}: {
+  projectId: string;
+  missing: readonly MissingInput[];
+}) {
   if (missing.length === 0) return null;
   const shown = missing.slice(0, MAX_MISSING);
   const more = missing.length - shown.length;
@@ -351,9 +401,20 @@ function MissingList({ missing }: { missing: readonly MissingInput[] }) {
       <p className="text-sm font-medium">Needed before a run can start</p>
       <ul className="flex w-full flex-col divide-y rounded-xl border">
         {shown.map((m) => (
-          <li key={m.field} className="flex flex-col gap-0.5 px-3.5 py-2.5">
-            <span className="text-sm font-medium">{m.label}</span>
-            <span className="text-xs text-muted-foreground">{m.message}</span>
+          <li key={m.field}>
+            <Link
+              to={inputStepHref(projectId, m.field)}
+              className="flex flex-col gap-0.5 rounded-xl px-3.5 py-2.5 outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <span className="text-sm font-medium">
+                {m.label}
+                <span className="font-normal text-muted-foreground">
+                  {" · "}
+                  {inputStep(m.field) === "intake" ? "Intake" : "Clarify"}
+                </span>
+              </span>
+              <span className="text-xs text-muted-foreground">{m.message}</span>
+            </Link>
           </li>
         ))}
       </ul>
@@ -427,6 +488,138 @@ function OpenQuestion({ question }: { question: Question | null }) {
         Answering here is not available yet. Cancel the run, update Clarify,
         then start again.
       </p>
+    </div>
+  );
+}
+
+/**
+ * A run that ended below the confidence floor (mock UI 05 has no state for
+ * it, so it reuses the card). Not an error: project confidence against the
+ * floor, the engine's ranked "what to add" list with a link to the step that
+ * edits each input, and the drivers that were left out.
+ */
+function GapCard({
+  projectId,
+  gap,
+  loading,
+  runId,
+}: {
+  projectId: string;
+  gap: GapSummary | null;
+  loading: boolean;
+  runId: string | null;
+}) {
+  if (!gap)
+    return (
+      <div className="flex w-full flex-col gap-2 rounded-xl border bg-muted/40 p-4 text-sm">
+        {loading ? (
+          <p role="status" className="flex items-center gap-2">
+            <Spinner aria-hidden />
+            Loading what to add...
+          </p>
+        ) : (
+          <p>The saved list could not be read.</p>
+        )}
+        <p className="text-muted-foreground">
+          There is not enough backed evidence to give a result yet.
+          {runId ? (
+            <>
+              {" "}
+              <Link
+                to={resultsHref(projectId, runId)}
+                className="underline underline-offset-2"
+              >
+                Open it on the Review step
+              </Link>
+              .
+            </>
+          ) : null}
+        </p>
+      </div>
+    );
+  return (
+    <div className="flex w-full flex-col gap-4 text-left">
+      <p className="text-center text-sm text-muted-foreground">
+        {gap.reason}. These are next steps, not an error.
+      </p>
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border text-sm">
+        <div className="flex flex-col gap-0.5 bg-card px-4 py-3">
+          <dt className="text-xs text-muted-foreground">Project confidence</dt>
+          <dd className="text-lg font-semibold tabular-nums">
+            {gap.confidence}
+          </dd>
+        </div>
+        <div className="flex flex-col gap-0.5 bg-card px-4 py-3">
+          <dt className="text-xs text-muted-foreground">Release floor</dt>
+          <dd className="text-lg font-semibold tabular-nums">{gap.floor}</dd>
+        </div>
+      </dl>
+      {gap.items.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium">What to add, in order</p>
+          <ol aria-label="What to add" className="flex flex-col gap-2">
+            {gap.items.map((item) => (
+              <li
+                key={item.rank}
+                className="flex items-start gap-3 rounded-xl border p-3.5"
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">
+                  {item.rank}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {item.whatToAdd}
+                  </p>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    Confidence {item.confidenceNow} now,{" "}
+                    {item.confidenceIfAdded} if added
+                  </p>
+                </div>
+                <Link
+                  to={inputStepHref(projectId, item.inputId)}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                  aria-label={`Add: ${item.label}`}
+                >
+                  Add this
+                  <ArrowRightIcon data-icon="inline-end" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ol>
+          <p className="text-xs text-muted-foreground">
+            The options are alternatives, not amounts to add together.
+          </p>
+        </div>
+      ) : null}
+      {gap.dropped.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-sm font-medium">Left out for now</p>
+          <ul className="flex flex-col divide-y rounded-xl border text-sm">
+            {gap.dropped.map((driver) => (
+              <li
+                key={driver.id}
+                className="flex flex-wrap justify-between gap-x-3 px-3.5 py-2"
+              >
+                <span>{driver.label}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {driver.confidence} confidence, needs {driver.floor}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {runId ? (
+        <p className="text-center text-sm">
+          <Link
+            to={resultsHref(projectId, runId)}
+            className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            See the full list on Review
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   isSpecified,
   plainLanguage,
 } from "../../lib/output-presentation";
+import { inputStepHref } from "../../lib/run-ui";
 import { cn } from "../../lib/utils";
 import {
   REPORT_SECTIONS,
@@ -425,7 +426,7 @@ export function ReportBuilder({
     embedded: true,
     resultLink: (tab = "numbers", reference) =>
       `${base}/results?${new URLSearchParams({ run: runId, tab })}${reference ? `#${encodeURIComponent(reference)}` : ""}`,
-    intakeLink: () => `${base}/clarify`,
+    intakeLink: (input) => inputStepHref(project.id, input),
   };
   const [busy, setBusy] = useState(false);
   const fresh = reports.find((report) => report.id === savedReport);

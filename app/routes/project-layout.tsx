@@ -1,4 +1,10 @@
-import { Link, Outlet, useLocation, useRouteLoaderData } from "react-router";
+import {
+  Link,
+  Outlet,
+  useLocation,
+  useRouteLoaderData,
+  useSearchParams,
+} from "react-router";
 import {
   ProjectSteps,
   stepFor,
@@ -71,6 +77,9 @@ export default function ProjectLayout({ loaderData }: Route.ComponentProps) {
   const { project, done } = loaderData;
   const { pathname } = useLocation();
   const current = stepFor(pathname, project.id);
+  // Review and Report show one run; keep it when moving between them.
+  const [search] = useSearchParams();
+  const runId = search.get("run");
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-3">
@@ -86,6 +95,7 @@ export default function ProjectLayout({ loaderData }: Route.ComponentProps) {
             projectId={project.id}
             current={current.key}
             done={done}
+            runId={runId}
           />
         </div>
       </header>

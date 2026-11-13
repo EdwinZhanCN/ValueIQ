@@ -23,7 +23,7 @@ Publication functions in `app/server/runs.server.ts` retain the merged infrastru
 ## Pages and persistence
 
 - `/projects` and `/projects/new`: authenticated team project listing/creation.
-- `/projects/:projectId`: opaque saved JSON form editor, until the structured intake slice lands. The merged project/form service and private file upload/list UI are preserved.
+- `/projects/:projectId` and `/clarify`: the Intake and Clarify steps that save the project form ([structured intake](structured-intake.md)).
 - `/projects/:projectId/results`: latest run; `?run=...` pins a historical snapshot. Pending runs refresh from server status. Results and gap links preserve run identity and target input when returning to intake. The JSON editor focuses the requested key when present; it cannot supply structured-field navigation yet.
 - POST `/projects/:projectId/runs/:runId/reports`: same-origin, access-checked generation using only the stored run. Redirects to the report tab with a download link.
 - GET `/projects/:projectId/runs/:runId/reports/:reportId`: authenticated PDF attachment, private/no-store response.
