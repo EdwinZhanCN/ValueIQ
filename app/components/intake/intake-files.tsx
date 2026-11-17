@@ -8,6 +8,7 @@ import { Textarea } from "../ui/textarea";
 import { PROJECT_DESCRIPTION } from "./intake-draft";
 import { MAX_FILE_BYTES, megabytes, usageText } from "../../lib/file-limits";
 import type { FileReadSummary } from "../../lib/file-read";
+import { unselectFileAt } from "../../lib/file-selection";
 
 const DESCRIPTION_TYPES = ".pdf,.md,.docx";
 const describesProject = (name: string) => /\.(pdf|md|docx)$/i.test(name);
@@ -276,6 +277,14 @@ function AddGroup({ projectId }: { projectId: string }) {
     setDescription("");
     if (input.current) input.current.value = "";
   }
+  function unselect(index: number) {
+    const next = unselectFileAt(chosen, index);
+    setChosen(next);
+    setError(null);
+    if (next.length === 0) setDescription("");
+    // Allow the same file to be selected again after it was removed.
+    if (input.current) input.current.value = "";
+  }
   async function upload() {
     if (!description.trim()) {
       setError("Describe what these files hold.");
@@ -325,13 +334,23 @@ function AddGroup({ projectId }: { projectId: string }) {
       ) : (
         <div className="flex flex-col gap-3 rounded-xl border border-dashed border-primary/50 p-3">
           <div className="flex flex-wrap gap-2">
-            {chosen.map((file) => (
+            {chosen.map((file, index) => (
               <span
-                key={`${file.name}-${file.size}-${file.lastModified}`}
-                className="inline-flex min-h-10 max-w-full items-center gap-2 rounded-lg border bg-background px-3 font-mono text-[13px]"
+                key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                className="inline-flex min-h-10 max-w-full items-center gap-2 rounded-lg border bg-background py-1 pr-1 pl-3 font-mono text-[13px]"
               >
                 <FileText className="size-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">{file.name}</span>
+                <button
+                  type="button"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+                  aria-label={`Unselect ${file.name}`}
+                  title={`Unselect ${file.name}`}
+                  disabled={busy}
+                  onClick={() => unselect(index)}
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </button>
               </span>
             ))}
           </div>
