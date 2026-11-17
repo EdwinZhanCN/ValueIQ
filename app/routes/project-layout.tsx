@@ -11,10 +11,12 @@ import {
   type StepState,
 } from "../components/project/project-steps";
 import { requireProjectAccess } from "../server/access.server";
+import { runSettings } from "../server/team-settings.server";
 import { listProjectFiles } from "../server/files.server";
 import { getProject, getProjectForm } from "../server/projects.server";
 import { getLatestOutcome } from "../server/run-outcome.server";
-import { readFormDraft, validateFormFile } from "../lib/intake-form";
+import { stepStates } from "../lib/project-progress";
+import { factsFor, runHasReport } from "../server/project-progress.server";
 import type { Route } from "./+types/project-layout";
 
 /**
@@ -25,34 +27,30 @@ import type { Route } from "./+types/project-layout";
  * `useProjectFlow()`.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireProjectAccess(request, params.projectId);
+  const access = await requireProjectAccess(request, params.projectId);
   const [project, form, files] = await Promise.all([
     getProject(params.projectId),
     getProjectForm(params.projectId),
     listProjectFiles(params.projectId),
   ]);
   if (!project) throw new Response("Not found", { status: 404 });
+  const { version: settingsNow } = await runSettings(access.teamId, new Date());
   const latest = await getLatestOutcome(
     params.projectId,
     form?.updatedAt ?? null,
+    settingsNow,
   );
-  const draft = readFormDraft(form?.formJson ?? null);
-  const complete =
-    form !== null &&
-    validateFormFile(form.formJson, {
-      projectId: params.projectId,
-      files: files.map((file) => ({
-        id: file.id,
-        projectId: params.projectId,
-      })),
-    }).length === 0;
-  const done: Record<string, StepState> = {
-    intake: draft.goals.length > 0 ? "done" : "todo",
-    clarify: complete ? "done" : "todo",
-    process: latest ? "done" : "todo",
-    review: latest?.status === "released" ? "done" : "todo",
-    report: "todo",
-  };
+  const facts = factsFor({
+    projectId: params.projectId,
+    formJson: form?.formJson ?? null,
+    fileIds: files.map((file) => file.id),
+    latest: latest
+      ? { status: latest.status, hasReport: await runHasReport(latest.runId) }
+      : null,
+    processing: false,
+  });
+  const complete = facts.complete;
+  const done: Record<string, StepState> = stepStates(facts);
   return {
     project,
     form: form?.formJson ?? null,

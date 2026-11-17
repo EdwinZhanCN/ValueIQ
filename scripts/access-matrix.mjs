@@ -1,4 +1,4 @@
-// Access matrix (interim-foundation validation): every project route is
+// Access matrix (decision 2026-11-13-interim-foundation): every project route is
 // checked as four actors against a real local Worker and local D1.
 //
 //   signed out → redirect to /sign-in?redirectTo=<path>
@@ -124,6 +124,22 @@ const TARGETS = [
     },
   },
   {
+    name: "report generation action with a layout",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/runs/${fx.runId}/reports`,
+      method: "POST",
+      form: {
+        sections: JSON.stringify(["summary", "charts"]),
+        charts: JSON.stringify(["npv_haircut"]),
+      },
+    }),
+    allowed: (result, fx) => {
+      assert.equal(result.status, 302, result.body.slice(0, 400));
+      const location = new URL(result.location, "http://local.test");
+      assert.equal(location.pathname, `/projects/${fx.projectId}/report`);
+    },
+  },
+  {
     name: "private report download",
     request: (fx) => ({
       path: `/projects/${fx.projectId}/runs/${fx.runId}/reports/${fx.reportId}`,
@@ -195,6 +211,58 @@ const TARGETS = [
       assert.equal(result.status, 200, result.body.slice(0, 400));
       assert.equal(result.body, `${fx.run}-file`, "Downloaded bytes differ");
     },
+  },
+  {
+    name: "file text summary",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/files/${fx.fileId}/text`,
+    }),
+    allowed: (result) => {
+      assert.equal(result.status, 200, result.body.slice(0, 400));
+      const summary = JSON.parse(result.body);
+      assert.equal(summary.ok, true, result.body.slice(0, 400));
+      assert.match(summary.text, /passage/);
+    },
+  },
+  {
+    name: "file text summary for a file not in the project",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/files/${crypto.randomUUID()}/text`,
+    }),
+    allowed: (result) => assert.equal(result.status, 404),
+  },
+  {
+    name: "find evidence in a file",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/evidence`,
+      method: "POST",
+      form: {
+        inputId: "hours_saved_per_staff_week",
+        fileId: fx.fileId,
+        value: "5",
+      },
+    }),
+    // 200 with the scripted or live model; 502/503 when no model answers.
+    allowed: (result) => {
+      assert(
+        [200, 502, 503].includes(result.status),
+        result.body.slice(0, 400),
+      );
+      assert.equal(typeof JSON.parse(result.body).ok, "boolean");
+    },
+  },
+  {
+    name: "find evidence in a file not in the project",
+    request: (fx) => ({
+      path: `/projects/${fx.projectId}/evidence`,
+      method: "POST",
+      form: {
+        inputId: "hours_saved_per_staff_week",
+        fileId: crypto.randomUUID(),
+        value: "5",
+      },
+    }),
+    allowed: (result) => assert.equal(result.status, 404),
   },
 ];
 
@@ -400,6 +468,21 @@ try {
       const answer = await ws.rpc("answerQuestion", ["q1", "value"]);
       assert.equal(answer.ok, false);
       assert.equal(answer.error.code, "NOT_SUPPORTED");
+      // The Clarify assistant (item 7): typed results for team members, bad
+      // arguments refused before any model call. With no model configured
+      // the answer is NO_MODEL; a paid-out key gives MODEL_ERROR.
+      const badChat = await ws.rpc("chat", [42, []]);
+      assert.equal(badChat.ok, false, JSON.stringify(badChat));
+      assert.equal(badChat.error.code, "BAD_INPUT");
+      const chat = await ws.rpc("chat", ["", [], null]);
+      assert(
+        chat.ok || ["NO_MODEL", "MODEL_ERROR"].includes(chat.error.code),
+        `${wsLabel}: chat ${JSON.stringify(chat)}`,
+      );
+      if (chat.ok) assert(Array.isArray(chat.value.cards));
+      rows.push(
+        `assistant chat as ${actor}: ${chat.ok ? "answered" : chat.error.code}; bad arguments BAD_INPUT`,
+      );
       // Before a form is saved the member gets BAD_INPUT, not ACCESS_DENIED:
       // the forged header above did not become the connection's user id.
       if (actor === "member") {
@@ -408,6 +491,22 @@ try {
         assert.equal(start.error.code, "BAD_INPUT", JSON.stringify(start));
         const cancel = await ws.rpc("cancelRun", []);
         assert.equal(cancel.ok, true);
+        // The demo control (L3 #80) is the server's call, never the
+        // client's: with DEMO_CONTROLS off the argument is refused before
+        // anything is read; with it on the request goes on to the usual
+        // form check (no form saved yet).
+        const demoOn = /^DEMO_CONTROLS=on\s*$/m.test(
+          readFileSync(".dev.vars", "utf8"),
+        );
+        const simulated = await ws.rpc("startRun", [{ simulateFailure: true }]);
+        assert.equal(simulated.ok, false, JSON.stringify(simulated));
+        assert.equal(simulated.error.code, "BAD_INPUT");
+        if (demoOn)
+          assert.doesNotMatch(simulated.error.message, /demo controls/i);
+        else assert.match(simulated.error.message, /Demo controls are off/);
+        rows.push(
+          `startRun with simulateFailure, DEMO_CONTROLS ${demoOn ? "on: reaches the form check" : "off: refused"}`,
+        );
       }
       ws.close();
     }
@@ -483,7 +582,11 @@ try {
     const start = await live.rpc("startRun", []);
     assert.equal(start.ok, false);
     assert.equal(start.error.code, "ACCESS_DENIED", JSON.stringify(start));
+    const chat = await live.rpc("chat", ["hello", []]);
+    assert.equal(chat.ok, false);
+    assert.equal(chat.error.code, "ACCESS_DENIED", JSON.stringify(chat));
     live.close();
+    rows.push("removed member: startRun and chat ACCESS_DENIED");
   }
 
   console.log(rows.join("\n"));

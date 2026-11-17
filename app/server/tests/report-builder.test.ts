@@ -6,8 +6,8 @@ import fixture from "../../../engine/fixtures/round1/r1-result.json";
 import { parseRunOutput } from "../../../shared/output";
 import { ReportBuilder } from "../../components/output/report-builder";
 
-describe("fixed report builder", () => {
-  it("shows the fixed contents without controls or repeated placeholders", () => {
+describe("report builder", () => {
+  it("offers section and chart choices and plain-language contents", () => {
     const output = parseRunOutput(fixture);
     if (output.kind !== "result") throw new Error("Expected result fixture");
     const html = renderToStaticMarkup(
@@ -23,11 +23,8 @@ describe("fixed report builder", () => {
       ),
     );
 
-    expect(html).toContain(
-      "Your PDF includes all sections and the three standard charts.",
-    );
-    expect(html).not.toContain('type="checkbox"');
-    expect(html).not.toContain("Report outline");
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain("Report outline");
     expect(html).toContain("Gross → adjusted");
     expect(html).toContain("NPV by discount rate");
     expect(html).toContain("Driver mix");

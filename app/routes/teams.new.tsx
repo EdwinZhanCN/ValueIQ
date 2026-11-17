@@ -10,6 +10,7 @@ import {
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { createAuth } from "../server/auth.server";
+import { seedTeamSettings } from "../server/team-settings.server";
 import {
   authErrorMessage,
   cookiesFrom,
@@ -43,11 +44,13 @@ export async function action({ request }: Route.ActionArgs) {
   try {
     // The creator becomes `owner`, and the new team becomes the session's
     // current team.
-    const { headers } = await createAuth(env).api.createOrganization({
+    const { headers, response } = await createAuth(env).api.createOrganization({
       body: { name, slug: slugFor(name) },
       headers: request.headers,
       returnHeaders: true,
     });
+    // The team starts with its four financial defaults on record (no author).
+    if (response?.id) await seedTeamSettings(response.id);
     return redirect("/team", { headers: cookiesFrom(headers) });
   } catch (error) {
     return data({ error: authErrorMessage(error) }, { status: 400 });

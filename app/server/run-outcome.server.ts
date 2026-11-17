@@ -9,6 +9,8 @@ import { getLatestResult } from "./runs.server";
 export async function getLatestOutcome(
   projectId: string,
   formUpdatedAt: Date | null,
+  /** The team's settings version now; a different one on the run offers a re-run. */
+  currentSettingsVersion?: string,
 ): Promise<LatestOutcome | null> {
   const latest = await getLatestResult(projectId);
   if (!latest) return null;
@@ -22,6 +24,9 @@ export async function getLatestOutcome(
     formChangedSince: Boolean(
       formUpdatedAt && run.finishedAt && formUpdatedAt > run.finishedAt,
     ),
+    settingsChangedSince:
+      currentSettingsVersion !== undefined &&
+      run.settingsVersion !== currentSettingsVersion,
     summary: summarizeOutput(stored),
   };
 }

@@ -222,6 +222,114 @@ assert.deepEqual(
   pdf,
   "Saved report was rewritten by input edits",
 );
+
+// The report layout: the PDF follows the chosen sections, their order and the
+// charts; a bad id is refused before anything is rendered or stored.
+const { extractText, getDocumentProxy } = await import("unpdf");
+const pdfText = async (bytes) =>
+  (
+    await extractText(await getDocumentProxy(new Uint8Array(bytes)), {
+      mergePages: true,
+    })
+  ).text;
+const headings = (text) =>
+  [...text.matchAll(/^(\d\d) ([A-Z][a-z]+(?: [a-z]+)*)$/gm)].map(
+    (m) => `${m[1]} ${m[2]}`,
+  );
+const chartsIn = (text) =>
+  [
+    ...text.matchAll(
+      /^(Gross to adjusted|NPV by discount rate|Driver mix|NPV by adoption|NPV by evidence discount|Hard vs\. capacity)\b/gm,
+    ),
+  ].map((m) => m[1]);
+const defaultText = await pdfText(pdf);
+assert.deepEqual(headings(defaultText), [
+  "01 Executive summary",
+  "02 Results",
+  "03 Charts",
+  "04 Scenarios and sensitivity",
+  "05 Context and assumptions",
+  "06 Unquantified benefits and flexibility",
+  "07 Risks of doing nothing vs proceeding",
+  "08 Measurement plan",
+  "09 Appendix and audit trail",
+]);
+assert.deepEqual(chartsIn(defaultText), [
+  "Gross to adjusted",
+  "NPV by discount rate",
+  "Driver mix",
+]);
+const reportIds = async () =>
+  new Set(
+    (await (await call(`/projects/${project}/report?run=${run}`)).text()).match(
+      new RegExp(`/runs/${run}/reports/[0-9a-f-]{36}`, "g"),
+    ),
+  );
+const custom = await call(`/projects/${project}/runs/${run}/reports`, {
+  method: "POST",
+  body: new URLSearchParams({
+    sections: JSON.stringify([
+      "summary",
+      "risks",
+      "results",
+      "charts",
+      "scenarios",
+      "assumptions",
+      "unquantified",
+    ]),
+    charts: JSON.stringify(["npv_adoption", "driver_mix"]),
+  }),
+});
+assert.equal(custom.status, 302, await custom.text());
+const customId = new URL(
+  custom.headers.get("location"),
+  origin,
+).searchParams.get("report");
+const customText = await pdfText(
+  await (
+    await call(`/projects/${project}/runs/${run}/reports/${customId}`)
+  ).arrayBuffer(),
+);
+assert.deepEqual(headings(customText), [
+  "01 Executive summary",
+  "02 Risks of doing nothing vs proceeding",
+  "03 Results",
+  "04 Charts",
+  "05 Scenarios and sensitivity",
+  "06 Context and assumptions",
+  "07 Unquantified benefits and flexibility",
+]);
+assert.deepEqual(chartsIn(customText), ["Driver mix", "NPV by adoption"]);
+assert(customText.includes("$127,956.73"), "Custom layout changed the NPV");
+const idsBefore = await reportIds();
+for (const [sections, charts] of [
+  ['["summary","bogus"]', "[]"],
+  ["[]", "[]"],
+  ['["summary","summary"]', "[]"],
+  ['["summary"]', '["pie"]'],
+  ["summary", "[]"],
+]) {
+  const refused = await call(`/projects/${project}/runs/${run}/reports`, {
+    method: "POST",
+    body: new URLSearchParams({ sections, charts }),
+  });
+  assert.equal(refused.status, 400, `${sections} ${charts}`);
+}
+assert.deepEqual(
+  await reportIds(),
+  idsBefore,
+  "A refused layout stored a report",
+);
+const listed = await (
+  await call(`/projects/${project}/report?run=${run}`)
+).text();
+assert(listed.includes("· 9 sections, 3 charts"), "Saved list lacks counts");
+assert(listed.includes("· 7 sections, 2 charts"));
+assert.deepEqual(
+  Buffer.from(await (await call(reportPath)).arrayBuffer()),
+  pdf,
+  "The first report changed after later reports",
+);
 await sql(insert(gapRun, "gap_list", gap, at + 1000));
 const gaps = await call(`/projects/${project}/results`);
 const gapHtml = await gaps.text();

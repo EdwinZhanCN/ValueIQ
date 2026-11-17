@@ -6,9 +6,19 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": { "directory": "./build/client" },
   // Hosts Better Auth may build its base URL from, comma-separated.
-  "vars": { "AUTH_ALLOWED_HOSTS": "localhost:*,127.0.0.1:*" },
+  // VALUEIQ_MODEL and DEMO_CONTROLS are local-only switches: declared here
+  // (off) so `.dev.vars` may turn them on; named environments do not inherit
+  // top-level vars and must never set them (check-deploy-target.test.mjs).
+  "vars": {
+    "AUTH_ALLOWED_HOSTS": "localhost:*,127.0.0.1:*",
+    "VALUEIQ_MODEL": "live",
+    "DEMO_CONTROLS": "off",
+  },
   // Set locally in .dev.vars; per environment with `wrangler secret put`.
-  "secrets": { "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY"] },
+  // DEEPSEEK_API_KEY is local only (VALUEIQ_MODEL=deepseek); leave it empty otherwise.
+  "secrets": {
+    "required": ["BETTER_AUTH_SECRET", "GEMINI_API_KEY", "DEEPSEEK_API_KEY"],
+  },
   "durable_objects": {
     "bindings": [{ "name": "ValueIQAgent", "class_name": "ValueIQAgent" }],
   },

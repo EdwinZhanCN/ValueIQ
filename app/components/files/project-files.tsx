@@ -27,13 +27,15 @@ type UploadResult =
   | { ok: true }
   | {
       ok: false;
-      error: "missing_file" | "missing_description" | "too_large";
+      error:
+        "missing_file" | "missing_description" | "too_large" | "project_full";
     };
 
 const errors = {
   missing_file: "Choose a file.",
   missing_description: "Describe the file.",
   too_large: "Files are limited to 10 MB.",
+  project_full: "This project has reached its 25 MB limit.",
 } as const;
 
 /**

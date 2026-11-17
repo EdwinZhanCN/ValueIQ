@@ -92,3 +92,31 @@ test("rejects an environment selector leaking into deployment", async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /only be set during build/);
 });
+
+// Local-only switches: the scripted model (VALUEIQ_MODEL=dry) and the demo
+// controls (DEMO_CONTROLS=on) live in .dev.vars and never in a deployed config.
+test("deployed configurations never set the local-only switches", () => {
+  const LOCAL_ONLY = ["VALUEIQ_MODEL", "DEMO_CONTROLS"];
+  // The local (top-level) config declares them switched off, so .dev.vars
+  // may override them; wrangler only loads declared .dev.vars keys.
+  assert.equal(template.vars.VALUEIQ_MODEL, "live");
+  assert.equal(template.vars.DEMO_CONTROLS, "off");
+  const configs = [
+    ["development", template.env.development],
+    ["production", template.env.production],
+  ];
+  for (const [name, config] of configs) {
+    for (const key of LOCAL_ONLY) {
+      assert.equal(
+        Object.hasOwn(config.vars ?? {}, key),
+        false,
+        `${name} vars must not set ${key}`,
+      );
+      assert.equal(
+        (config.secrets?.required ?? []).includes(key),
+        false,
+        `${name} secrets must not require ${key}`,
+      );
+    }
+  }
+});

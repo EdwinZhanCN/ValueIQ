@@ -10,6 +10,7 @@ import { CHECKLIST_LABELS } from "../assistant/run/types";
 import type { RunRecord } from "../assistant/run/types";
 import {
   asFormFile,
+  currentEngineConfig,
   makeOrchestrator,
   runStoreFor,
   startRunRecord,
@@ -19,10 +20,12 @@ import { listProjectFiles } from "../app/server/files.server";
 import { validateFormFile } from "../app/lib/intake-form";
 import { USER_ID_HEADER } from "../app/server/agent-gate.server";
 import { RunAccessError } from "../app/server/run-store.server";
-import type { RunView } from "../shared/types";
+import type { AssistantReply, RunView } from "../shared/types";
+import { assistantChat } from "../app/server/assistant.server";
 import type { RunError } from "../shared/types";
 import type { RunProgress } from "./calculation-run";
 import { errorFromWorkflowText } from "../assistant/run/error-text";
+import { demoRefusal, parseStartOptions } from "../app/lib/demo-controls";
 
 type ConnState = { userId: string };
 export type CallResult<T> =
@@ -118,12 +121,21 @@ export class ValueIQAgent extends Agent<Env, RunView> {
     if (ACTIVE.has(this.state.status))
       return fail("BAD_INPUT", "A run is already in progress");
     const store = runStoreFor({ userId: who.userId, projectId: this.name });
-    const orch = makeOrchestrator({
-      projectId: this.name,
-      userId: who.userId,
-      store,
-      onView: (v) => this.setState(v),
-    });
+    let orch;
+    try {
+      orch = makeOrchestrator({
+        projectId: this.name,
+        userId: who.userId,
+        store,
+        onView: (v) => this.setState(v),
+        config: await currentEngineConfig(this.name),
+      });
+    } catch (e) {
+      return fail(
+        "MODEL_ERROR",
+        e instanceof Error ? e.message : "Pre-flight failed",
+      );
+    }
     try {
       return { ok: true, value: await orch.preflight() };
     } catch (e) {
@@ -135,12 +147,45 @@ export class ValueIQAgent extends Agent<Env, RunView> {
   }
 
   /**
+   * One turn of the Clarify assistant (item 7). Advice only: the reply's
+   * cards and proposals change nothing until the user accepts them in the
+   * browser, and the conversation is not stored. The caller comes from the
+   * connection; `draft` is the caller's unsaved form, used only as context.
+   */
+  @callable()
+  async chat(
+    message: unknown,
+    history?: unknown,
+    draft?: unknown,
+  ): Promise<CallResult<AssistantReply>> {
+    const who = await this.memberOrError();
+    if (!who.ok) return who;
+    if (ACTIVE.has(this.state.status))
+      return fail(
+        "BAD_INPUT",
+        "A run is in progress; the assistant waits for it.",
+      );
+    return assistantChat(
+      { projectId: this.name, userId: who.userId },
+      { message, history, draft },
+    );
+  }
+
+  /**
    * Validates the saved form, creates the run row (idempotent for the same
    * project, form and versions) and starts the `CalculationRun` workflow with
    * the run id as the workflow instance id.
    */
   @callable()
-  async startRun(): Promise<CallResult<RunView>> {
+  async startRun(rawOptions?: unknown): Promise<CallResult<RunView>> {
+    // The optional argument is untrusted; the server decides whether demo
+    // controls exist here, never the client (L3 #80).
+    const options = parseStartOptions(rawOptions);
+    const refusal = demoRefusal(
+      options,
+      this.env as unknown as Record<string, unknown>,
+    );
+    if (refusal) return fail("BAD_INPUT", refusal);
     const who = await this.memberOrError();
     if (!who.ok) return who;
     const caller = { userId: who.userId, projectId: this.name };
@@ -169,7 +214,11 @@ export class ValueIQAgent extends Agent<Env, RunView> {
       return fail("BAD_INPUT", e instanceof Error ? e.message : "Bad form");
     }
 
-    const { run, created } = await startRunRecord(caller, form);
+    // A simulated failure always gets its own run row: it must never be
+    // answered with an earlier run for the same form.
+    const { run, created } = await startRunRecord(caller, form, {
+      forceNew: options.simulateFailure,
+    });
     if (!created) {
       // Same project, form and versions: the existing run is the answer.
       const view = viewOf(run);
@@ -188,7 +237,11 @@ export class ValueIQAgent extends Agent<Env, RunView> {
     try {
       await this.runWorkflow(
         "RUN_WORKFLOW",
-        { runId: run.id, projectId: this.name },
+        {
+          runId: run.id,
+          projectId: this.name,
+          ...(options.simulateFailure ? { simulateFailure: true } : {}),
+        },
         { id: run.id },
       );
     } catch {

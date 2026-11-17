@@ -419,6 +419,21 @@ export function processAction(args: {
   return { kind: "start", label, enabled: connected && !busy };
 }
 
+/**
+ * The demo control's button (L3 #80): only where the server turned demo
+ * controls on, and only when an ordinary start would be allowed right now.
+ */
+export function simulateControl(args: {
+  demoControls: boolean;
+  action: ProcessAction;
+}): { show: boolean; enabled: boolean } {
+  const show = args.demoControls && args.action.kind === "start";
+  return {
+    show,
+    enabled: show && args.action.kind === "start" && args.action.enabled,
+  };
+}
+
 /** A finished run whose inputs were saved again since: offer a fresh run. */
 export function canRerun(args: {
   view: RunView;
@@ -430,7 +445,7 @@ export function canRerun(args: {
   return (
     (view.status === "released" || view.status === "gap_list") &&
     latest?.runId === view.run_id &&
-    latest.formChangedSince &&
+    (latest.formChangedSince || latest.settingsChangedSince === true) &&
     hasForm &&
     missing.length === 0
   );
@@ -749,6 +764,8 @@ export type LatestOutcome = {
   finishedAt: string | null;
   /** The form was saved after this run ended, so the outcome may be out of date. */
   formChangedSince: boolean;
+  /** The team's financial defaults changed since this run (#88). */
+  settingsChangedSince?: boolean;
   /** Null when the stored output could not be read. */
   summary: OutcomeSummary | null;
 };

@@ -289,6 +289,7 @@ export function recordFromText(
       };
     if (
       previous.note === DEFAULTS[id]?.note ||
+      (previous.origin === "default" && !!DEFAULTS[id]) ||
       previous.tier === "user_unknown"
     )
       delete next.note;

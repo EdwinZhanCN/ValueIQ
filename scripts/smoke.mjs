@@ -291,6 +291,73 @@ try {
   const after = await page("/team", owner.jar);
   assert(!after.html.includes(outsider.email), "member add went through");
 
+  // Financial defaults (#88): everyone sees them, only the owner changes
+  // them, a change needs a rationale and an in-range value, and a new
+  // project's Clarify offers the new value as the team default.
+  assert.match(after.html, /Financial defaults/, "/team defaults card");
+  assert.match(after.html, /Starting default/, "starting defaults labelled");
+  const setting = (fields, jar) =>
+    form(
+      "/team",
+      {
+        intent: "set-setting",
+        key: "discount_rate_pct",
+        source: "",
+        ...fields,
+      },
+      jar,
+    );
+  const memberSet = await setting(
+    { value: "8", rationale: "Member try" },
+    teammate.jar,
+  );
+  assert.equal(memberSet.response.status, 403, "member settings change");
+  const noWhy = await setting({ value: "8", rationale: "" }, owner.jar);
+  assert.equal(noWhy.response.status, 400, "settings change without a why");
+  const tooHigh = await setting({ value: "120", rationale: "x" }, owner.jar);
+  assert.equal(tooHigh.response.status, 400, "settings change out of range");
+  const ownerSet = await setting(
+    { value: "8", rationale: "Board approved rate" },
+    owner.jar,
+  );
+  assert.equal(ownerSet.response.status, 200, "owner settings change");
+  const memberView = await page("/team", teammate.jar);
+  assert.match(memberView.html, /Board approved rate/, "member sees the why");
+  assert.doesNotMatch(
+    memberView.html,
+    /aria-label="Change Discount rate"/,
+    "member sees no settings form",
+  );
+  const fresh = await form(
+    "/projects/new",
+    { name: "Defaults check", goals: "time_savings" },
+    owner.jar,
+  );
+  assert.equal(fresh.response.status, 302, "new project for defaults");
+  const freshPath = fresh.response.headers.get("location");
+  // Intake saves the goals into the form; Clarify asks for their numbers.
+  const goalsSaved = await form(
+    `${freshPath}/form`,
+    {
+      formJson: JSON.stringify({
+        version: 1,
+        goals: ["time_savings"],
+        currency: "USD",
+        horizon_years: 0,
+        inputs: [],
+        file_descriptions: {},
+        other_notes: "",
+        measurement_plan: {},
+        asked: [],
+      }),
+    },
+    owner.jar,
+  );
+  assert.equal(goalsSaved.response.status, 200, "save goals for defaults");
+  const freshClarify = await page(`${freshPath}/clarify`, owner.jar);
+  assert.match(freshClarify.html, /Team default/, "Clarify team default");
+  assert.match(freshClarify.html, /Board approved rate/, "Clarify shows why");
+
   // Signed out: /team asks to sign in; sign-in honours only same-site paths.
   const out = await form("/sign-out", {}, owner.jar);
   assert.equal(out.response.status, 302, "/sign-out");
@@ -407,6 +474,35 @@ try {
     );
   }
 
+  // The 25 MB project total: the project now holds the CSV and one 10 MB
+  // file. Another 10 MB fits; then exactly the remainder fits and one byte
+  // more does not, and a refused upload leaves nothing behind.
+  const total = 25 * 1024 * 1024;
+  const sizedUpload = async (size, label) => {
+    const sized = new FormData();
+    sized.set("file", new Blob([new Uint8Array(size)]), "total.bin");
+    sized.set("description", label);
+    return upload(alpha, sized);
+  };
+  assert.equal((await sizedUpload(cap, "second 10 MB")).status, 201);
+  const remainder = total - 2 * cap - bytes.byteLength;
+  const over = await sizedUpload(remainder + 1, "one byte over the total");
+  assert.equal(over.status, 413, "upload past the project total");
+  const refusal = await over.json();
+  assert.equal(refusal.error, "project_full");
+  assert.equal(refusal.usedBytes, 2 * cap + bytes.byteLength);
+  assert.equal(refusal.limitBytes, total);
+  assert.equal(
+    (await sizedUpload(remainder, "exactly the remainder")).status,
+    201,
+    "upload filling the project total",
+  );
+  assert.equal(
+    (await sizedUpload(1, "one more byte")).status,
+    413,
+    "upload into a full project",
+  );
+
   assert.equal(
     (await download(alpha.projectId, fileId, beta.cookie)).status,
     404,
@@ -460,7 +556,7 @@ try {
   const asking = await page(clarifyPath, beta.cookie);
   assert.equal(asking.response.status, 200, "clarify with goals");
   assert.match(asking.html, /aria-label="Clarify questions"/, "clarify cards");
-  assert.match(asking.html, /Use industry defaults\?/, "defaults card first");
+  assert.match(asking.html, /Use the defaults\?/, "defaults card first");
   assert.match(asking.html, /id="inputs-heading"/, "clarify inputs panel");
   assert.match(asking.html, /Before Process/, "clarify lists what is missing");
   assert.doesNotMatch(asking.html, /Stuck\?|Get help|Ask someone/);
@@ -509,7 +605,7 @@ try {
   assert.match(ready.html, /Continue to Process/, "clarify continue");
 
   console.log(
-    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, account pages, /projects behind sign-in, file round trip, cap, and isolation.",
+    "Smoke passed: landing chrome, fullscreen workspace, sign-up session, account pages, /projects behind sign-in, file round trip, file and project caps, and isolation.",
   );
 } catch (error) {
   console.error(logs);

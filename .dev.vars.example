@@ -3,3 +3,19 @@
 
 # Signs Better Auth sessions. Generate with: openssl rand -base64 32
 BETTER_AUTH_SECRET=replace-with-a-random-32-byte-secret
+
+# Gemini key for the assistant and calculation runs (local: your own key).
+# GEMINI_API_KEY=
+
+# Local only, never in wrangler.jsonc. `dry` swaps Gemini for the scripted
+# model (assistant/dry-fetch.ts): no network, no key, every run marked STUB.
+# VALUEIQ_MODEL=dry
+# `deepseek` sends the same model calls to DeepSeek instead of Gemini (real
+# runs). A model id works too (VALUEIQ_MODEL=deepseek-flash). The default is
+# deepseek-flash; override with DEEPSEEK_MODEL_ASSISTANT / DEEPSEEK_MODEL_CALC.
+# VALUEIQ_MODEL=deepseek
+# DEEPSEEK_API_KEY=
+
+# Local only. `on` shows the labelled "Simulate a failure" demo control on
+# the Process step; the agent refuses that request when it is not `on`.
+# DEMO_CONTROLS=on

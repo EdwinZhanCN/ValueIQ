@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRevalidator } from "react-router";
 import { FileText, Lock, Upload, X } from "lucide-react";
 import type { ProjectFileItem } from "../files/project-files";
@@ -6,10 +6,19 @@ import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Textarea } from "../ui/textarea";
 import { PROJECT_DESCRIPTION } from "./intake-draft";
+import { MAX_FILE_BYTES, megabytes, usageText } from "../../lib/file-limits";
+import type { FileReadSummary } from "../../lib/file-read";
 
-const MAX_BYTES = 10 * 1024 * 1024;
 const DESCRIPTION_TYPES = ".pdf,.md,.docx";
 const describesProject = (name: string) => /\.(pdf|md|docx)$/i.test(name);
+
+/** The upload route's refusal when the project's 25 MB would be exceeded. */
+type ProjectFull = {
+  ok: false;
+  error: "project_full";
+  usedBytes: number;
+  limitBytes: number;
+};
 
 /** Upload each file through the existing project upload route. */
 async function uploadAll(
@@ -20,7 +29,7 @@ async function uploadAll(
   const failed: string[] = [];
   const left: File[] = [];
   for (const file of files) {
-    if (file.size > MAX_BYTES) {
+    if (file.size > MAX_FILE_BYTES) {
       failed.push(`${file.name} is over 10 MB`);
       left.push(file);
       continue;
@@ -33,7 +42,14 @@ async function uploadAll(
       body,
     }).catch(() => null);
     if (!response?.ok) {
-      failed.push(`${file.name} did not upload`);
+      const refusal = (await response
+        ?.json()
+        .catch(() => null)) as ProjectFull | null;
+      failed.push(
+        refusal?.error === "project_full"
+          ? `${file.name} (${megabytes(file.size)} MB) did not fit: the project has ${megabytes(refusal.limitBytes - refusal.usedBytes)} MB left of ${megabytes(refusal.limitBytes)} MB`
+          : `${file.name} did not upload`,
+      );
       left.push(file);
     }
   }
@@ -48,14 +64,69 @@ function Chip({
   file: ProjectFileItem;
 }) {
   return (
-    <a
-      href={`/projects/${projectId}/files/${file.id}`}
-      download={file.name}
-      className="inline-flex min-h-10 max-w-full items-center gap-2 rounded-lg border px-3 font-mono text-[13px] hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-    >
-      <FileText className="size-4 shrink-0 text-muted-foreground" />
-      <span className="truncate">{file.name}</span>
-    </a>
+    <div className="flex max-w-full min-w-0 flex-col gap-1">
+      <a
+        href={`/projects/${projectId}/files/${file.id}`}
+        download={file.name}
+        className="inline-flex min-h-10 max-w-full items-center gap-2 rounded-lg border px-3 font-mono text-[13px] hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      >
+        <FileText className="size-4 shrink-0 text-muted-foreground" />
+        <span className="truncate">{file.name}</span>
+      </a>
+      <ReadStatus projectId={projectId} fileId={file.id} />
+    </div>
+  );
+}
+
+/** What the reader got from the file; the preview is plain text. */
+function ReadStatus({
+  projectId,
+  fileId,
+}: {
+  projectId: string;
+  fileId: string;
+}) {
+  const [read, setRead] = useState<FileReadSummary | "failed" | null>(null);
+  useEffect(() => {
+    let live = true;
+    setRead(null);
+    void (async (): Promise<FileReadSummary | "failed"> => {
+      try {
+        const r = await fetch(`/projects/${projectId}/files/${fileId}/text`);
+        return r.ok ? await r.json() : "failed";
+      } catch {
+        return "failed";
+      }
+    })().then((value) => {
+      if (live) setRead(value);
+    });
+    return () => {
+      live = false;
+    };
+  }, [projectId, fileId]);
+  if (read === null)
+    return <span className="px-1 text-xs text-muted-foreground">Reading…</span>;
+  if (read === "failed" || !read.ok)
+    return (
+      <span data-testid="file-read" className="px-1 text-xs text-destructive">
+        Could not be read
+        {read !== "failed" && `: ${read.reason}`}
+      </span>
+    );
+  return (
+    <details data-testid="file-read" className="px-1 text-xs">
+      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+        Read: {read.text}
+      </summary>
+      <ul className="mt-1 flex max-h-56 max-w-md flex-col gap-0.5 overflow-auto rounded-lg border bg-background p-2 font-mono text-[11px]">
+        {read.preview.map((line) => (
+          <li key={line.loc} className="break-words">
+            <span className="text-muted-foreground">{line.loc} </span>
+            {line.text}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -95,12 +166,17 @@ export function IntakeFiles({
         <h2 id="intake-files-heading" className="text-sm font-semibold">
           Files
         </h2>
-        <span
-          title="Only project members can open them."
-          className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground"
-        >
-          <Lock className="size-3.5" />
-          Project only
+        <span className="flex items-center gap-3 text-[13px] text-muted-foreground">
+          <span data-testid="project-usage" className="tabular-nums">
+            {usageText(files.reduce((sum, file) => sum + file.size, 0))}
+          </span>
+          <span
+            title="Only project members can open them."
+            className="inline-flex items-center gap-1.5"
+          >
+            <Lock className="size-3.5" />
+            Project only
+          </span>
         </span>
       </div>
       <ProjectDescription projectId={projectId} files={overview} />
@@ -112,7 +188,7 @@ export function IntakeFiles({
             className="flex flex-col gap-2 rounded-xl border bg-muted/40 p-3"
           >
             <p className="text-sm">{description}</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-start gap-2">
               {group.map((file) => (
                 <Chip key={file.id} projectId={projectId} file={file} />
               ))}
@@ -154,7 +230,7 @@ function ProjectDescription({
       <h3 id={id} className="text-sm font-semibold">
         Project description
       </h3>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         {files.map((file) => (
           <Chip key={file.id} projectId={projectId} file={file} />
         ))}

@@ -293,8 +293,8 @@ try {
   );
   const modelIds = [...new Set(payloads.map((p) => p.model).filter(Boolean))];
   check(
-    "events name only gemini model ids",
-    modelIds.length > 0 && modelIds.every((m) => /^gemini-/.test(m)),
+    "events name only gemini or deepseek model ids",
+    modelIds.length > 0 && modelIds.every((m) => /^(gemini|deepseek)-/.test(m)),
     modelIds.join(", "),
   );
   const tokens = payloads.reduce(

@@ -242,6 +242,9 @@ export const runReports = sqliteTable(
       .notNull()
       .references(() => runs.id, { onDelete: "cascade" }),
     r2Key: text("r2_key").notNull().unique(),
+    // The sections and charts this PDF holds ({ sections, charts });
+    // null for reports made before layouts, which used the standard layout.
+    layoutJson: text("layout_json", { mode: "json" }).$type<unknown>(),
     createdBy: text("created_by")
       .notNull()
       .references(() => user.id),

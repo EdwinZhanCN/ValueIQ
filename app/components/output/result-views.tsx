@@ -1,4 +1,8 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  QUOTE_CHECK_LABELS,
+  type EnteredInputRow,
+} from "../../lib/entered-inputs";
 import { Link } from "react-router";
 import {
   ArrowLeft,
@@ -546,13 +550,13 @@ export function ChartById({
   }
 }
 
-/** Review · Charts (mock 06b): the same three standard charts as the PDF. */
+/** Review · Charts (mock 06b): the three charts a new report starts with. */
 export function ChartsView({ output }: { output: ResultSample }) {
   const navigation = useContext(OutputContext);
   return (
     <>
       <p className="output-muted">
-        These three standard charts are included in every PDF.
+        A new report starts with these three charts; choose others on Report.
       </p>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(30rem,100%),1fr))] gap-5">
         {(["waterfall", "npv_discount", "driver_mix"] as const).map((id) => (
@@ -729,10 +733,7 @@ export function CashFlows({ output }: { output: ResultSample }) {
 
 export function Proxies({ output }: { output: ResultSample }) {
   return (
-    <Panel
-      title="Inputs from proxies and defaults"
-      note="Entered inputs are not yet included in the engine output."
-    >
+    <Panel title="Inputs from proxies and defaults">
       {output.result.proxies_used.map((proxy) => (
         <div className="output-proxy" key={proxy.input_id}>
           <span>
@@ -782,6 +783,146 @@ function Evidence({ output }: { output: ResultSample }) {
   );
 }
 
+/**
+ * The inputs a run pinned (`runs.form_json`) as display rows. `rows: null`
+ * means the run recorded no inputs; no provider (the `/workspace` sample)
+ * means the panel does not appear.
+ */
+export const RunInputsContext = createContext<{
+  rows: EnteredInputRow[] | null;
+} | null>(null);
+
+function InputsUsed() {
+  const inputs = useContext(RunInputsContext);
+  if (!inputs) return null;
+  if (!inputs.rows)
+    return (
+      <Panel title="Inputs used in this run">
+        <p className="text-sm text-muted-foreground" data-testid="no-inputs">
+          This run recorded no inputs.
+        </p>
+      </Panel>
+    );
+  return (
+    <Panel
+      title="Inputs used in this run"
+      note={`${inputs.rows.length} inputs`}
+    >
+      <div className="output-table-wrap">
+        <table aria-label="Inputs used in this run">
+          <thead>
+            <tr>
+              <th>Input</th>
+              <th>Value</th>
+              <th>Evidence</th>
+              <th>Source</th>
+              <th>File</th>
+              <th>Quote check</th>
+            </tr>
+          </thead>
+          <tbody>
+            {inputs.rows.map((row) => (
+              <tr key={row.id} data-input={row.id}>
+                <td>
+                  {row.label}
+                  {row.note ? (
+                    <span
+                      className="block max-w-[28ch] truncate text-xs text-muted-foreground"
+                      title={row.note}
+                    >
+                      {row.note}
+                    </span>
+                  ) : null}
+                </td>
+                <td
+                  className={row.notSure ? "text-muted-foreground italic" : ""}
+                >
+                  {row.value}
+                  {row.basis ? (
+                    <span className="block text-xs text-muted-foreground">
+                      {row.basis}
+                    </span>
+                  ) : null}
+                </td>
+                <td>{row.tier}</td>
+                <td>{row.source}</td>
+                <td>{row.file ?? "—"}</td>
+                <td
+                  data-quote-check={row.quoteCheck ?? undefined}
+                  className={
+                    row.quoteCheck && row.quoteCheck !== "found"
+                      ? "text-amber-700 dark:text-amber-400"
+                      : ""
+                  }
+                >
+                  {row.quoteCheck ? QUOTE_CHECK_LABELS[row.quoteCheck] : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
+  );
+}
+
+/** The team defaults a run used (#88), when the page knows them. */
+export type RunSettingsUsed = {
+  version: string;
+  /** False when today's records no longer give the version the run recorded. */
+  matches: boolean;
+  rows: {
+    key: string;
+    label: string;
+    shown: string;
+    rationale: string | null;
+    source: string | null;
+    starting: boolean;
+  }[];
+};
+
+export const RunSettingsContext = createContext<RunSettingsUsed | null>(null);
+
+function TeamDefaultsUsed() {
+  const used = useContext(RunSettingsContext);
+  if (!used) return null;
+  return (
+    <section
+      aria-label="Team defaults used"
+      className="flex flex-col gap-2 rounded-xl border bg-card p-4"
+    >
+      <h3 className="flex flex-wrap items-center gap-2 text-sm font-medium">
+        Team defaults used
+        <span
+          className="rounded-full border px-2 py-0.5 font-mono text-xs text-muted-foreground"
+          data-testid="settings-version"
+        >
+          {used.version}
+        </span>
+      </h3>
+      <ul className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        {used.rows.map((row) => (
+          <li key={row.key} data-setting={row.key} className="flex flex-col">
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="text-muted-foreground">{row.label}</span>
+              <strong>{row.shown}</strong>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {row.starting ? "Starting default" : row.rationale}
+              {row.source ? ` · ${row.source}` : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {used.matches ? null : (
+        <p className="text-xs text-destructive">
+          The saved settings no longer match this run's version.
+        </p>
+      )}
+    </section>
+  );
+}
+
 /** Review · Assumptions (mock 06a): settings, show-the-math steps, inputs. */
 export function AssumptionsView({ output }: { output: ResultSample }) {
   const { meta } = output;
@@ -808,6 +949,8 @@ export function AssumptionsView({ output }: { output: ResultSample }) {
           </span>
         ))}
       </div>
+      <TeamDefaultsUsed />
+      <InputsUsed />
       <Evidence output={output} />
       {output.result.drivers.map((driver) => (
         <DriverMath key={driver.id} driver={driver} output={output} />
@@ -881,6 +1024,7 @@ export function GapsView({ output }: { output: GapOutput }) {
         The evidence options and their order are supplied by the engine.
         Improvements are alternatives, not amounts to add together.
       </p>
+      <InputsUsed />
     </>
   );
 }

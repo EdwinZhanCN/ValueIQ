@@ -28,6 +28,9 @@ import {
   intro,
 } from "../prompts";
 import { TOOLS, callTool, createContext, type ToolContext } from "../tools";
+import type { FileEvidenceHost } from "../evidence/host";
+import { quoteInFile } from "../evidence/find";
+import type { EngineConfig } from "../../engine/types";
 import {
   CHECKLIST_LABELS,
   type RunError,
@@ -64,6 +67,18 @@ export interface OrchestratorDeps {
   checkAccess?: (user_id: string) => Promise<boolean>;
   onView?: (v: RunView) => void;
   maxSteps?: number;
+  /**
+   * Engine configuration from the team's settings (cost uplift and
+   * `versions.settings`). Must match the settings version on the run row.
+   */
+  config?: Partial<EngineConfig>;
+  /**
+   * Reads project files (`makeFileHost(...).extractedText` in the Worker).
+   * When present, the "Files read" step checks every confirmed quote against
+   * its file and records the result as a `quote_check` event. It never
+   * changes the calculation or fails the run.
+   */
+  files?: Pick<FileEvidenceHost, "extractedText">;
 }
 
 export interface PreflightReport {
@@ -143,15 +158,27 @@ export function mapError(e: unknown): RunError {
 function httpMessage(status: number): string {
   if (status === 401 || status === 403)
     return "The AI service rejected the key. Ask an admin to check it.";
+  if (status === 402)
+    return "The AI service account has no credit left. Ask an admin to check its billing.";
   if (status === 429) return "The AI service is busy. Try again in a minute.";
   if (status >= 500)
     return `The AI service had a problem (HTTP ${status}). Try again.`;
   return `The AI service rejected the request (HTTP ${status}).`;
 }
 
-/** The idempotency key: the project's form (inputs sorted) plus the engine versions. */
-export function computeFormHash(form: FormFile): string {
-  return hashOf({ form: canonicalForm(form), v: DEFAULT_CONFIG.versions });
+/**
+ * The idempotency key: the project's form (inputs sorted) plus the engine
+ * versions, including the team settings version the run would use. With the
+ * default settings version this is the same key as before team settings.
+ */
+export function computeFormHash(
+  form: FormFile,
+  settingsVersion: string = DEFAULT_CONFIG.versions.settings,
+): string {
+  return hashOf({
+    form: canonicalForm(form),
+    v: { ...DEFAULT_CONFIG.versions, settings: settingsVersion },
+  });
 }
 
 export class RunOrchestrator {
@@ -210,6 +237,40 @@ export class RunOrchestrator {
   }
 
   /** Mark labels up to and including `label` done and the next one as doing. */
+  /**
+   * The "Files read" step: every confirmed quote is looked up, word for word,
+   * in the file it cites. One event per input, ids and result only. A file
+   * that cannot be read is recorded as such; nothing here throws.
+   */
+  private async checkQuotes(run_id: string, form: FormFile): Promise<void> {
+    const files = this.d.files;
+    if (!files) return;
+    const texts = new Map<
+      string,
+      Awaited<ReturnType<typeof files.extractedText>> | null
+    >();
+    for (const input of form.inputs) {
+      const b = input.backing;
+      if (!b?.source_file_id || !b.quote || !b.quote_confirmed) continue;
+      if (!texts.has(b.source_file_id))
+        texts.set(
+          b.source_file_id,
+          await files.extractedText(b.source_file_id).catch(() => null),
+        );
+      const got = texts.get(b.source_file_id);
+      const result = !got?.ok
+        ? "unreadable"
+        : quoteInFile(got.text, b.quote)
+          ? "found"
+          : "not_found";
+      await this.event(run_id, "Files read", "quote_check", {
+        input_id: input.id,
+        file_id: b.source_file_id,
+        result,
+      });
+    }
+  }
+
   private advance(label: (typeof CHECKLIST_LABELS)[number]): void {
     const idx = CHECKLIST_LABELS.indexOf(label);
     const checklist: RunView["checklist"] = CHECKLIST_LABELS.map((l, i) => ({
@@ -235,6 +296,7 @@ export class RunOrchestrator {
         run_id: "preflight",
         now: this.d.now(),
         mode: this.d.mode ?? "real",
+        ...(this.d.config ? { config: this.d.config } : {}),
       });
       const details = callTool("preflight_gate", {}, ctx);
       const r = await runGuarded({
@@ -281,8 +343,8 @@ export class RunOrchestrator {
     await this.guardAccess();
     const { store } = this.d;
     const form = await this.d.getForm();
-    const v = DEFAULT_CONFIG.versions;
-    const form_hash = computeFormHash(form);
+    const v = { ...DEFAULT_CONFIG.versions, ...this.d.config?.versions };
+    const form_hash = computeFormHash(form, v.settings);
 
     // idempotent: the same project, form and versions give back the existing run
     const existing = await store.findRunByFormHash(
@@ -344,13 +406,19 @@ export class RunOrchestrator {
     this.seq = prior.reduce((m, e) => Math.max(m, e.seq), 0);
     this.cancelled = false;
     await this.event(run_id, null, "status", { status: "running" });
-    this.emitView({ ...this.blank("running", run_id), step: "Files read" });
+    const reading = this.blank("running", run_id);
+    reading.checklist = reading.checklist.map((c, i) =>
+      i === 0 ? { ...c, state: "doing" as const } : c,
+    );
+    this.emitView({ ...reading, step: "Files read" });
+    await this.checkQuotes(run_id, f);
     this.advance("Files read");
 
     const ctx: ToolContext = createContext(f, {
       run_id,
       now: this.d.now(),
       mode: this.d.mode ?? "real",
+      ...(this.d.config ? { config: this.d.config } : {}),
     });
     let narrative: RunOutcome["narrative"] = null;
     try {

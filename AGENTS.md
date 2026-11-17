@@ -18,7 +18,7 @@ Human setup and deployment commands live in [README.md](README.md).
 - `shared/output.ts`: version 1 output validation; `engine/` owns deterministic calculation and output types; `assistant/` contains the pushed orchestration library. Worker wiring is implemented; the output UI still needs a user-facing Start Run control.
 - `shared/types.ts`: the cross-track types from the integration contract (run states, `RunView`, `Question`).
 - `db/`, `drizzle/`: Drizzle client, Better Auth tables (`auth-schema.ts`, generated from `auth.cli.ts`), application tables (`schema.ts`), and their migrations.
-- `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), the signed-in user and current team (`team.server.ts`), the project API (`projects.server.ts`), project files in R2 (`files.server.ts`), calculation runs (`runs.server.ts`), and the agent gate (`agent-gate.server.ts`).
+- `app/server/`: Better Auth (`auth.server.ts`), the project access rule (`access.server.ts`), the signed-in user and current team (`team.server.ts`), team financial defaults (`team-settings.server.ts`), the project API (`projects.server.ts`), project files in R2 (`files.server.ts`), file reading and evidence lookup (`file-text.server.ts`, `evidence.server.ts`), the Clarify assistant (`assistant.server.ts`), calculation runs (`runs.server.ts`), and the agent gate (`agent-gate.server.ts`).
 - `docs/`: [architecture](docs/architecture.md), [core beliefs](docs/core-beliefs.md), and the [Mock UI](docs/mock-ui/README.md) screens with owner notes.
 - `.agents/`: coding-agent procedures and durable project memory.
 

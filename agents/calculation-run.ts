@@ -2,7 +2,11 @@ import { AgentWorkflow } from "agents/workflows";
 import type { AgentWorkflowEvent, AgentWorkflowStep } from "agents/workflows";
 import { NonRetryableError } from "cloudflare:workflows";
 import type { ValueIQAgent } from "./valueiq-agent";
-import { makeOrchestrator, runStoreFor } from "../app/server/run-wiring.server";
+import {
+  makeOrchestrator,
+  runEngineConfig,
+  runStoreFor,
+} from "../app/server/run-wiring.server";
 import { OrchestratorError } from "../assistant/run/orchestrator";
 import {
   RETRY_DELAY,
@@ -11,9 +15,19 @@ import {
   shouldRetry,
 } from "../assistant/run/retry";
 import type { RunView } from "../shared/types";
+import { CHECKLIST_LABELS } from "../assistant/run/types";
+import {
+  SIMULATED_FAILURE_MESSAGE,
+  demoControlsOn,
+} from "../app/lib/demo-controls";
 
 /** What the agent passes to `runWorkflow("RUN_WORKFLOW", params, { id: runId })`. */
-export type CalculationRunParams = { runId: string; projectId: string };
+export type CalculationRunParams = {
+  runId: string;
+  projectId: string;
+  /** Demo control (L3 #80): end this run with a labelled, simulated failure. */
+  simulateFailure?: boolean;
+};
 /** What the workflow reports to the agent's `onWorkflowProgress`. */
 export type RunProgress = { view: RunView };
 
@@ -58,6 +72,61 @@ export class CalculationRun extends AgentWorkflow<
       return rec.started_by;
     });
 
+    if (event.payload.simulateFailure) {
+      // No model call and no automatic retry: the run moves past its first
+      // progress step, then ends failed with an error event that says it was
+      // simulated. Retry starts an ordinary run.
+      await step.do("simulate-failure", async () => {
+        if (!demoControlsOn(this.env as unknown as Record<string, unknown>))
+          throw new NonRetryableError("BAD_INPUT: demo controls are off");
+        const store = runStoreFor({ userId, projectId });
+        let seq = (await store.listRunEvents(runId)).reduce(
+          (last, e) => Math.max(last, e.seq),
+          0,
+        );
+        const append = (step_: string | null, type: string, payload: object) =>
+          store.appendRunEvent({
+            run_id: runId,
+            seq: ++seq,
+            step: step_,
+            type,
+            payload_json: JSON.stringify(payload),
+            created_at: new Date().toISOString(),
+          });
+        await append(null, "status", { status: "running", simulated: true });
+        const checklist = CHECKLIST_LABELS.map((label, i) => ({
+          label,
+          state:
+            i === 0
+              ? ("done" as const)
+              : i === 1
+                ? ("doing" as const)
+                : ("todo" as const),
+        }));
+        await this.reportProgress({
+          view: {
+            run_id: runId,
+            status: "running",
+            step: CHECKLIST_LABELS[0],
+            progress_pct: Math.round(100 / CHECKLIST_LABELS.length),
+            checklist,
+            pending_question: null,
+            mode: (await store.getRun(runId))?.mode ?? "real",
+          },
+        }).catch(() => undefined);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await append(CHECKLIST_LABELS[1], "error", {
+          code: "MODEL_ERROR",
+          message: SIMULATED_FAILURE_MESSAGE,
+          retryable: true,
+          simulated: true,
+        });
+        await store.finalizeFailed(runId);
+        return true;
+      });
+      throw new NonRetryableError(`MODEL_ERROR: ${SIMULATED_FAILURE_MESSAGE}`);
+    }
+
     const done = await step.do(
       "calculate",
       {
@@ -75,10 +144,12 @@ export class CalculationRun extends AgentWorkflow<
         const pending: Promise<void>[] = [];
         let out;
         try {
+          const config = await runEngineConfig(store, projectId, runId);
           const orch = makeOrchestrator({
             projectId,
             userId,
             store,
+            config,
             onView: (view) => {
               if (
                 view.status === "failed" &&

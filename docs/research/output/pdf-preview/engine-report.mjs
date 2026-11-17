@@ -1,11 +1,27 @@
-/** Research export for the exact PR #123 fixture. No financial calculations. */
+/**
+ * The report PDF for one stored version 1 result. No financial calculations:
+ * every number is formatted from the supplied output, and charts only map the
+ * engine's own data points to coordinates.
+ *
+ * `layout` ({ sections, charts }, ids from shared/report-layout.ts) chooses
+ * the sections, their order and the charts; without it the default layout is
+ * used. Sections are numbered in the order they appear.
+ */
+import {
+  DEFAULT_LAYOUT,
+  REPORT_SECTIONS,
+  normalizeLayout,
+} from "../../../../shared/report-layout.ts";
+
 export async function renderEngineReport({
   PDFDocument,
   rgb,
   fontkit,
   fonts,
   data,
+  layout: requested,
 }) {
+  const plan = normalizeLayout(requested ?? DEFAULT_LAYOUT);
   if (data.kind !== "result" || data.meta.contract_version !== "1") {
     throw new Error(
       "This exporter accepts only a version 1 result, never a gap list.",
@@ -316,7 +332,446 @@ export async function renderEngineReport({
     y += height + 18;
   };
 
-  newPage("Executive summary");
+  /** A heading inside a section (not numbered). */
+  const sub = (title, subtitle = "") => {
+    const subs = subtitle ? wrap(subtitle, CW, 8.5) : [];
+    const height = 20 + subs.length * 13;
+    ensure(height + 60);
+    mark("subsection", y, height);
+    text(title, M, y, 12, bold);
+    subs.forEach((s, i) => text(s, M, y + 18 + i * 13, 8.5, regular, C.muted));
+    y += height + 6;
+  };
+  /** A line chart of the engine's sensitivity points (hard and capacity-inclusive). */
+  const lines = (title, all, axisLabel) => {
+    const points = all.filter(
+      (p) => p.npv_hard !== null && p.npv_capacity_inclusive !== null,
+    );
+    const height = 220;
+    ensure(height + 14);
+    mark("chart", y, height);
+    const top = y;
+    rect(M, top, CW, height, C.pale);
+    text(title, M + 14, top + 13, 11, bold);
+    text(
+      "Teal: hard savings · blue: capacity-inclusive",
+      M + 14,
+      top + 33,
+      8,
+      regular,
+      C.muted,
+    );
+    if (points.length === 0) {
+      text(
+        "No data points were supplied.",
+        M + 14,
+        top + 90,
+        9,
+        regular,
+        C.muted,
+      );
+      y += height + 17;
+      return;
+    }
+    const values = points.flatMap((p) => [
+      p.npv_hard,
+      p.npv_capacity_inclusive,
+    ]);
+    const lo = Math.min(0, ...values),
+      hi = Math.max(1, ...values);
+    const px = (i) => M + 90 + (i * (CW - 125)) / (points.length - 1 || 1),
+      py = (v) => top + 176 - ((v - lo) / (hi - lo)) * 114;
+    line(M + 90, py(0), W - M - 25, py(0));
+    for (const [key, color] of [
+      ["npv_hard", C.teal],
+      ["npv_capacity_inclusive", C.blue],
+    ])
+      points.forEach((p, i) => {
+        if (i)
+          line(px(i - 1), py(points[i - 1][key]), px(i), py(p[key]), color, 2);
+        page.drawCircle({ x: px(i), y: H - py(p[key]), size: 2.8, color });
+      });
+    // Zero is labelled only where it does not collide with the end labels.
+    [lo, 0, hi]
+      .filter(
+        (v, i) =>
+          i !== 1 ||
+          (Math.abs(py(0) - py(lo)) > 12 && Math.abs(py(0) - py(hi)) > 12),
+      )
+      .forEach((v) =>
+        right(money(v), M + 82, py(v) - 4, 7.5, regular, C.muted),
+      );
+    points.forEach((p, i) =>
+      text(String(p.x), px(i) - 5, top + 189, 8, regular, C.muted),
+    );
+    text(axisLabel, M + 90, top + 203, 7.5, regular, C.muted);
+    y += height + 17;
+  };
+  /** Hard and capacity benefit per year, side by side (undiscounted cash flows). */
+  const pairs = (title, rows) => {
+    const height = 72 + rows.length * 58;
+    ensure(height + 12);
+    mark("chart", y, height);
+    const top = y;
+    rect(M, top, CW, height, C.pale);
+    text(title, M + 14, top + 13, 11, bold);
+    text(
+      "Teal: hard savings · blue: capacity and avoided loss (not cash)",
+      M + 14,
+      top + 30,
+      8,
+      regular,
+      C.muted,
+    );
+    const max = Math.max(
+      1,
+      ...rows.flatMap((r) => [r.benefits_hard, r.benefits_capacity]),
+    );
+    rows.forEach((r, i) => {
+      const yy = top + 50 + i * 58;
+      text(`Year ${r.year}`, M + 14, yy, 8.5);
+      right(
+        `${money(r.benefits_hard)} hard · ${money(r.benefits_capacity)} capacity`,
+        W - M - 14,
+        yy,
+        8.5,
+        bold,
+      );
+      rect(M + 14, yy + 17, CW - 28, 6, C.rule);
+      rect(M + 14, yy + 17, (r.benefits_hard / max) * (CW - 28), 6, C.teal);
+      rect(M + 14, yy + 27, CW - 28, 6, C.rule);
+      rect(M + 14, yy + 27, (r.benefits_capacity / max) * (CW - 28), 6, C.blue);
+    });
+    y += height + 18;
+  };
+
+  const CHARTS = {
+    waterfall: () => {
+      bars(
+        "Gross to adjusted · supplied horizon levels",
+        result.charts.waterfall,
+      );
+    },
+    npv_discount: () =>
+      lines(
+        "NPV by discount rate",
+        result.sensitivity.discount_rate,
+        result.sensitivity.x_labels.discount_rate,
+      ),
+    driver_mix: () =>
+      bars(
+        "Driver mix · horizon totals",
+        result.charts.driver_contribution.map((p) => ({
+          label:
+            result.drivers.find((d) => d.id === p.driver)?.label ?? p.driver,
+          value: p.value,
+        })),
+      ),
+    npv_adoption: () =>
+      lines(
+        "NPV by adoption",
+        result.sensitivity.adoption,
+        result.sensitivity.x_labels.adoption,
+      ),
+    npv_haircut: () =>
+      lines(
+        "NPV by evidence haircut",
+        result.sensitivity.haircut,
+        result.sensitivity.x_labels.haircut,
+      ),
+    hard_capacity: () =>
+      pairs(
+        "Hard vs. capacity · benefit by year",
+        result.cash_flows.filter((row) => row.year > 0),
+      ),
+  };
+
+  const SECTIONS = {
+    summary: () => {
+      table(
+        ["Measure", "Hard savings", "Capacity-inclusive"],
+        [0.4, 0.28, 0.32],
+        [
+          [
+            "Net present value",
+            money(result.headline.npv.hard),
+            money(result.headline.npv.capacity_inclusive),
+          ],
+          [
+            "ROI · undiscounted",
+            pct(result.headline.roi.undiscounted.hard),
+            pct(result.headline.roi.undiscounted.capacity_inclusive),
+          ],
+          [
+            "ROI · NPV / PV of costs",
+            pct(result.headline.roi.pv.hard),
+            pct(result.headline.roi.pv.capacity_inclusive),
+          ],
+          [
+            "Payback",
+            result.headline.payback.hard.text,
+            result.headline.payback.capacity_inclusive.text,
+          ],
+          [
+            "Benefits · present value",
+            "All included drivers",
+            money(result.headline.benefits_pv),
+          ],
+          [
+            "Costs · present value",
+            "All cost lines",
+            money(result.headline.costs_pv),
+          ],
+        ],
+      );
+      note(
+        confidenceSummary(
+          result.confidence.project.confidence,
+          meta.tier_counts,
+        ),
+        `${result.confidence.band_note} Minimum confidence required: ${ratio(result.confidence.project.floor)}. ${result.confidence.project.capped_by ? `Capped by ${label(result.confidence.project.capped_by)}.` : ""}`,
+      );
+      para(result.narrative.summary);
+    },
+    results: () => {
+      sub("Benefits by driver", "Adjusted values over the selected horizon");
+      table(
+        ["Driver / class", "Haircut", "Confidence", "Total", "PV"],
+        [0.34, 0.12, 0.14, 0.2, 0.2],
+        result.drivers.map((d) => [
+          `${d.label} · ${label(d.label_class)} · ${d.included ? "included" : "excluded"}`,
+          pct(d.haircut_pct),
+          ratio(d.confidence),
+          money(d.total),
+          money(d.pv),
+        ]),
+      );
+      for (const driver of result.drivers) {
+        newPage(driver.label);
+        sub(
+          `${driver.label} · show the math`,
+          `${label(driver.label_class)} · haircut ${pct(driver.haircut_pct)} · confidence ${ratio(driver.confidence)}`,
+        );
+        para(tiers(driver.tier_counts), 8.5, C.muted);
+        table(
+          [
+            "Ref",
+            "Step / formula / source",
+            ...driver.annual.map((a) => `Year ${a.year}`),
+            "Horizon total",
+          ],
+          [0.07, 0.33, 0.15, 0.15, 0.15, 0.15],
+          driver.steps.map((s) => [
+            s.ref,
+            `${s.order}. ${s.label}\n${s.formula}\nSource: ${s.source_type}; tier: ${s.evidence_tier ?? "calculated"}`,
+            ...s.by_year.map(money),
+            money(s.value),
+          ]),
+        );
+        note("What makes this vary", driver.risk_factors.join(" "));
+        para(
+          `How measured: ${specified(driver.measured_by) ? driver.measured_by : "Measurement method to confirm"}`,
+        );
+        const narrative = result.narrative.by_driver[driver.id];
+        if (narrative) para(narrative);
+      }
+      newPage("Results");
+      sub(
+        "Costs and uplift",
+        `PV ${money(result.costs.total_pv)} · delay ${result.costs.delay_months} months`,
+      );
+      table(
+        ["Ref / cost", "Basis", "Base", "Uplift", "Adjusted"],
+        [0.38, 0.13, 0.18, 0.12, 0.19],
+        result.costs.lines.map((c) => [
+          `${c.ref} · ${c.label}`,
+          c.basis,
+          money(c.base),
+          pct(c.uplift_pct),
+          money(c.adjusted),
+        ]),
+      );
+      sub(
+        "Financial summary",
+        "Undiscounted flows; net and cumulative are capacity-inclusive.",
+      );
+      table(
+        [
+          "Period",
+          "Hard benefit",
+          "Capacity / avoided loss",
+          "Cost",
+          "Net inclusive",
+          "Cumulative inclusive",
+        ],
+        [0.1, 0.17, 0.2, 0.17, 0.18, 0.18],
+        result.cash_flows.map((c) => [
+          c.year === 0 ? "Time zero" : `Year ${c.year}`,
+          money(c.benefits_hard),
+          money(c.benefits_capacity),
+          money(c.costs),
+          money(c.net),
+          money(c.cumulative),
+        ]),
+      );
+      note(
+        "Financial basis",
+        "Capacity value and expected avoided loss are distinct from documented hard savings. The net and cumulative figures include these benefits; they do not establish a cash reduction.",
+      );
+    },
+    charts: () => {
+      if (plan.charts.length === 0) {
+        para("No charts were chosen for this report.", 8.5, C.muted);
+        return;
+      }
+      for (const id of plan.charts) {
+        CHARTS[id]();
+        charts.push(id);
+      }
+    },
+    scenarios: () => {
+      table(
+        [
+          "Scenario / assumptions",
+          "NPV hard",
+          "NPV inclusive",
+          "ROI · PV-based inclusive",
+        ],
+        [0.4, 0.2, 0.21, 0.19],
+        Object.entries(result.scenarios).map(([name, s]) => [
+          `${name}: ${s.what_moved}`,
+          money(s.npv_hard),
+          money(s.npv_capacity_inclusive),
+          pct(s.roi_pv_capacity_inclusive),
+        ]),
+      );
+      table(
+        [
+          result.sensitivity.x_labels.discount_rate,
+          "NPV hard",
+          "NPV capacity-inclusive",
+        ],
+        [0.25, 0.35, 0.4],
+        result.sensitivity.discount_rate.map((p) => [
+          String(p.x),
+          money(p.npv_hard),
+          money(p.npv_capacity_inclusive),
+        ]),
+      );
+    },
+    assumptions: () => {
+      para(
+        `Run ${meta.run_id}. Expected scenario. Generated ${meta.generated_at}. Contract ${meta.contract_version}; formula ${meta.formula_version}; settings ${meta.settings_version}.`,
+      );
+      const inputs = result.drivers.flatMap((driver) =>
+        driver.steps.flatMap((step) =>
+          step.inputs.map((input) => [
+            input.id,
+            input.label,
+            String(input.value),
+            step.ref,
+          ]),
+        ),
+      );
+      if (inputs.length)
+        table(
+          ["Input", "Label", "Value", "Step"],
+          [0.28, 0.34, 0.25, 0.13],
+          inputs,
+        );
+      else
+        note(
+          "Input snapshot not supplied",
+          "The stored step input arrays are empty. Source formulas and source types are preserved below; missing entered inputs and project context have not been invented.",
+        );
+      table(
+        ["Accepted proxy", "Value", "Source / tier"],
+        [0.26, 0.14, 0.6],
+        result.proxies_used.map((p) => [
+          inputLabel(p.input_id),
+          String(p.value),
+          `${p.source} · ${p.tier}`,
+        ]),
+      );
+    },
+    unquantified: () => {
+      table(
+        ["Benefit", "Reason", "What to add"],
+        [0.2, 0.35, 0.45],
+        result.unquantified.map((u) => [
+          label(u.target),
+          u.reason,
+          u.raise_with,
+        ]),
+      );
+      result.flexibility.forEach((s) => para(s));
+    },
+    risks: () =>
+      table(
+        ["Decision", "Risks"],
+        [0.22, 0.78],
+        [
+          ...result.doing_nothing_risks.map((s) => ["Doing nothing", s]),
+          ...result.proceeding_risks.map((s) => ["Proceeding", s]),
+        ],
+      ),
+    measurement: () =>
+      table(
+        ["Driver / metric", "Baseline / source", "Owner", "Frequency"],
+        [0.35, 0.35, 0.17, 0.13],
+        Object.entries(result.measurement_plan).map(([id, p]) => [
+          `${result.drivers.find((d) => d.id === id)?.label ?? id}: ${specified(p.metric) ? p.metric : "Measurement details to confirm"}`,
+          specified(p.baseline)
+            ? `${p.baseline}${specified(p.baseline_source) ? `; ${p.baseline_source}` : ""}`
+            : "",
+          specified(p.owner) ? p.owner : "",
+          specified(p.frequency) ? p.frequency : "",
+        ]),
+      ),
+    audit: () => {
+      table(
+        ["Field", "Recorded value"],
+        [0.28, 0.72],
+        [
+          ["Run", meta.run_id],
+          ["Mode", meta.mode],
+          ["Contract", meta.contract_version],
+          ["Formula", meta.formula_version],
+          ["Settings", meta.settings_version],
+          ["Generated", meta.generated_at],
+          ["Evidence tiers", tiers(meta.tier_counts)],
+          [
+            "Narrative references",
+            "References such as A4, B3 and D1–D3 refer to the step and cost tables in this report.",
+          ],
+        ],
+      );
+      table(
+        ["Engine integrity check", "Status"],
+        [0.75, 0.25],
+        result.confidence.integrity.checks.map((c) => [
+          c.name,
+          c.passed ? "Passed" : "Not passed",
+        ]),
+      );
+      if (result.warnings.length)
+        result.warnings.forEach((w) => para(`${w.code}: ${w.message}`));
+      else para("No engine warnings were recorded.", 8.5, C.muted);
+      if (result.overrides.length)
+        result.overrides.forEach((o) =>
+          para(
+            `${o.path}: computed ${money(o.computed_value)}; override ${money(o.override_value)}; ${o.reason}; ${o.author}; ${o.at}`,
+          ),
+        );
+      else para("No overrides were recorded.", 8.5, C.muted);
+    },
+  };
+  // Sections that start on a page of their own after the first one.
+  const OWN_PAGE = new Set(["results", "charts", "scenarios", "audit"]);
+  const sections = [],
+    charts = [];
+
+  newPage("Report");
   text("THE VALUE, WITH ITS EVIDENCE.", M, y, 10, bold, C.teal);
   y += 28;
   text(
@@ -327,330 +782,20 @@ export async function renderEngineReport({
     bold,
   );
   y += 44;
-  section(
-    1,
-    "Executive summary",
-    `${meta.horizon_years} years · ${meta.currency} · discount rate ${pct(meta.discount_rate_pct)}`,
-  );
-  table(
-    ["Measure", "Hard savings", "Capacity-inclusive"],
-    [0.4, 0.28, 0.32],
-    [
-      [
-        "Net present value",
-        money(result.headline.npv.hard),
-        money(result.headline.npv.capacity_inclusive),
-      ],
-      [
-        "ROI · undiscounted",
-        pct(result.headline.roi.undiscounted.hard),
-        pct(result.headline.roi.undiscounted.capacity_inclusive),
-      ],
-      [
-        "ROI · NPV / PV of costs",
-        pct(result.headline.roi.pv.hard),
-        pct(result.headline.roi.pv.capacity_inclusive),
-      ],
-      [
-        "Payback",
-        result.headline.payback.hard.text,
-        result.headline.payback.capacity_inclusive.text,
-      ],
-      [
-        "Benefits · present value",
-        "All included drivers",
-        money(result.headline.benefits_pv),
-      ],
-      [
-        "Costs · present value",
-        "All cost lines",
-        money(result.headline.costs_pv),
-      ],
-    ],
-  );
-  note(
-    confidenceSummary(result.confidence.project.confidence, meta.tier_counts),
-    `${result.confidence.band_note} Minimum confidence required: ${ratio(result.confidence.project.floor)}. ${result.confidence.project.capped_by ? `Capped by ${label(result.confidence.project.capped_by)}.` : ""}`,
-  );
-  para(result.narrative.summary);
   note(
     meta.mode === "stub"
       ? "STUB · sample assessment data"
       : "Pre-funding estimate",
-    "This report renders the stored engine output for the recorded run. The exporter formats supplied values and does not recompute financial metrics. Refer to the recorded evidence before making a funding decision.",
+    `${meta.horizon_years} years · ${meta.currency} · discount rate ${pct(meta.discount_rate_pct)}. This report renders the stored engine output for the recorded run. The exporter formats supplied values and does not recompute financial metrics. Refer to the recorded evidence before making a funding decision.`,
   );
-
-  newPage("Context and benefits");
-  section(2, "Context and assumptions");
-  para(
-    `Run ${meta.run_id}. Expected scenario. Generated ${meta.generated_at}. Contract ${meta.contract_version}; formula ${meta.formula_version}; settings ${meta.settings_version}.`,
-  );
-  const inputs = result.drivers.flatMap((driver) =>
-    driver.steps.flatMap((step) =>
-      step.inputs.map((input) => [
-        input.id,
-        input.label,
-        String(input.value),
-        step.ref,
-      ]),
-    ),
-  );
-  if (inputs.length)
-    table(
-      ["Input", "Label", "Value", "Step"],
-      [0.28, 0.34, 0.25, 0.13],
-      inputs,
-    );
-  else
-    note(
-      "Input snapshot not supplied",
-      "The stored step input arrays are empty. Source formulas and source types are preserved below; missing entered inputs and project context have not been invented.",
-    );
-  table(
-    ["Accepted proxy", "Value", "Source / tier"],
-    [0.26, 0.14, 0.6],
-    result.proxies_used.map((p) => [
-      inputLabel(p.input_id),
-      String(p.value),
-      `${p.source} · ${p.tier}`,
-    ]),
-  );
-  section(3, "Benefits by driver", "Adjusted values over the selected horizon");
-  table(
-    ["Driver / class", "Haircut", "Confidence", "Total", "PV"],
-    [0.34, 0.12, 0.14, 0.2, 0.2],
-    result.drivers.map((d) => [
-      `${d.label} · ${label(d.label_class)} · ${d.included ? "included" : "excluded"}`,
-      pct(d.haircut_pct),
-      ratio(d.confidence),
-      money(d.total),
-      money(d.pv),
-    ]),
-  );
-  bars(
-    "Driver contribution · horizon totals",
-    result.charts.driver_contribution.map((p) => ({
-      label: result.drivers.find((d) => d.id === p.driver)?.label ?? p.driver,
-      value: p.value,
-    })),
-  );
-
-  for (const driver of result.drivers) {
-    newPage(driver.label);
-    section(
-      3,
-      `${driver.label} · show the math`,
-      `${label(driver.label_class)} · haircut ${pct(driver.haircut_pct)} · confidence ${ratio(driver.confidence)}`,
-    );
-    para(tiers(driver.tier_counts), 8.5, C.muted);
-    table(
-      [
-        "Ref",
-        "Step / formula / source",
-        ...driver.annual.map((a) => `Year ${a.year}`),
-        "Horizon total",
-      ],
-      [0.07, 0.33, 0.15, 0.15, 0.15, 0.15],
-      driver.steps.map((s) => [
-        s.ref,
-        `${s.order}. ${s.label}\n${s.formula}\nSource: ${s.source_type}; tier: ${s.evidence_tier ?? "calculated"}`,
-        ...s.by_year.map(money),
-        money(s.value),
-      ]),
-    );
-    note("What makes this vary", driver.risk_factors.join(" "));
-    para(
-      `How measured: ${specified(driver.measured_by) ? driver.measured_by : "Measurement method to confirm"}`,
-    );
-    const narrative = result.narrative.by_driver[driver.id];
-    if (narrative) para(narrative);
-  }
-  newPage("Costs and unquantified benefits");
-  section(
-    4,
-    "Costs and uplift",
-    `PV ${money(result.costs.total_pv)} · delay ${result.costs.delay_months} months`,
-  );
-  table(
-    ["Ref / cost", "Basis", "Base", "Uplift", "Adjusted"],
-    [0.38, 0.13, 0.18, 0.12, 0.19],
-    result.costs.lines.map((c) => [
-      `${c.ref} · ${c.label}`,
-      c.basis,
-      money(c.base),
-      pct(c.uplift_pct),
-      money(c.adjusted),
-    ]),
-  );
-  section(5, "Unquantified benefits and flexibility");
-  table(
-    ["Benefit", "Reason", "What to add"],
-    [0.2, 0.35, 0.45],
-    result.unquantified.map((u) => [label(u.target), u.reason, u.raise_with]),
-  );
-  result.flexibility.forEach((s) => para(s));
-
-  newPage("Financial summary");
-  section(
-    6,
-    "Financial summary",
-    "Undiscounted flows; net and cumulative are capacity-inclusive.",
-  );
-  table(
-    [
-      "Period",
-      "Hard benefit",
-      "Capacity / avoided loss",
-      "Cost",
-      "Net inclusive",
-      "Cumulative inclusive",
-    ],
-    [0.1, 0.17, 0.2, 0.17, 0.18, 0.18],
-    result.cash_flows.map((c) => [
-      c.year === 0 ? "Time zero" : `Year ${c.year}`,
-      money(c.benefits_hard),
-      money(c.benefits_capacity),
-      money(c.costs),
-      money(c.net),
-      money(c.cumulative),
-    ]),
-  );
-  note(
-    "Financial basis",
-    "Capacity value and expected avoided loss are distinct from documented hard savings. The net and cumulative figures include these benefits; they do not establish a cash reduction.",
-  );
-  bars("Adjustment stages · supplied horizon levels", result.charts.waterfall);
-
-  newPage("Scenarios and sensitivity");
-  section(7, "Scenarios and sensitivity");
-  table(
-    [
-      "Scenario / assumptions",
-      "NPV hard",
-      "NPV inclusive",
-      "ROI · PV-based inclusive",
-    ],
-    [0.4, 0.2, 0.21, 0.19],
-    Object.entries(result.scenarios).map(([name, s]) => [
-      `${name}: ${s.what_moved}`,
-      money(s.npv_hard),
-      money(s.npv_capacity_inclusive),
-      pct(s.roi_pv_capacity_inclusive),
-    ]),
-  );
-  const points = result.charts.sensitivity.filter(
-    (point) => point.npv_hard !== null && point.npv_capacity_inclusive !== null,
-  );
-  const height = 220;
-  ensure(height + 14);
-  mark("chart", y, height);
-  const top = y;
-  rect(M, top, CW, height, C.pale);
-  text("NPV sensitivity · discount rate", M + 14, top + 13, 11, bold);
-  text(
-    "Teal: hard savings · blue: capacity-inclusive",
-    M + 14,
-    top + 33,
-    8,
-    regular,
-    C.muted,
-  );
-  const lo = Math.min(0, ...points.map((p) => p.npv_hard)),
-    hi = Math.max(1, ...points.map((p) => p.npv_capacity_inclusive));
-  const px = (i) => M + 90 + (i * (CW - 125)) / (points.length - 1 || 1),
-    py = (v) => top + 176 - ((v - lo) / (hi - lo)) * 114;
-  line(M + 90, py(0), W - M - 25, py(0));
-  for (const [key, color] of [
-    ["npv_hard", C.teal],
-    ["npv_capacity_inclusive", C.blue],
-  ])
-    points.forEach((p, i) => {
-      if (i)
-        line(px(i - 1), py(points[i - 1][key]), px(i), py(p[key]), color, 2);
-      page.drawCircle({ x: px(i), y: H - py(p[key]), size: 2.8, color });
-    });
-  [lo, 0, hi].forEach((v) =>
-    right(money(v), M + 82, py(v) - 4, 7.5, regular, C.muted),
-  );
-  points.forEach((p, i) =>
-    text(String(p.x), px(i) - 5, top + 189, 8, regular, C.muted),
-  );
-  y += height + 17;
-  table(
-    [
-      result.sensitivity.x_labels.discount_rate,
-      "NPV hard",
-      "NPV capacity-inclusive",
-    ],
-    [0.25, 0.35, 0.4],
-    result.charts.sensitivity.map((p) => [
-      String(p.x),
-      money(p.npv_hard),
-      money(p.npv_capacity_inclusive),
-    ]),
-  );
-
-  newPage("Risks and measurement");
-  section(8, "Risks of doing nothing vs proceeding");
-  table(
-    ["Decision", "Risks"],
-    [0.22, 0.78],
-    [
-      ...result.doing_nothing_risks.map((s) => ["Doing nothing", s]),
-      ...result.proceeding_risks.map((s) => ["Proceeding", s]),
-    ],
-  );
-  section(9, "Measurement plan");
-  table(
-    ["Driver / metric", "Baseline / source", "Owner", "Frequency"],
-    [0.35, 0.35, 0.17, 0.13],
-    Object.entries(result.measurement_plan).map(([id, p]) => [
-      `${result.drivers.find((d) => d.id === id)?.label ?? id}: ${specified(p.metric) ? p.metric : "Measurement details to confirm"}`,
-      specified(p.baseline)
-        ? `${p.baseline}${specified(p.baseline_source) ? `; ${p.baseline_source}` : ""}`
-        : "",
-      specified(p.owner) ? p.owner : "",
-      specified(p.frequency) ? p.frequency : "",
-    ]),
-  );
-
-  newPage("Appendix and audit trail");
-  section(10, "Appendix and audit trail");
-  table(
-    ["Field", "Recorded value"],
-    [0.28, 0.72],
-    [
-      ["Run", meta.run_id],
-      ["Mode", meta.mode],
-      ["Contract", meta.contract_version],
-      ["Formula", meta.formula_version],
-      ["Settings", meta.settings_version],
-      ["Generated", meta.generated_at],
-      ["Evidence tiers", tiers(meta.tier_counts)],
-      [
-        "Narrative references",
-        "References such as A4, B3 and D1–D3 refer to the step and cost tables in this report.",
-      ],
-    ],
-  );
-  table(
-    ["Engine integrity check", "Status"],
-    [0.75, 0.25],
-    result.confidence.integrity.checks.map((c) => [
-      c.name,
-      c.passed ? "Passed" : "Not passed",
-    ]),
-  );
-  if (result.warnings.length)
-    result.warnings.forEach((w) => para(`${w.code}: ${w.message}`));
-  else para("No engine warnings were recorded.", 8.5, C.muted);
-  if (result.overrides.length)
-    result.overrides.forEach((o) =>
-      para(
-        `${o.path}: computed ${money(o.computed_value)}; override ${money(o.override_value)}; ${o.reason}; ${o.author}; ${o.at}`,
-      ),
-    );
-  else para("No overrides were recorded.", 8.5, C.muted);
+  plan.sections.forEach((id, index) => {
+    const title = REPORT_SECTIONS.find((s) => s.id === id).pdfTitle;
+    if (index > 0 && OWN_PAGE.has(id)) newPage(title);
+    else group = title;
+    section(index + 1, title);
+    sections.push(title);
+    SECTIONS[id]();
+  });
   pages.forEach((p, i) => {
     page = p;
     line(M, H - 50, W - M, H - 50);
@@ -674,6 +819,12 @@ export async function renderEngineReport({
     );
     right(`${i + 1} / ${pages.length}`, W - M, H - 37, 8, bold, C.muted);
   });
-  return { bytes: await doc.save(), pages: pages.length, layout };
+  return {
+    bytes: await doc.save(),
+    pages: pages.length,
+    layout,
+    sections,
+    charts,
+  };
 }
 export const renderEngineSample = renderEngineReport;

@@ -1,4 +1,4 @@
-import { DEFAULTS, LABELS } from "../../lib/intake-fields";
+import { LABELS } from "../../lib/intake-fields";
 import { answered, display, OPTIONAL, type Section } from "./draft";
 import type { FormDraft } from "./use-form-draft";
 
@@ -55,4 +55,4 @@ export function groupsOf(draft: FormDraft): Group[] {
 
 /** Fields with an industry default or proxy that the goals ask for. */
 export const defaultFields = (draft: FormDraft) =>
-  [...draft.visible].filter((id) => DEFAULTS[id]);
+  [...draft.visible].filter((id) => draft.defaults[id]);

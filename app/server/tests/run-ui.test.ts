@@ -654,3 +654,30 @@ describe("Process screen", () => {
     ).toBe(false);
   });
 });
+
+describe("re-run after a team defaults change (#88)", () => {
+  it("offers Run again when only the settings changed", async () => {
+    const { canRerun } = await import("../../lib/run-ui");
+    const view = {
+      run_id: "r1",
+      status: "released",
+      step: null,
+      progress_pct: 100,
+      checklist: [],
+      pending_question: null,
+      mode: "real",
+    } as unknown as Parameters<typeof canRerun>[0]["view"];
+    const latest = {
+      runId: "r1",
+      status: "released" as const,
+      finishedAt: null,
+      formChangedSince: false,
+      summary: null,
+    };
+    const args = { view, hasForm: true, missing: [] };
+    expect(canRerun({ ...args, latest })).toBe(false);
+    expect(
+      canRerun({ ...args, latest: { ...latest, settingsChangedSince: true } }),
+    ).toBe(true);
+  });
+});

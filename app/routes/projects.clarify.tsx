@@ -1,5 +1,9 @@
 import { ClarifyStep } from "../components/clarify/clarify-step";
 import { requireProjectAccess } from "../server/access.server";
+import { offeredDefaults } from "../server/team-settings.server";
+import { assistantAvailability } from "../server/assistant.server";
+import { evidenceAvailability } from "../server/evidence.server";
+import { EvidenceContext } from "../components/clarify/evidence-context";
 import { useProjectFlow } from "./project-layout";
 import type { Route } from "./+types/projects.clarify";
 
@@ -9,19 +13,30 @@ import type { Route } from "./+types/projects.clarify";
  * focuses that field's question.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireProjectAccess(request, params.projectId);
-  return { target: new URL(request.url).searchParams.get("input") };
+  const access = await requireProjectAccess(request, params.projectId);
+  // The team's financial defaults (#88), offered as "Team default".
+  const teamDefaults = await offeredDefaults(access.teamId);
+  return {
+    target: new URL(request.url).searchParams.get("input"),
+    teamDefaults,
+    evidence: evidenceAvailability(),
+    assistant: assistantAvailability(),
+  };
 }
 
 export default function ProjectClarify({ loaderData }: Route.ComponentProps) {
   const flow = useProjectFlow();
   return (
-    <ClarifyStep
-      projectId={flow.project.id}
-      initial={flow.form}
-      savedAt={flow.savedAt}
-      files={flow.files}
-      target={loaderData.target}
-    />
+    <EvidenceContext.Provider value={loaderData.evidence}>
+      <ClarifyStep
+        projectId={flow.project.id}
+        initial={flow.form}
+        savedAt={flow.savedAt}
+        files={flow.files}
+        target={loaderData.target}
+        teamDefaults={loaderData.teamDefaults}
+        assistant={loaderData.assistant}
+      />
+    </EvidenceContext.Provider>
   );
 }

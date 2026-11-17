@@ -2,9 +2,10 @@ import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
 import type { Input } from "../../../shared/form";
 import { INPUT_RULES } from "../../lib/intake-catalog";
-import { DEFAULTS, LABELS } from "../../lib/intake-fields";
+import { LABELS } from "../../lib/intake-fields";
 import { OPTIONAL, SOURCE_CHOICES, TIER_LABELS, unitFor } from "./draft";
 import type { FormDraft } from "./use-form-draft";
+import { FindInFile } from "./find-in-file";
 
 export const control =
   "block w-full rounded-lg border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -51,7 +52,7 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
   const b = record?.backing ?? {};
   const label = LABELS[id] ?? id;
   const unit = unitFor(id, draft.currency);
-  const proxy = DEFAULTS[id];
+  const proxy = draft.defaults[id];
   const fileName = new Map(draft.files.map((file) => [file.id, file.name]));
   const describedBy = errors.length ? `errors-${id}` : undefined;
   return (
@@ -171,7 +172,8 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
             title={proxy.note}
             onClick={() => draft.acceptProxy(id)}
           >
-            Use proxy: {String(proxy.value)}
+            {proxy.team ? "Use team default" : "Use proxy"}:{" "}
+            {String(proxy.value)}
             {unit === "%" ? "%" : ""}
           </button>
         )}
@@ -221,7 +223,14 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
             onChange={(event) =>
               draft.metadata(id, {
                 tier: event.target.value as Input["tier"],
-                origin: event.target.value === "measured" ? "file" : "user",
+                // A figure the user accepted from the assistant stays marked
+                // as such when only its evidence tier changes.
+                origin:
+                  event.target.value === "measured"
+                    ? "file"
+                    : record?.origin === "assistant_accepted"
+                      ? "assistant_accepted"
+                      : "user",
               })
             }
           >
@@ -281,6 +290,16 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
                 ))}
               </select>
             </label>
+            {b.source_file_id &&
+              typeof record?.value === "number" &&
+              Number.isFinite(record.value) && (
+                <FindInFile
+                  id={id}
+                  fileId={b.source_file_id}
+                  value={record.value}
+                  draft={draft}
+                />
+              )}
             <label className="block text-xs">
               Quoted passage
               <textarea

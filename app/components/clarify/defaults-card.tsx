@@ -1,7 +1,6 @@
 import { Check } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { DEFAULTS } from "../../lib/intake-fields";
 import { TIER_LABELS, unitFor } from "./draft";
 import { TierBadge } from "./field-editor";
 import { labelOf, valueOf } from "./progress";
@@ -9,8 +8,9 @@ import { CollapsedRow, QuestionHeader } from "./question-card";
 import type { FormDraft } from "./use-form-draft";
 
 /**
- * First Clarify question: accept the labeled industry defaults for the
- * fields that have one, or enter your own value in that field's card.
+ * First Clarify question: accept the labeled defaults (the team's discount
+ * rate and recapture, built-in values for the rest) for the fields that have
+ * one, or enter your own value in that field's card.
  */
 export function DefaultsCard({
   draft,
@@ -36,7 +36,7 @@ export function DefaultsCard({
   if (!open)
     return (
       <CollapsedRow
-        title="Industry defaults"
+        title="Defaults"
         summary={
           pending.length
             ? `${pending.length} to decide`
@@ -51,7 +51,7 @@ export function DefaultsCard({
       aria-labelledby="defaults-heading"
       className="flex flex-col gap-4 rounded-2xl border bg-card p-5"
     >
-      <QuestionHeader id="defaults-heading" title="Use industry defaults?">
+      <QuestionHeader id="defaults-heading" title="Use the defaults?">
         {pending.length > 1 && (
           <Button
             variant="outline"
@@ -67,7 +67,7 @@ export function DefaultsCard({
       </QuestionHeader>
       <ul className="flex flex-col divide-y rounded-xl border">
         {ids.map((id) => {
-          const proxy = DEFAULTS[id]!;
+          const proxy = draft.defaults[id]!;
           const record = draft.byId.get(id);
           const unit = unitFor(id, draft.currency);
           return (
@@ -77,7 +77,11 @@ export function DefaultsCard({
             >
               <div className="min-w-0 flex-[1_1_14rem]">
                 <p className="text-sm font-medium">{labelOf(id)}</p>
-                <p className="text-xs text-muted-foreground">{proxy.note}</p>
+                <p className="text-xs text-muted-foreground">
+                  {proxy.team
+                    ? (proxy.team.rationale ?? proxy.team.source)
+                    : proxy.note}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold">
@@ -87,7 +91,11 @@ export function DefaultsCard({
                 {unit && unit !== "%" && (
                   <span className="text-xs text-muted-foreground">{unit}</span>
                 )}
-                <Badge variant="secondary">{TIER_LABELS[proxy.tier]}</Badge>
+                {proxy.team ? (
+                  <Badge data-testid="team-default">Team default</Badge>
+                ) : (
+                  <Badge variant="secondary">{TIER_LABELS[proxy.tier]}</Badge>
+                )}
               </div>
               <div className="ml-auto flex items-center gap-2">
                 {record ? (
