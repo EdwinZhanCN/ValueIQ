@@ -21,6 +21,7 @@ import {
   type RunOutput,
 } from "../engine";
 import { validateSchema, type JsonSchema } from "./schema";
+import { assertToolAllowed, type AgentName } from "./tool-access";
 import type { FileEvidenceHost } from "./evidence/host";
 import { findEvidence, specFor } from "./evidence/find";
 import { sectionFilter } from "./evidence/text";
@@ -71,8 +72,12 @@ export interface ToolState {
   last: RunOutput | null;
   /** Every tool output of this run (frozen); the provenance set for model-written numbers. */
   seen: unknown[];
+  /** Calls refused by the agent allowlist this run (audit trail for the tool-call log). */
+  denied?: { agent: AgentName; tool: string }[];
 }
 export interface ToolContext {
+  /** Which agent is calling. When set, every call is checked against the allowlist (tool-access.ts). */
+  readonly agent?: AgentName;
   readonly form: FormFile; // deep-frozen
   readonly run_id: string;
   readonly now: string; // ISO, pure "now" for the engine
@@ -117,6 +122,7 @@ export function createContext(
     isAccepted?: ToolContext["isAccepted"];
     files?: FileEvidenceHost;
     intake?: IntakeTurnState;
+    agent?: AgentName;
   },
 ): ToolContext {
   return {
@@ -125,7 +131,8 @@ export function createContext(
     now: o.now,
     mode: o.mode ?? "real",
     ...(o.config ? { config: o.config } : {}),
-    state: { asked_this_run: [], last: null, seen: [] },
+    ...(o.agent ? { agent: o.agent } : {}),
+    state: { asked_this_run: [], last: null, seen: [], denied: [] },
     isAccepted: o.isAccepted ?? (() => false),
     ...(o.files ? { files: o.files } : {}),
     ...(o.intake ? { intake: o.intake } : {}),
@@ -1262,6 +1269,7 @@ export function callTool(
 ): unknown {
   const tool = BY_NAME.get(name);
   if (!tool) throw new UnknownToolError(name);
+  assertToolAllowed(ctx, name);
   const problems = validateSchema(tool.parameters, args ?? {});
   if (problems.length > 0) throw new ToolArgError(name, problems);
   const out = frozenCopy(
@@ -1281,6 +1289,7 @@ export async function callToolDef(
   args: unknown,
   ctx: ToolContext,
 ): Promise<unknown> {
+  assertToolAllowed(ctx, tool.name);
   const problems = validateSchema(tool.parameters, args ?? {});
   if (problems.length > 0) throw new ToolArgError(tool.name, problems);
   const a = (args ?? {}) as Record<string, unknown>;
