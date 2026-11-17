@@ -3,3 +3,4 @@
 Only unfinished plans live here. Keep one file per independently resumable effort, read only plans relevant to the current change, and follow the lifecycle in [`../README.md`](../README.md). An empty directory is valid when no work currently earns a plan.
 
 - [Output: results, evidence, report builder and PDF](output-report.md) — requirements, confirmed scope, contract review, published cases and implementation sequence for O1-O6/Z6; sliders remain stretch.
+- [Clarify agent, New clients goal and evidence fixes](clarify-agent.md) � two-agent split with a server-side tool allowlist, intake context, labeled agent estimates, the revenue driver and the F1-F10 fixes; lists the core-beliefs points that need agreement.
