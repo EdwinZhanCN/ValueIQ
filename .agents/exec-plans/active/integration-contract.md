@@ -96,7 +96,7 @@ Existing in [interim-foundation decision](../../decisions/2026-11-13-interim-fou
 
 ### 6. Agent methods
 
-Browser-callable: `chat(message)` (streaming), `preflight()`, `startRun()`, `answerQuestion(questionId, answer)`, `cancelRun()`. Workflow callbacks (`onWorkflowProgress`, `onWorkflowComplete`, `onWorkflowError`) update the run view and write `run_events`.
+Browser-callable: `chat(message, history, draft)` (one non-streaming turn; refused while a run is active), `preflight()`, `startRun(options?)` (`{ simulateFailure: true }` is refused unless the local `DEMO_CONTROLS` switch is on), `answerQuestion(questionId, answer)`, `cancelRun()`. Workflow callbacks (`onWorkflowProgress`, `onWorkflowComplete`, `onWorkflowError`) update the run view and write `run_events`.
 
 - Each connection carries the caller's user id in connection state, set in `onConnect` from the header the access gate writes (section 7). `started_by` and `answered_by` come from it, never from arguments.
 - `startRun`, `answerQuestion`, and `cancelRun` re-check team membership in D1 for that user id and fail with `ACCESS_DENIED` if it is gone; `chat` and `preflight` rely on the connection check.
