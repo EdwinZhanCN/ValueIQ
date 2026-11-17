@@ -1,5 +1,8 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { QUOTE_CHECK_LABELS, type EnteredInputRow } from "~/lib/entered-inputs";
+import {
+  QUOTE_CHECK_LABELS,
+  type EnteredInputRow,
+} from "../../lib/entered-inputs";
 import { Link } from "react-router";
 import {
   ArrowLeft,
