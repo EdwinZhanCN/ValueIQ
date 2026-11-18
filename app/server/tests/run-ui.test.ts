@@ -38,6 +38,7 @@ const ALL_GOALS = [
   "data_quality",
   "decision_speed",
   "risk_reduction",
+  "new_clients",
 ] as const;
 const PATHS_A: Paths = {
   time: "hours",

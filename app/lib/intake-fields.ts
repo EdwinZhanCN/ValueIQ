@@ -8,6 +8,7 @@ export const GOAL_LABELS: Record<Goal, string> = {
   data_quality: "Data quality",
   decision_speed: "Decision speed",
   risk_reduction: "Risk reduction",
+  new_clients: "New clients",
 };
 export const LABELS: Record<string, string> = {
   currency: "Currency",
@@ -16,6 +17,13 @@ export const LABELS: Record<string, string> = {
   file_descriptions: "File descriptions",
   project_name: "Project name",
   decision_statement: "Decision to support",
+  company_description: "About the company",
+  product_description: "The product or idea",
+  leads_reached_per_year: "Leads reached per year",
+  response_rate_pct: "Response rate (%)",
+  close_rate_pct: "Close rate (%)",
+  gross_profit_per_customer: "Gross profit per new customer, first year",
+  capacity_cap_customers: "Most new customers you can serve per year",
   discount_rate_pct: "Discount rate (%)",
   adoption_by_year: "Adoption by year (%)",
   cost_one_time_vendor_license: "Vendor, license and integration (one-time)",
@@ -121,6 +129,8 @@ export function defaultsFor(
 export const INTAKE_FIELDS = [
   "project_name",
   "decision_statement",
+  "company_description",
+  "product_description",
   "goals",
   "files",
   "file_descriptions",

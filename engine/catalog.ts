@@ -31,6 +31,8 @@ export const CATALOG: Record<string, CatalogEntry> = {
   // project / settings
   project_name: e("Project name", "text", "context"),
   decision_statement: e("Decision statement", "text", "context"),
+  company_description: e("About the company", "text", "context"),
+  product_description: e("The product or idea", "text", "context"),
   goals: e("Goals", "array", "context"),
   other_notes: e("Other notes", "text", "context"),
   files: e("Files", "array", "context"),
@@ -175,6 +177,27 @@ export const CATALOG: Record<string, CatalogEntry> = {
     max: 100,
   }),
   cost_bearer: e("Cost bearer", "enum", "context"),
+  // new clients (sales): incremental gross profit, capped by what the team can serve
+  leads_reached_per_year: e("Leads reached per year", "int", "known", {
+    min: 0,
+  }),
+  response_rate_pct: e("Response rate", "percent", "effect", {
+    min: 0,
+    max: 100,
+  }),
+  close_rate_pct: e("Close rate", "percent", "effect", { min: 0, max: 100 }),
+  gross_profit_per_customer: e(
+    "Gross profit per new customer, first year",
+    "number",
+    "effect",
+    { min: 0 },
+  ),
+  capacity_cap_customers: e(
+    "Most new customers you can serve per year",
+    "int",
+    "known",
+    { min: 0 },
+  ),
 };
 
 /** (before, after) pairs that must satisfy after <= before. */
@@ -205,10 +228,12 @@ export const DRIVER_LABELS: Record<DriverId, string> = {
   data_quality: "Data quality",
   decision_speed: "Decision speed",
   risk_reduction: "Risk reduction",
+  new_clients: "New clients",
 };
 export const DRIVER_ORDER: DriverId[] = [
   "time_savings",
   "data_quality",
   "decision_speed",
   "risk_reduction",
+  "new_clients",
 ];

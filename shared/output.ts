@@ -76,6 +76,7 @@ const driverId = choice([
   "data_quality",
   "decision_speed",
   "risk_reduction",
+  "new_clients",
 ]);
 const tiers = object({
   measured: count,

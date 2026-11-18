@@ -135,6 +135,19 @@ export function sectionsFor(goals: readonly Goal[], paths: Paths): Section[] {
         "cost_bearer",
       ],
     });
+  if (goals.includes("new_clients"))
+    sections.push({
+      key: "new_clients",
+      title: GOAL_LABELS.new_clients,
+      question: "How many new customers will it bring in?",
+      ids: [
+        "leads_reached_per_year",
+        "response_rate_pct",
+        "close_rate_pct",
+        "gross_profit_per_customer",
+        "capacity_cap_customers",
+      ],
+    });
   sections.push({
     key: "costs",
     title: "Project costs",
@@ -185,6 +198,7 @@ export const OPTIONAL: ReadonlySet<string> = new Set([
   "cost_sources",
   "stages_downstream",
   "realized_as_cash",
+  "capacity_cap_customers",
 ]);
 
 export const pretty = (value: Input["value"]) =>
@@ -333,6 +347,8 @@ const UNITS: Record<string, string> = {
   error_count_before: "/ year",
   error_count_after: "/ year",
   decisions_per_year: "/ year",
+  leads_reached_per_year: "/ year",
+  capacity_cap_customers: "/ year",
   aro_before: "/ year",
   aro_after: "/ year",
   days_to_decide_before: "days",

@@ -25,6 +25,8 @@ const percentage = (role: InputRule["role"]): InputRule =>
 export const INPUT_RULES: Readonly<Record<string, InputRule>> = {
   project_name: text,
   decision_statement: text,
+  company_description: text,
+  product_description: text,
   other_notes: text,
   currency: { kind: "text", role: "known" },
   goals: {
@@ -35,6 +37,7 @@ export const INPUT_RULES: Readonly<Record<string, InputRule>> = {
       "data_quality",
       "decision_speed",
       "risk_reduction",
+      "new_clients",
     ],
   },
   files: { kind: "strings", role: "context" },
@@ -94,6 +97,11 @@ export const INPUT_RULES: Readonly<Record<string, InputRule>> = {
   loss_per_event: numeric("effect"),
   asset_value: numeric("effect"),
   exposure_factor_pct: percentage("effect"),
+  leads_reached_per_year: count(),
+  response_rate_pct: percentage("effect"),
+  close_rate_pct: percentage("effect"),
+  gross_profit_per_customer: numeric("effect"),
+  capacity_cap_customers: count(),
   cost_bearer: {
     kind: "enum",
     role: "context",

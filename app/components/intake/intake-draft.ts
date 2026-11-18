@@ -26,6 +26,8 @@ export const PROJECT_DESCRIPTION = "Project description";
 export type IntakeEdits = {
   projectName: string;
   decision: string;
+  company: string;
+  product: string;
   goals: Goal[];
 };
 
@@ -68,6 +70,8 @@ export function applyIntake(
   const texts: [string, string][] = [
     ["project_name", edits.projectName],
     ["decision_statement", edits.decision],
+    ["company_description", edits.company],
+    ["product_description", edits.product],
   ];
   const inputs = draft.inputs.flatMap((record) => {
     const edit = texts.find(([id]) => id === record.id);

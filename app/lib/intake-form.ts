@@ -6,6 +6,7 @@ const goals = [
   "data_quality",
   "decision_speed",
   "risk_reduction",
+  "new_clients",
 ];
 const tiers = [
   "measured",
@@ -311,6 +312,11 @@ export function validateFormFile(
       (typeof value !== "string" || !value.trim() || value.length > 120)
     )
       add("BOUNDS", id, "Project name must have 1-120 characters.");
+    if (
+      (id === "company_description" || id === "product_description") &&
+      (typeof value !== "string" || !value.trim() || value.length > 2000)
+    )
+      add("BOUNDS", id, "Description must have 1-2000 characters.");
     if (
       id === "decision_statement" &&
       (typeof value !== "string" || !value.trim() || value.length > 500)

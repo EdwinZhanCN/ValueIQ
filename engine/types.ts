@@ -6,7 +6,11 @@ export type Tier =
   "measured" | "documented" | "benchmark" | "estimate" | "assumption";
 export type InputTier = Tier | "user_unknown";
 export type DriverId =
-  "time_savings" | "data_quality" | "decision_speed" | "risk_reduction";
+  | "time_savings"
+  | "data_quality"
+  | "decision_speed"
+  | "risk_reduction"
+  | "new_clients";
 export type LabelClass =
   | "hard_savings"
   | "capacity_value"

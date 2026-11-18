@@ -2,7 +2,11 @@
  * Adoption and discount rate are Input records; unit metadata is optional.
  */
 export type Goal =
-  "time_savings" | "data_quality" | "decision_speed" | "risk_reduction";
+  | "time_savings"
+  | "data_quality"
+  | "decision_speed"
+  | "risk_reduction"
+  | "new_clients";
 export type Tier =
   | "measured"
   | "documented"

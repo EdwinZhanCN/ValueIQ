@@ -19,6 +19,7 @@ const GOALS = [
   "data_quality",
   "decision_speed",
   "risk_reduction",
+  "new_clients",
 ];
 const ENUMS: Record<string, string[]> = {
   cost_nature: ["cash", "capacity"],
