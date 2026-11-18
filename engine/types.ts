@@ -233,6 +233,13 @@ export interface BreakEven {
   discount_rate_pct: number;
   note: string;
 }
+/** NPV with and without the program spend (campaigns, mailings), so a cost that buys an unvalued outcome is visible. */
+export interface CostSplit {
+  program_annual: number;
+  npv_tool_only: number;
+  npv_with_program: number;
+  program_buys_unvalued_outcome: boolean;
+}
 /** One bar of the tornado: how far the capacity-inclusive NPV moves across an input's own low to high range. */
 export interface TornadoRow {
   input_id: string;
@@ -255,6 +262,7 @@ export interface Result {
   headline: Headline;
   break_even?: BreakEven;
   coverage?: Coverage;
+  cost_split?: CostSplit;
   /** The inputs that matter most, from the user's own ranges; absent when no input has one. */
   tornado?: TornadoRow[];
   drivers: Driver[];

@@ -49,6 +49,7 @@ import type {
   BreakEven,
   Coverage,
   TornadoRow,
+  CostSplit,
   Input,
   Meta,
   Payback,
@@ -989,11 +990,38 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
             )} left out for lack of evidence, so the headline understates the full case.`,
   };
 
+  const programLine = costsBuilt.lines.find(
+    (l) => l.id === "cost_annual_program",
+  );
+  const cost_split: CostSplit | undefined = programLine
+    ? {
+        program_annual: round4(programLine.adjusted),
+        npv_with_program: round4(finAll.npv),
+        npv_tool_only: round4(
+          financeSummary({
+            c0,
+            benefits: both,
+            costs: annualFlows.map((c) => c - programLine.adjusted),
+            rate_pct: rate,
+          }).npv,
+        ),
+        program_buys_unvalued_outcome: !includedIds.includes("new_clients"),
+      }
+    : undefined;
+  if (cost_split?.program_buys_unvalued_outcome)
+    warnings.push({
+      code: "PROGRAM_COST_WITHOUT_BENEFIT",
+      message:
+        "This case includes a program cost (campaigns, mailings or ads) but no goal that values what that spending buys, so net present value is understated. Add the New clients goal, or read the tool-only figure.",
+      refs: [programLine!.ref],
+    });
+
   const baseline = byId.get("baseline_alternative");
   const result: Result = {
     headline,
     ...(break_even ? { break_even } : {}),
     coverage,
+    ...(cost_split ? { cost_split } : {}),
     ...(tornado.length ? { tornado } : {}),
     drivers,
     costs: {

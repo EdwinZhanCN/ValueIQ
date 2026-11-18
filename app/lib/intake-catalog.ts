@@ -49,6 +49,7 @@ export const INPUT_RULES: Readonly<Record<string, InputRule>> = {
   cost_training_change: numeric("cost"),
   cost_annual_run: numeric("cost"),
   cost_annual_internal_support: numeric("cost"),
+  cost_annual_program: numeric("cost"),
   cost_uplift_pct: numeric("cost", 0, 1000),
   delay_months: { kind: "integer", role: "known", min: 0, max: 240 },
   baseline_alternative: text,

@@ -401,6 +401,31 @@ function CoverageLine({
   );
 }
 
+/** Program spend (campaigns, mailings) shown apart from the tool, so a cost that buys an unvalued outcome is visible. */
+function CostSplitLine({
+  split,
+  currency,
+}: {
+  split: ResultSample["result"]["cost_split"];
+  currency: string;
+}) {
+  if (!split) return null;
+  return (
+    <p
+      data-testid="cost-split"
+      className="self-start rounded-xl border px-3 py-2 text-sm text-muted-foreground"
+    >
+      Net present value is{" "}
+      <strong>{money(split.npv_with_program, currency, "n/a")}</strong> with the
+      program spend and{" "}
+      <strong>{money(split.npv_tool_only, currency, "n/a")}</strong> for the
+      tool alone.
+      {split.program_buys_unvalued_outcome &&
+        " The program spend buys an outcome this case does not value."}
+    </p>
+  );
+}
+
 /** The benefit per year that would make this pay for itself, next to what the case models. */
 function WhatMustBeTrue({
   breakEven,
@@ -517,6 +542,7 @@ export function NumbersView({ output }: { output: ResultSample }) {
         breakEven={output.result.break_even}
         currency={currency}
       />
+      <CostSplitLine split={output.result.cost_split} currency={currency} />
       <GrossAdjusted output={output} basis={basis} />
       <div className="flex flex-col gap-2 rounded-2xl border bg-card p-5">
         <Narrative value={narrative.summary} />

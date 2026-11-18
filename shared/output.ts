@@ -172,7 +172,15 @@ const tornadoRow = object({
   npv_at_high: number,
   swing: number,
 });
+const costSplit = object({
+  program_annual: number,
+  npv_tool_only: number,
+  npv_with_program: number,
+  program_buys_unvalued_outcome: (v: unknown) =>
+    typeof v === "boolean" ? v : fail(),
+});
 const result = object({
+  cost_split: optional(costSplit),
   tornado: optional(array(tornadoRow)),
   break_even: optional(breakEven),
   coverage: optional(coverage),

@@ -31,6 +31,7 @@ export const LABELS: Record<string, string> = {
   cost_training_change: "Training and change cost",
   cost_annual_run: "Annual run cost",
   cost_annual_internal_support: "Annual internal support cost",
+  cost_annual_program: "Annual program cost (campaigns, mailings, ads)",
   cost_uplift_pct: "Cost uplift override (%)",
   delay_months: "Months until benefits start",
   baseline_alternative: "What happens if you do nothing?",

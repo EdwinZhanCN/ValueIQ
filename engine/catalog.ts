@@ -70,6 +70,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   cost_annual_internal_support: e("Annual internal support", "number", "cost", {
     min: 0,
   }),
+  cost_annual_program: e("Annual program cost", "number", "cost", { min: 0 }),
   cost_uplift_pct: e("Cost uplift override", "percent", "cost", {
     min: 0,
     max: 1000,
@@ -217,6 +218,7 @@ export const COST_ONE_TIME = [
 export const COST_RECURRING = [
   "cost_annual_run",
   "cost_annual_internal_support",
+  "cost_annual_program",
 ] as const;
 export const ESSENTIAL_COSTS = [
   "cost_one_time_vendor_license",

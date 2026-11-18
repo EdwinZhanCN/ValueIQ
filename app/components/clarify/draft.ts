@@ -158,6 +158,7 @@ export function sectionsFor(goals: readonly Goal[], paths: Paths): Section[] {
       "cost_annual_run",
       "cost_one_time_internal_labor",
       "cost_annual_internal_support",
+      "cost_annual_program",
       "cost_uplift_pct",
       "delay_months",
       "baseline_alternative",
@@ -193,6 +194,7 @@ export const GOAL_SCOPED: ReadonlySet<string> = new Set(
  */
 export const OPTIONAL: ReadonlySet<string> = new Set([
   "cost_uplift_pct",
+  "cost_annual_program",
   "baseline_alternative",
   "example_decision",
   "cost_sources",
@@ -326,6 +328,7 @@ const MONEY = new Set([
 const MONEY_PER_YEAR = new Set([
   "cost_annual_run",
   "cost_annual_internal_support",
+  "cost_annual_program",
   "realized_as_cash",
 ]);
 const UNITS: Record<string, string> = {

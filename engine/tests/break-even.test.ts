@@ -52,3 +52,36 @@ describe("tornado from the user's own ranges (F7)", () => {
     expect(computeProject(f, OPTS).result!.tornado).toBeUndefined();
   });
 });
+
+describe("program cost split (F5)", () => {
+  const withProgram = () => {
+    const f = goldenResultForm();
+    f.inputs.push({
+      id: "cost_annual_program",
+      value: 1500,
+      tier: "documented",
+      origin: "user",
+      basis: "quoted",
+    });
+    return computeProject(f, OPTS).result!;
+  };
+
+  it("shows NPV with and without the program spend and warns when nothing values it", () => {
+    const r = withProgram();
+    expect(r.cost_split!.npv_tool_only).toBeGreaterThan(
+      r.cost_split!.npv_with_program,
+    );
+    expect(r.cost_split!.program_buys_unvalued_outcome).toBe(true);
+    expect(r.warnings.map((w) => w.code)).toContain(
+      "PROGRAM_COST_WITHOUT_BENEFIT",
+    );
+  });
+
+  it("adds nothing when there is no program cost", () => {
+    const r = computeProject(goldenResultForm(), OPTS).result!;
+    expect(r.cost_split).toBeUndefined();
+    expect(r.warnings.map((w) => w.code)).not.toContain(
+      "PROGRAM_COST_WITHOUT_BENEFIT",
+    );
+  });
+});
