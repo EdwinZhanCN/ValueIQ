@@ -46,6 +46,10 @@ import type {
   GapItem,
   GapList,
   Headline,
+  BreakEven,
+  Coverage,
+  TornadoRow,
+  CostSplit,
   Input,
   Meta,
   Payback,
@@ -605,6 +609,74 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
     ),
   };
 
+  // ---- tornado: swing NPV by each input's own low and high ----
+  const npvWith = (id: string, value: number): number => {
+    const byId2 = new Map(byId);
+    byId2.set(id, { ...(byId.get(id) as Input), value });
+    const ctx2: PrepContext = { ...ctx, byId: byId2 };
+    const again = included
+      .map((q) => prepareDriver(q.id, ctx2))
+      .filter((q) => q.status === "ok");
+    const s2 = streamsFor(again, BASE_PARAMS, delay, horizon);
+    const b2 = s2.hard.map((h, t) => h + (s2.cap[t] ?? 0));
+    return financeSummary({
+      c0,
+      benefits: b2,
+      costs: annualFlows,
+      rate_pct: rate,
+    }).npv;
+  };
+  const tornadoRows: TornadoRow[] = [];
+  const seen = new Set<string>();
+  for (const p of included)
+    for (const e of p.effects) {
+      const inp = byId.get(e.id);
+      if (
+        seen.has(e.id) ||
+        !inp ||
+        typeof inp.value !== "number" ||
+        typeof inp.low !== "number" ||
+        typeof inp.high !== "number" ||
+        inp.low === inp.high
+      )
+        continue;
+      seen.add(e.id);
+      const lo = npvWith(e.id, inp.low);
+      const hi = npvWith(e.id, inp.high);
+      tornadoRows.push({
+        id: e.id,
+        input_id: e.id,
+        label: CATALOG[e.id]?.label ?? e.id,
+        low_value: inp.low,
+        high_value: inp.high,
+        npv_at_low: round4(lo),
+        npv_at_high: round4(hi),
+        swing: round4(Math.abs(hi - lo)),
+      } as TornadoRow);
+    }
+  const tornado = tornadoRows
+    .sort((a, b) => b.swing - a.swing)
+    .slice(0, 5)
+    .map(
+      ({
+        input_id,
+        label,
+        low_value,
+        high_value,
+        npv_at_low,
+        npv_at_high,
+        swing,
+      }) => ({
+        input_id,
+        label,
+        low_value,
+        high_value,
+        npv_at_low,
+        npv_at_high,
+        swing,
+      }),
+    );
+
   // ---- charts ----
   const sumStage = (pick: (c: DriverCalc) => number[]) =>
     sum(
@@ -887,9 +959,70 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
     };
   }
 
+  const annuity = Array.from(
+    { length: horizon },
+    (_, t) => (1 + rate / 100) ** -(t + 1),
+  ).reduce((a, b) => a + b, 0);
+  const break_even: BreakEven | undefined =
+    annuity > 0 && finAll.pv_costs !== null && finAll.pv_benefits !== null
+      ? {
+          annual_benefit_needed: round4(finAll.pv_costs / annuity),
+          annual_benefit_modeled: round4(finAll.pv_benefits / annuity),
+          shortfall: round4((finAll.pv_costs - finAll.pv_benefits) / annuity),
+          years: horizon,
+          discount_rate_pct: rate,
+          note: `Level benefit per year, received at each year end over ${horizon} years at ${rate}%, that makes net present value zero.`,
+        }
+      : undefined;
+  const includedIds = included.map((p) => p.id);
+  const excludedIds = goals.filter((g) => !includedIds.includes(g));
+  const coverage: Coverage = {
+    selected: [...goals],
+    included: includedIds,
+    excluded: excludedIds,
+    text:
+      excludedIds.length === 0
+        ? `All ${goals.length} selected goals are in this result.`
+        : `${includedIds.length} of ${goals.length} selected goals are in this result; ${excludedIds
+            .map((g) => CATALOG[g]?.label ?? g)
+            .join(
+              ", ",
+            )} left out for lack of evidence, so the headline understates the full case.`,
+  };
+
+  const programLine = costsBuilt.lines.find(
+    (l) => l.id === "cost_annual_program",
+  );
+  const cost_split: CostSplit | undefined = programLine
+    ? {
+        program_annual: round4(programLine.adjusted),
+        npv_with_program: round4(finAll.npv),
+        npv_tool_only: round4(
+          financeSummary({
+            c0,
+            benefits: both,
+            costs: annualFlows.map((c) => c - programLine.adjusted),
+            rate_pct: rate,
+          }).npv,
+        ),
+        program_buys_unvalued_outcome: !includedIds.includes("new_clients"),
+      }
+    : undefined;
+  if (cost_split?.program_buys_unvalued_outcome)
+    warnings.push({
+      code: "PROGRAM_COST_WITHOUT_BENEFIT",
+      message:
+        "This case includes a program cost (campaigns, mailings or ads) but no goal that values what that spending buys, so net present value is understated. Add the New clients goal, or read the tool-only figure.",
+      refs: [programLine!.ref],
+    });
+
   const baseline = byId.get("baseline_alternative");
   const result: Result = {
     headline,
+    ...(break_even ? { break_even } : {}),
+    coverage,
+    ...(cost_split ? { cost_split } : {}),
+    ...(tornado.length ? { tornado } : {}),
     drivers,
     costs: {
       lines: costsBuilt.lines.map(({ kind: _k, ...l }) => l),

@@ -120,6 +120,7 @@ function flatConfig(h: number): Partial<EngineConfig> {
       data_quality: 0,
       decision_speed: 0,
       risk_reduction: 0,
+      new_clients: 0,
     },
     project_floor: 0,
   };

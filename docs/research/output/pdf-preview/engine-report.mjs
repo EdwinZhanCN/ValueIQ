@@ -64,6 +64,10 @@ export async function renderEngineReport({
       : replacement;
   const plainLanguage = (value) =>
     String(value)
+      .replace(
+        /weakest link over the effect inputs/gi,
+        "the least-backed key input (the inputs that drive the benefit, such as hours saved or loss per event; known counts like staff and weeks are not discounted)",
+      )
       .replace(/weakest links?/gi, (match) =>
         withCase(
           match,

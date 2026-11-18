@@ -377,6 +377,90 @@ function GrossAdjusted({
 }
 
 /** Review · Numbers (mock 06). */
+/** Which of the chosen goals made it into the headline; a bare confidence number hides this. */
+function CoverageLine({
+  coverage,
+}: {
+  coverage: ResultSample["result"]["coverage"];
+}) {
+  if (!coverage) return null;
+  const left = coverage.excluded.length > 0;
+  return (
+    <p
+      data-testid="coverage"
+      role={left ? "alert" : undefined}
+      className={cn(
+        "self-start rounded-xl border px-3 py-2 text-sm",
+        left
+          ? "border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+          : "text-muted-foreground",
+      )}
+    >
+      {coverage.text}
+    </p>
+  );
+}
+
+/** Program spend (campaigns, mailings) shown apart from the tool, so a cost that buys an unvalued outcome is visible. */
+function CostSplitLine({
+  split,
+  currency,
+}: {
+  split: ResultSample["result"]["cost_split"];
+  currency: string;
+}) {
+  if (!split) return null;
+  return (
+    <p
+      data-testid="cost-split"
+      className="self-start rounded-xl border px-3 py-2 text-sm text-muted-foreground"
+    >
+      Net present value is{" "}
+      <strong>{money(split.npv_with_program, currency, "n/a")}</strong> with the
+      program spend and{" "}
+      <strong>{money(split.npv_tool_only, currency, "n/a")}</strong> for the
+      tool alone.
+      {split.program_buys_unvalued_outcome &&
+        " The program spend buys an outcome this case does not value."}
+    </p>
+  );
+}
+
+/** The benefit per year that would make this pay for itself, next to what the case models. */
+function WhatMustBeTrue({
+  breakEven,
+  currency,
+}: {
+  breakEven: ResultSample["result"]["break_even"];
+  currency: string;
+}) {
+  if (!breakEven) return null;
+  const cleared = breakEven.shortfall <= 0;
+  return (
+    <section
+      aria-label="What must be true"
+      data-testid="break-even"
+      className="flex flex-col gap-1.5 rounded-2xl border bg-card p-5"
+    >
+      <h3 className="text-sm font-semibold">What must be true</h3>
+      <p className="text-sm">
+        To break even you need about{" "}
+        <strong>
+          {money(breakEven.annual_benefit_needed, currency, "Not available")}
+        </strong>{" "}
+        of benefit a year. This case models about{" "}
+        <strong>
+          {money(breakEven.annual_benefit_modeled, currency, "Not available")}
+        </strong>
+        {cleared
+          ? ", so it clears break-even."
+          : `, which is ${money(breakEven.shortfall, currency, "Not available")} a year short.`}
+      </p>
+      <p className="output-caption">{breakEven.note}</p>
+    </section>
+  );
+}
+
 export function NumbersView({ output }: { output: ResultSample }) {
   const navigation = useContext(OutputContext);
   const [basis, setBasis] = useState<Basis>("capacity_inclusive");
@@ -453,6 +537,12 @@ export function NumbersView({ output }: { output: ResultSample }) {
           )}
         </strong>
       </div>
+      <CoverageLine coverage={output.result.coverage} />
+      <WhatMustBeTrue
+        breakEven={output.result.break_even}
+        currency={currency}
+      />
+      <CostSplitLine split={output.result.cost_split} currency={currency} />
       <GrossAdjusted output={output} basis={basis} />
       <div className="flex flex-col gap-2 rounded-2xl border bg-card p-5">
         <Narrative value={narrative.summary} />
@@ -550,6 +640,45 @@ export function ChartById({
   }
 }
 
+/** The inputs that move NPV most across the user's own low-to-high ranges. */
+function TornadoView({ output }: { output: ResultSample }) {
+  const rows = output.result.tornado;
+  if (!rows || rows.length === 0) return null;
+  const { currency } = output.meta;
+  const widest = Math.max(...rows.map((r) => r.swing), 1);
+  return (
+    <section
+      aria-label="Inputs that matter most"
+      data-testid="tornado"
+      className="flex flex-col gap-3 rounded-2xl border bg-card p-5"
+    >
+      <h3 className="text-sm font-semibold">Inputs that matter most</h3>
+      <p className="output-caption">
+        How far net present value moves when each input goes from its low to its
+        high value, using the ranges you entered.
+      </p>
+      <ul className="flex flex-col gap-2">
+        {rows.map((r) => (
+          <li key={r.input_id} className="flex flex-col gap-1 text-sm">
+            <span className="flex flex-wrap justify-between gap-2">
+              <span className="font-medium">{r.label}</span>
+              <span className="text-muted-foreground">
+                {money(r.npv_at_low, currency, "n/a")} to{" "}
+                {money(r.npv_at_high, currency, "n/a")}
+              </span>
+            </span>
+            <span
+              aria-hidden="true"
+              className="h-2 rounded-full bg-primary/70"
+              style={{ width: `${Math.max((r.swing / widest) * 100, 3)}%` }}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** Review · Charts (mock 06b): the three charts a new report starts with. */
 export function ChartsView({ output }: { output: ResultSample }) {
   const navigation = useContext(OutputContext);
@@ -563,6 +692,7 @@ export function ChartsView({ output }: { output: ResultSample }) {
           <ChartById key={id} id={id} output={output} />
         ))}
       </div>
+      <TornadoView output={output} />
       {navigation.reportLink && (
         <div className="flex justify-end border-t pt-5">
           <Link

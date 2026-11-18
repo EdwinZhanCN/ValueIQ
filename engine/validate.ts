@@ -19,8 +19,9 @@ const GOALS = [
   "data_quality",
   "decision_speed",
   "risk_reduction",
+  "new_clients",
 ];
-const ENUMS: Record<string, string[]> = {
+export const ENUMS: Record<string, string[]> = {
   cost_nature: ["cash", "capacity"],
   cost_of_delay_basis: [
     "revenue_deferred",

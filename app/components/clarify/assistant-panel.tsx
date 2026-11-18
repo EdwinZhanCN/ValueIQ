@@ -7,6 +7,7 @@ import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import type {
+  AppliedInput,
   AssistantCard,
   AssistantProposal,
   AssistantReply,
@@ -46,6 +47,10 @@ type Props = {
   /** Something was accepted: save soon. */
   onAccepted: () => void;
   onContinue: () => void;
+  /** This is the preparation turn right after Intake. */
+  prep?: boolean;
+  /** The first reply has arrived (or failed), so the loading page can end. */
+  onPrepDone?: () => void;
 };
 
 /**
@@ -74,6 +79,8 @@ function ConnectedAssistant({
   onReveal,
   onAccepted,
   onContinue,
+  prep,
+  onPrepDone,
 }: Props) {
   const [open, setOpen] = useState(false);
   const agent = useAgent<RunView>({
@@ -88,11 +95,12 @@ function ConnectedAssistant({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [check, setCheck] = useState<Preflight | "busy" | null>(null);
+  const [filled, setFilled] = useState<AppliedInput[]>([]);
   const opened = useRef(false);
   const pendingCheck = useRef(false);
   const end = useRef<HTMLDivElement>(null);
 
-  async function send(text: string) {
+  async function send(text: string, prepRun = false) {
     const history: AssistantTurn[] = lines
       .filter((l) => l.role !== "error")
       .map((l) => ({ role: l.role, text: l.text }));
@@ -102,7 +110,7 @@ function ConnectedAssistant({
     try {
       reply = await agent.call<CallResult<AssistantReply>>(
         "chat",
-        [text, history, draft.candidate()],
+        [text, history, draft.candidate(), { prep: prepRun }],
         { timeout: 90_000 },
       );
     } catch {
@@ -113,6 +121,7 @@ function ConnectedAssistant({
     }
     setBusy(false);
     if (!reply.ok) {
+      onPrepDone?.();
       setLines((previous) => [
         ...previous,
         {
@@ -137,13 +146,22 @@ function ConnectedAssistant({
       ...value.cards,
     ]);
     setProposals(value.proposals);
+    // Values the agent filled in itself: code already chose each tier and origin.
+    const applied = (value.applied ?? []).filter((a) =>
+      draft.applyAgentValue(a),
+    );
+    if (applied.length) {
+      setFilled((previous) => [...previous, ...applied]);
+      onAccepted();
+    }
+    onPrepDone?.();
   }
 
   // The opening turn: defaults first, then what is missing.
   useEffect(() => {
     if (!open || opened.current) return;
     opened.current = true;
-    void send("");
+    void send("", prep === true);
   }, [open]);
 
   useEffect(() => {
@@ -284,6 +302,47 @@ function ConnectedAssistant({
         {busy && <Spinner className="size-4 self-start" />}
         <div ref={end} />
       </div>
+
+      {filled.length > 0 && (
+        <ul
+          aria-label="Filled in by the assistant"
+          className="flex flex-col gap-1.5"
+        >
+          {filled.map((a) => (
+            <li
+              key={a.input_id}
+              data-filled={a.input_id}
+              className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-[0.8rem]"
+            >
+              <Check className="size-3.5 shrink-0 text-primary" aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">{labelOf(a.input_id)}</span>{" "}
+                <span>{pretty(a.value)}</span>{" "}
+                <Badge variant="outline">
+                  {a.basis === "file_quote"
+                    ? "From your file"
+                    : a.basis === "proxy"
+                      ? "Labeled default"
+                      : a.basis === "user_said"
+                        ? "Your figure"
+                        : "AI estimate"}
+                </Badge>
+                <span className="block text-muted-foreground">
+                  {a.rationale}
+                </span>
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => onReveal(a.input_id)}
+              >
+                Change
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {proposals.length > 0 && (
         <ul aria-label="Suggested values" className="flex flex-col gap-1.5">

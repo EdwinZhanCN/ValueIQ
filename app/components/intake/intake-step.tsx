@@ -7,6 +7,7 @@ import {
   Database,
   Save,
   ShieldCheck,
+  TrendingUp,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const GOAL_ICONS: Record<Goal, LucideIcon> = {
   data_quality: Database,
   decision_speed: Zap,
   risk_reduction: ShieldCheck,
+  new_clients: TrendingUp,
 };
 
 /**
@@ -58,6 +60,13 @@ export function IntakeStep({
   const [decision, setDecision] = useState(() =>
     draftText(draft, "decision_statement"),
   );
+  const [company, setCompany] = useState(() =>
+    draftText(draft, "company_description"),
+  );
+  const [product, setProduct] = useState(() =>
+    draftText(draft, "product_description"),
+  );
+  const [descError, setDescError] = useState(false);
   const [goals, setGoals] = useState<Goal[]>(draft.goals);
   const [unsaved, setUnsaved] = useState(false);
   const [goalError, setGoalError] = useState(false);
@@ -80,7 +89,7 @@ export function IntakeStep({
     if (!result) return;
     if (result.saved) {
       setUnsaved(false);
-      if (next) void navigate(`/projects/${projectId}/clarify`);
+      if (next) void navigate(`/projects/${projectId}/clarify?prep=1`);
     }
     setNext(false);
   }, [result]);
@@ -109,10 +118,15 @@ export function IntakeStep({
       goalsRef.current?.focus();
       return;
     }
+    if (thenContinue && (!company.trim() || !product.trim())) {
+      setDescError(true);
+      return;
+    }
+    setDescError(false);
     setNext(thenContinue);
     const form = applyIntake(
       draft,
-      { projectName: name, decision, goals },
+      { projectName: name, decision, company, product, goals },
       files,
     );
     void saver.submit(
@@ -223,6 +237,52 @@ export function IntakeStep({
                 edit();
               }}
             />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="value-company_description"
+              className="text-sm font-semibold"
+            >
+              About the company
+            </label>
+            <Textarea
+              id="value-company_description"
+              rows={3}
+              maxLength={2000}
+              value={company}
+              placeholder="What the company does, its size and location, how it sells, and how busy the team is today."
+              aria-invalid={descError && !company.trim()}
+              onChange={(event) => {
+                setCompany(event.target.value);
+                edit();
+              }}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="value-product_description"
+              className="text-sm font-semibold"
+            >
+              The product or idea
+            </label>
+            <Textarea
+              id="value-product_description"
+              rows={3}
+              maxLength={2000}
+              value={product}
+              placeholder="What you are evaluating, what it costs if you know, and what it is supposed to do."
+              aria-invalid={descError && !product.trim()}
+              onChange={(event) => {
+                setProduct(event.target.value);
+                edit();
+              }}
+            />
+            {descError && (
+              <p className="text-sm text-destructive">
+                Add a short description of the company and of the product or
+                idea so the assistant can help.
+              </p>
+            )}
           </div>
         </div>
         <IntakeFiles

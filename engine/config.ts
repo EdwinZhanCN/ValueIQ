@@ -28,6 +28,7 @@ export const DEFAULT_CONFIG: EngineConfig = {
     data_quality: 0.8,
     decision_speed: 0.85,
     risk_reduction: 0.85,
+    new_clients: 0.85,
   },
   project_floor: 0.85,
   big_driver_share: 0.3,

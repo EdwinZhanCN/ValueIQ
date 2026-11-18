@@ -67,7 +67,12 @@ function parseHistory(raw: unknown): AssistantTurn[] | null {
 
 export async function assistantChat(
   scope: { projectId: string; userId: string },
-  args: { message: unknown; history: unknown; draft: unknown },
+  args: {
+    message: unknown;
+    history: unknown;
+    draft: unknown;
+    prep?: boolean;
+  },
 ): Promise<AssistantResult> {
   if (typeof args.message !== "string" || args.message.length > MAX_MESSAGE)
     return bad(`A message is text of at most ${MAX_MESSAGE} characters.`);
@@ -109,6 +114,7 @@ export async function assistantChat(
   try {
     const value = await intakeTurn({
       form: form,
+      prep: args.prep === true,
       history,
       message: args.message.trim(),
       missing,

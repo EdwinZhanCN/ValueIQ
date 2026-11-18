@@ -18,6 +18,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const teamDefaults = await offeredDefaults(access.teamId);
   return {
     target: new URL(request.url).searchParams.get("input"),
+    // Intake's Continue sends ?prep=1 so the assistant prepares before the page opens.
+    prep: new URL(request.url).searchParams.get("prep") === "1",
     teamDefaults,
     evidence: evidenceAvailability(),
     assistant: assistantAvailability(),
@@ -36,6 +38,7 @@ export default function ProjectClarify({ loaderData }: Route.ComponentProps) {
         target={loaderData.target}
         teamDefaults={loaderData.teamDefaults}
         assistant={loaderData.assistant}
+        prep={loaderData.prep}
       />
     </EvidenceContext.Provider>
   );

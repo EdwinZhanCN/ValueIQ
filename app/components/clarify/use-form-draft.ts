@@ -8,6 +8,7 @@ import type {
   Goal,
   Input,
 } from "../../../shared/form";
+import type { AppliedInput } from "../../../shared/types";
 import { defaultsFor } from "../../lib/intake-fields";
 import type { OfferedDefaults } from "../../../shared/team-settings";
 import { readFormDraft, validateFormFile } from "../../lib/intake-form";
@@ -252,6 +253,31 @@ export function useFormDraft({
     setRaw((current) => ({ ...current, [id]: pretty(value) }));
   }
 
+  /**
+   * A value the Clarify agent wrote. The server already chose its tier and origin; this only keeps
+   * the user's own typing safe: a value the user entered is never replaced. Returns whether it applied.
+   */
+  function applyAgentValue(a: AppliedInput): boolean {
+    const previous = byId.get(a.input_id);
+    if (previous && previous.value !== null && previous.origin === "user")
+      return false;
+    const next: Input = {
+      id: a.input_id,
+      ...previous,
+      value: a.value,
+      tier: a.tier,
+      origin: a.origin,
+      rationale: a.rationale,
+      confidence: a.confidence,
+      updated_by: "clarify agent",
+      ...(a.backing ? { backing: { ...previous?.backing, ...a.backing } } : {}),
+    };
+    if (next.note === NOT_SURE_NOTE) delete next.note;
+    replace(next);
+    setRaw((current) => ({ ...current, [a.input_id]: pretty(a.value) }));
+    return true;
+  }
+
   function range(id: string, key: "low" | "high", value: string) {
     const record: Input = {
       id,
@@ -421,6 +447,7 @@ export function useFormDraft({
     backing,
     applyQuote,
     applyProposal,
+    applyAgentValue,
     range,
     notSure,
     acceptProxy,

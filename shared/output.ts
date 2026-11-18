@@ -55,8 +55,11 @@ const object =
     if (!value || typeof value !== "object" || Array.isArray(value))
       return fail();
     const record = value as Record<string, unknown>;
+    // An absent optional field leaves no key behind, so a validated copy equals the original.
     return Object.fromEntries(
-      Object.entries(shape).map(([key, parse]) => [key, parse(record[key])]),
+      Object.entries(shape)
+        .map(([key, parse]) => [key, parse(record[key])] as const)
+        .filter(([, parsed]) => parsed !== undefined),
     ) as { [K in keyof S]: ReturnType<S[K]> };
   };
 const numericOrText: Parser<number | string> = (value) =>
@@ -73,6 +76,7 @@ const driverId = choice([
   "data_quality",
   "decision_speed",
   "risk_reduction",
+  "new_clients",
 ]);
 const tiers = object({
   measured: count,
@@ -145,7 +149,41 @@ const scenario = object({
   roi_pv_capacity_inclusive: nullable(number),
   what_moved: string,
 });
+const breakEven = object({
+  annual_benefit_needed: number,
+  annual_benefit_modeled: number,
+  shortfall: number,
+  years: count,
+  discount_rate_pct: number,
+  note: string,
+});
+const coverage = object({
+  selected: array(driverId),
+  included: array(driverId),
+  excluded: array(driverId),
+  text: string,
+});
+const tornadoRow = object({
+  input_id: string,
+  label: string,
+  low_value: number,
+  high_value: number,
+  npv_at_low: number,
+  npv_at_high: number,
+  swing: number,
+});
+const costSplit = object({
+  program_annual: number,
+  npv_tool_only: number,
+  npv_with_program: number,
+  program_buys_unvalued_outcome: (v: unknown) =>
+    typeof v === "boolean" ? v : fail(),
+});
 const result = object({
+  cost_split: optional(costSplit),
+  tornado: optional(array(tornadoRow)),
+  break_even: optional(breakEven),
+  coverage: optional(coverage),
   headline: object({
     npv: headlineBasis,
     roi: object({ undiscounted: headlineBasis, pv: headlineBasis }),

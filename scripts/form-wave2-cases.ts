@@ -26,6 +26,12 @@ const DRIVER_FIELDS: Record<Goal, string[]> = {
   ],
   risk_reduction: ["aro_before", "aro_after", "loss_per_event"],
   decision_speed: [],
+  new_clients: [
+    "leads_reached_per_year",
+    "response_rate_pct",
+    "close_rate_pct",
+    "gross_profit_per_customer",
+  ],
 };
 const record = (
   id: string,

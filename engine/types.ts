@@ -6,7 +6,11 @@ export type Tier =
   "measured" | "documented" | "benchmark" | "estimate" | "assumption";
 export type InputTier = Tier | "user_unknown";
 export type DriverId =
-  "time_savings" | "data_quality" | "decision_speed" | "risk_reduction";
+  | "time_savings"
+  | "data_quality"
+  | "decision_speed"
+  | "risk_reduction"
+  | "new_clients";
 export type LabelClass =
   | "hard_savings"
   | "capacity_value"
@@ -14,7 +18,12 @@ export type LabelClass =
   | "incremental_profit"
   | "customer_benefit";
 export type Origin =
-  "user" | "file" | "default" | "proxy_accepted" | "assistant_accepted";
+  | "user"
+  | "file"
+  | "default"
+  | "proxy_accepted"
+  | "assistant_accepted"
+  | "assistant_estimate";
 export type CostBasis = "quoted" | "estimated" | "assumed";
 export type ScenarioName = "conservative" | "expected" | "optimistic";
 
@@ -47,6 +56,9 @@ export interface Input {
   backing?: Backing;
   vendor_supplied?: boolean; // engine addition: feeds the vendor-numbers guardrail
   note?: string;
+  rationale?: string;
+  confidence?: number;
+  updated_by?: string;
 }
 
 export interface MeasurementPlanEntry {
@@ -211,8 +223,48 @@ export interface Warning {
   refs: string[];
 }
 
+/** What benefit per year would make the capacity-inclusive NPV zero (level yearly amount, year-end). */
+export interface BreakEven {
+  annual_benefit_needed: number;
+  annual_benefit_modeled: number;
+  /** needed minus modeled; zero or negative means the case already clears break-even. */
+  shortfall: number;
+  years: number;
+  discount_rate_pct: number;
+  note: string;
+}
+/** NPV with and without the program spend (campaigns, mailings), so a cost that buys an unvalued outcome is visible. */
+export interface CostSplit {
+  program_annual: number;
+  npv_tool_only: number;
+  npv_with_program: number;
+  program_buys_unvalued_outcome: boolean;
+}
+/** One bar of the tornado: how far the capacity-inclusive NPV moves across an input's own low to high range. */
+export interface TornadoRow {
+  input_id: string;
+  label: string;
+  low_value: number;
+  high_value: number;
+  npv_at_low: number;
+  npv_at_high: number;
+  swing: number;
+}
+/** How much of what the user selected is actually in the headline. */
+export interface Coverage {
+  selected: DriverId[];
+  included: DriverId[];
+  excluded: DriverId[];
+  text: string;
+}
+
 export interface Result {
   headline: Headline;
+  break_even?: BreakEven;
+  coverage?: Coverage;
+  cost_split?: CostSplit;
+  /** The inputs that matter most, from the user's own ranges; absent when no input has one. */
+  tornado?: TornadoRow[];
   drivers: Driver[];
   costs: Costs;
   cash_flows: CashFlowRow[];

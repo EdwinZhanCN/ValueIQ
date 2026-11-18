@@ -198,10 +198,18 @@ export function prepareDriver(id: DriverId, ctx: PrepContext): PreparedDriver {
     const rate = num(ctx, "loaded_hourly_cost") as number;
     const gross = staff * hours * weeks * rate;
     const recInput = ctx.byId.get("recapture_pct") as Input;
+    // Team judgment (F6): freed time cannot be used productively beyond the work that exists, so a
+    // team that is only partly busy today caps how much freed time counts. Absent, nothing changes.
+    const util = num(ctx, "team_utilization_pct");
+    const rawRecapture = num(ctx, "recapture_pct");
+    const cappedRecapture =
+      util !== null && rawRecapture !== null
+        ? Math.min(rawRecapture, util)
+        : rawRecapture;
     const p = finish(
       {
         ...base,
-        recapture_pct: num(ctx, "recapture_pct"),
+        recapture_pct: cappedRecapture,
         recapture_origin: srcType(recInput.origin),
         recapture_tier: recInput.tier === "user_unknown" ? null : recInput.tier,
       },
@@ -215,6 +223,15 @@ export function prepareDriver(id: DriverId, ctx: PrepContext): PreparedDriver {
       hoursFormula,
       gross,
     );
+    if (
+      util !== null &&
+      rawRecapture !== null &&
+      cappedRecapture !== null &&
+      cappedRecapture < rawRecapture
+    )
+      p.notes.push(
+        `Team utilization is ${util}%, so at most ${util}% of freed time is counted as used productively (you entered ${rawRecapture}%).`,
+      );
     // documented cash reduction = the only hard savings
     const cash = num(ctx, "realized_as_cash");
     if (cash !== null && cash > 0) {
@@ -330,6 +347,51 @@ export function prepareDriver(id: DriverId, ctx: PrepContext): PreparedDriver {
         : basis === "risk_exposure"
           ? "avoided_loss"
           : "capacity_value";
+    return p;
+  }
+
+  if (id === "new_clients") {
+    need(
+      "leads_reached_per_year",
+      "response_rate_pct",
+      "close_rate_pct",
+      "gross_profit_per_customer",
+    );
+    const base = emptyDriver(id, missing);
+    if (missing.length > 0) return base;
+    const leads = num(ctx, "leads_reached_per_year") as number;
+    const resp = num(ctx, "response_rate_pct") as number;
+    const close = num(ctx, "close_rate_pct") as number;
+    const gp = num(ctx, "gross_profit_per_customer") as number;
+    const cap = num(ctx, "capacity_cap_customers");
+    const raw = leads * (resp / 100) * (close / 100);
+    const customers = cap !== null ? Math.min(raw, cap) : raw;
+    const effects = [
+      effectOf("response_rate_pct"),
+      effectOf("close_rate_pct"),
+      effectOf("gross_profit_per_customer"),
+    ];
+    const inputs = [
+      si(ctx, "leads_reached_per_year"),
+      si(ctx, "response_rate_pct"),
+      si(ctx, "close_rate_pct"),
+      si(ctx, "gross_profit_per_customer"),
+      ...(cap !== null ? [si(ctx, "capacity_cap_customers")] : []),
+    ];
+    const p = finish(
+      base,
+      effects,
+      inputs,
+      cap !== null
+        ? "min(leads x response rate x close rate, most customers you can serve) x gross profit per new customer"
+        : "leads x response rate x close rate x gross profit per new customer",
+      customers * gp,
+    );
+    p.label_class = "incremental_profit";
+    if (cap !== null && raw > cap)
+      p.notes.push(
+        `Capacity cap binds: ${raw.toFixed(1)} new customers a year would be won but only ${cap} can be served.`,
+      );
     return p;
   }
 
