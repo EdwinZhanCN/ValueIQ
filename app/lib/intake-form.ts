@@ -229,6 +229,18 @@ export function validateFormFile(
       }
     }
     if (
+      object(backing) &&
+      backing.quote_confirmed === true &&
+      typeof backing.quote === "string" &&
+      finite(raw.value) &&
+      !quoteSupportsValue(backing.quote, raw.value)
+    )
+      add(
+        "QUOTE_NO_NUMBER",
+        id,
+        "The confirmed passage does not contain this figure (or a unit conversion of it).",
+      );
+    if (
       raw.tier === "measured" &&
       rule.role === "effect" &&
       (!object(backing) ||
@@ -481,4 +493,21 @@ export function applyFormEdit(
       return { form: previous, issues: error.issues };
     throw error;
   }
+}
+
+const UNIT_FACTORS = [1, 60, 1 / 60, 100, 0.01, 1000, 0.001, 12, 1 / 12, 52];
+
+/** True when a number in the passage equals the value, directly or by a common unit change. */
+export function quoteSupportsValue(quote: string, value: number): boolean {
+  const found = quote.replace(/(\d),(?=\d{3})/g, "$1").match(/\d+(?:\.\d+)?/g);
+  if (!found) return false;
+  return found.some((token) => {
+    const n = Number(token);
+    return UNIT_FACTORS.some((f) => {
+      const target = n * f;
+      return (
+        Math.abs(target - value) <= Math.max(0.005 * Math.abs(value), 1e-9)
+      );
+    });
+  });
 }
