@@ -1,7 +1,8 @@
 import { ListChecks } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { buttonVariants } from "~/components/ui/button";
+import { Button, buttonVariants } from "~/components/ui/button";
+import { Spinner } from "~/components/ui/spinner";
 import {
   Empty,
   EmptyContent,
@@ -13,7 +14,6 @@ import {
 import { readFormDraft, validateFormFile } from "../../lib/intake-form";
 import { DefaultsCard } from "./defaults-card";
 import type { OfferedDefaults } from "../../../shared/team-settings";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { AssistantPanel, type AssistantAvailability } from "./assistant-panel";
 import { InputsPanel } from "./inputs-panel";
 import { OPTIONAL } from "./draft";
@@ -50,6 +50,7 @@ export function ClarifyStep({
   target,
   teamDefaults,
   assistant,
+  prep,
 }: {
   projectId: string;
   initial: unknown;
@@ -59,6 +60,8 @@ export function ClarifyStep({
   /** The team's financial defaults; built-in values when absent. */
   teamDefaults?: OfferedDefaults;
   assistant?: AssistantAvailability;
+  /** Arrived from Intake: run the preparation turn behind a loading page. */
+  prep?: boolean;
 }) {
   if (!readFormDraft(initial).goals.length)
     return (
@@ -88,6 +91,7 @@ export function ClarifyStep({
       target={target}
       {...(teamDefaults ? { teamDefaults } : {})}
       assistant={assistant ?? UNAVAILABLE}
+      prep={prep === true}
     />
   );
 }
@@ -100,6 +104,7 @@ function ClarifyQuestions({
   target,
   teamDefaults,
   assistant,
+  prep,
 }: {
   projectId: string;
   initial: unknown;
@@ -109,8 +114,25 @@ function ClarifyQuestions({
   /** The team's financial defaults; built-in values when absent. */
   teamDefaults?: OfferedDefaults;
   assistant: AssistantAvailability;
+  prep: boolean;
 }) {
   const navigate = useNavigate();
+  // The loading page: the preparation turn runs here, then the page opens (or falls through).
+  const [preparing, setPreparing] = useState(prep && assistant.available);
+  const [slow, setSlow] = useState(false);
+  const [fellThrough, setFellThrough] = useState(false);
+  useEffect(() => {
+    if (!preparing) return;
+    const slowTimer = setTimeout(() => setSlow(true), 15_000);
+    const limit = setTimeout(() => {
+      setPreparing(false);
+      setFellThrough(true);
+    }, 90_000);
+    return () => {
+      clearTimeout(slowTimer);
+      clearTimeout(limit);
+    };
+  }, [preparing]);
   const draft = useFormDraft({
     projectId,
     initial,
@@ -228,96 +250,139 @@ function ClarifyQuestions({
   }
 
   return (
-    <div className="flex flex-wrap items-start gap-6">
-      <section
-        aria-label="Clarify questions"
-        className="flex min-w-0 flex-[2_1_34rem] flex-col gap-3.5"
-      >
-        {draft.saved?.error && (
-          <p
-            role="alert"
-            className="rounded-xl border border-destructive p-3 text-sm"
-          >
-            {draft.saved.error}{" "}
-            {draft.saved.conflict && (
-              <Link reloadDocument to="." className="underline">
-                Reload latest
-              </Link>
-            )}
+    <div className="flex flex-col gap-6">
+      {preparing && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="clarify-prep"
+          className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-10 text-center"
+        >
+          <Spinner className="size-6" />
+          <p className="text-base font-semibold">
+            Reading your project and preparing questions
           </p>
-        )}
-        {defaults.length > 0 && (
-          <div id="defaults-card" className="scroll-mt-24">
-            <DefaultsCard
+          <p className="max-w-md text-sm text-muted-foreground">
+            The assistant is reading what you wrote and your files, filling in
+            what it can, and working out what to ask you. This usually takes
+            under a minute.
+          </p>
+          {slow && (
+            <Button variant="outline" onClick={() => setPreparing(false)}>
+              Continue without waiting
+            </Button>
+          )}
+        </div>
+      )}
+      <div className={preparing ? "hidden" : "flex flex-col gap-6"}>
+        <div
+          data-testid="clarify-instructions"
+          className="rounded-2xl border bg-muted/40 p-4 text-sm"
+        >
+          <p className="font-medium">
+            I have read your project. I will help you clarify a few things so we
+            can give you an accurate estimate.
+          </p>
+          <p className="text-muted-foreground">
+            Answer in the chat or edit the cards below. Anything I fill in is
+            labeled with what it rests on, and you can change it at any time.
+          </p>
+          {fellThrough && (
+            <p
+              role="status"
+              className="mt-2 text-amber-700 dark:text-amber-400"
+            >
+              The assistant is still working. You can start filling in the cards
+              now; anything it adds later will be labeled.
+            </p>
+          )}
+        </div>
+        <AssistantPanel
+          draft={draft}
+          problems={problems}
+          offered={defaults}
+          availability={assistant}
+          onReveal={reveal}
+          onAccepted={() => setSaveSoon(true)}
+          onContinue={proceed}
+          prep={prep}
+          onPrepDone={() => setPreparing(false)}
+        />
+        <div className="flex flex-wrap items-start gap-6">
+          <section
+            aria-label="Clarify questions"
+            className="flex min-w-0 flex-[2_1_34rem] flex-col gap-3.5"
+          >
+            {draft.saved?.error && (
+              <p
+                role="alert"
+                className="rounded-xl border border-destructive p-3 text-sm"
+              >
+                {draft.saved.error}{" "}
+                {draft.saved.conflict && (
+                  <Link reloadDocument to="." className="underline">
+                    Reload latest
+                  </Link>
+                )}
+              </p>
+            )}
+            {defaults.length > 0 && (
+              <div id="defaults-card" className="scroll-mt-24">
+                <DefaultsCard
+                  draft={draft}
+                  ids={defaults}
+                  declined={declined}
+                  open={open === "defaults"}
+                  onOpen={() => show("defaults")}
+                  onDecline={(id) =>
+                    setDeclined((previous) => new Set([...previous, id]))
+                  }
+                  onDone={() => {
+                    show(next("defaults", new Set(pendingDefaults)));
+                    setSaveSoon(true);
+                  }}
+                />
+              </div>
+            )}
+            {groups.map((group, index) =>
+              group.key === open ? (
+                <QuestionCard
+                  key={group.key}
+                  group={group}
+                  counter={`${index + 1} / ${groups.length}`}
+                  draft={draft}
+                  onConfirm={() => confirm(group)}
+                  onNotSure={() => notSure(group)}
+                />
+              ) : (
+                <div
+                  key={group.key}
+                  id={`card-${group.key}`}
+                  className="scroll-mt-24"
+                >
+                  <CollapsedRow
+                    title={group.title}
+                    summary={summary(draft, group)}
+                    complete={group.complete}
+                    onEdit={() => show(group.key)}
+                  />
+                </div>
+              ),
+            )}
+          </section>
+          <div className="min-w-0 flex-[1_1_17rem]">
+            <InputsPanel
               draft={draft}
-              ids={defaults}
-              declined={declined}
-              open={open === "defaults"}
-              onOpen={() => show("defaults")}
-              onDecline={(id) =>
-                setDeclined((previous) => new Set([...previous, id]))
-              }
-              onDone={() => {
-                show(next("defaults", new Set(pendingDefaults)));
-                setSaveSoon(true);
-              }}
+              groups={groups}
+              problems={problems}
+              clarifyIds={clarifyIds}
+              onPick={pick}
+              onContinue={proceed}
+              continuing={continuing.current}
             />
           </div>
-        )}
-        {groups.map((group, index) =>
-          group.key === open ? (
-            <QuestionCard
-              key={group.key}
-              group={group}
-              counter={`${index + 1} / ${groups.length}`}
-              draft={draft}
-              onConfirm={() => confirm(group)}
-              onNotSure={() => notSure(group)}
-            />
-          ) : (
-            <div
-              key={group.key}
-              id={`card-${group.key}`}
-              className="scroll-mt-24"
-            >
-              <CollapsedRow
-                title={group.title}
-                summary={summary(draft, group)}
-                complete={group.complete}
-                onEdit={() => show(group.key)}
-              />
-            </div>
-          ),
-        )}
-      </section>
-      <Tabs defaultValue="assistant" className="min-w-0 flex-[1_1_17rem]">
-        <TabsList className="w-full">
-          <TabsTrigger value="assistant">Assistant</TabsTrigger>
-          <TabsTrigger value="inputs">Inputs</TabsTrigger>
-        </TabsList>
-        <TabsContent value="assistant" keepMounted>
-          <AssistantPanel
-            draft={draft}
-            problems={problems}
-            offered={defaults}
-            availability={assistant}
-            onReveal={reveal}
-            onAccepted={() => setSaveSoon(true)}
-            onContinue={proceed}
-          />
-        </TabsContent>
-        <TabsContent value="inputs" keepMounted>
-          <InputsPanel
-            draft={draft}
-            groups={groups}
-            problems={problems}
-            clarifyIds={clarifyIds}
-            onPick={pick}
-            onContinue={proceed}
-            continuing={continuing.current}
-          />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }

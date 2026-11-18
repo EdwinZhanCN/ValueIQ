@@ -18,7 +18,12 @@ export type LabelClass =
   | "incremental_profit"
   | "customer_benefit";
 export type Origin =
-  "user" | "file" | "default" | "proxy_accepted" | "assistant_accepted";
+  | "user"
+  | "file"
+  | "default"
+  | "proxy_accepted"
+  | "assistant_accepted"
+  | "assistant_estimate";
 export type CostBasis = "quoted" | "estimated" | "assumed";
 export type ScenarioName = "conservative" | "expected" | "optimistic";
 
@@ -51,6 +56,9 @@ export interface Input {
   backing?: Backing;
   vendor_supplied?: boolean; // engine addition: feeds the vendor-numbers guardrail
   note?: string;
+  rationale?: string;
+  confidence?: number;
+  updated_by?: string;
 }
 
 export interface MeasurementPlanEntry {

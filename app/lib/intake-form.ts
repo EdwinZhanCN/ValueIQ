@@ -22,6 +22,7 @@ const origins = [
   "default",
   "proxy_accepted",
   "assistant_accepted",
+  "assistant_estimate",
 ];
 const object = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" &&

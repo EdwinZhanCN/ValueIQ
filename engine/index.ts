@@ -2,7 +2,7 @@ export * from "./types";
 export { DEFAULT_CONFIG, mergeConfig } from "./config";
 export * from "./finance";
 export * from "./evidence";
-export { validateInputs, isUnknown } from "./validate";
+export { validateInputs, isUnknown, ENUMS } from "./validate";
 export { ruleOfTenCost, ale } from "./drivers";
 export {
   computeProject,

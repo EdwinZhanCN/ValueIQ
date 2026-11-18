@@ -38,6 +38,7 @@ const ORIGIN_LABELS: Record<Origin, string> = {
   default: "Default",
   proxy_accepted: "Default",
   assistant_accepted: "Assistant, accepted",
+  assistant_estimate: "AI estimate",
 };
 
 export const FILE_GONE = "File no longer in the project";

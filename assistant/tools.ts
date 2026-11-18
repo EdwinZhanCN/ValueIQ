@@ -8,6 +8,7 @@ import {
   EngineIntegrityError,
   EngineValidationError,
   computeProject,
+  ENUMS,
   defaultFor,
   effectiveTier,
   evaluateEffect,
@@ -25,7 +26,7 @@ import { assertToolAllowed, type AgentName } from "./tool-access";
 import type { FileEvidenceHost } from "./evidence/host";
 import { findEvidence, specFor } from "./evidence/find";
 import { sectionFilter } from "./evidence/text";
-import type { AssistantProposal } from "../shared/types";
+import type { AppliedInput, AssistantProposal } from "../shared/types";
 
 // ---------- shared shapes ----------
 export interface Question {
@@ -99,7 +100,13 @@ export interface ToolContext {
 export interface IntakeTurnState {
   readonly message: string;
   readonly proposals: AssistantProposal[];
+  /** Values apply_estimate wrote this turn. Code assigned each tier and origin. */
+  readonly applied: AppliedInput[];
+  /** Quotes find_evidence checked word for word this turn, by input id. */
+  readonly verified: Map<string, { file_id: string; quote: string }>;
 }
+/** Lowest confidence at which the agent may apply a value that rests only on its own reasoning. */
+export const ESTIMATE_CONFIDENCE_BAR = 0.7;
 
 export function deepFreeze<T>(x: T): T {
   if (typeof x === "object" && x !== null && !Object.isFrozen(x)) {
@@ -1225,6 +1232,151 @@ const propose_input: ToolDef = {
   },
 };
 
+const VALUE_SCHEMA: JsonSchema = {
+  anyOf: [
+    { type: "number" },
+    { type: "string", maxLength: 80 },
+    { type: "array", items: { type: "number" }, maxItems: 20 },
+  ],
+} as JsonSchema;
+
+const apply_estimate: ToolDef = {
+  name: "apply_estimate",
+  description:
+    "Write a value into one input. You say what it rests on (`basis`); code decides whether it is applied and which evidence tier it gets: a quote find_evidence verified gives documented, the labeled default gives benchmark, a figure the user wrote in this message gives estimate, and your own reasoning gives estimate only if `confidence` is at least 0.7. Below that nothing is applied and you must ask the user. You cannot set measured and you cannot confirm anything.",
+  parameters: {
+    type: "object",
+    properties: {
+      input_id: ID_SCHEMA,
+      value: VALUE_SCHEMA,
+      basis: {
+        type: "string",
+        enum: ["file_quote", "proxy", "user_said", "reasoning"],
+      },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+      rationale: { type: "string", minLength: 1, maxLength: 240 },
+    },
+    required: ["input_id", "value", "basis", "confidence", "rationale"],
+    additionalProperties: false,
+  },
+  run: (a, ctx) => {
+    const turn = ctx.intake;
+    if (!turn)
+      throw new ToolRuntimeError("NOT_SUPPORTED", "Only in the assistant");
+    const id = str(a, "input_id");
+    const value = a["value"] as number | string | number[];
+    const basis = a["basis"] as AppliedInput["basis"];
+    const confidence = a["confidence"] as number;
+    const rationale = str(a, "rationale").trim();
+    const entry = CATALOG[id];
+    const drop = (reason: string) => ({ ok: false, input_id: id, reason });
+    if (!entry || entry.role === "context" || !entry.label)
+      return drop("not an input the agent may fill");
+    if (id === "goals" || id === "files" || id === "currency")
+      return drop("the user sets this");
+    // Shape and range, by the catalog kind.
+    if (NUMERIC_KINDS.has(entry.kind)) {
+      if (typeof value !== "number" || !Number.isFinite(value))
+        return drop("needs a number");
+      if (entry.kind === "int" && !Number.isInteger(value))
+        return drop("must be a whole number");
+      if (
+        (entry.min !== undefined &&
+          (entry.minExclusive ? value <= entry.min : value < entry.min)) ||
+        (entry.max !== undefined && value > entry.max)
+      )
+        return drop("outside the allowed range");
+    } else if (entry.kind === "array") {
+      const years = ctx.form.horizon_years;
+      if (
+        id !== "adoption_by_year" ||
+        !Array.isArray(value) ||
+        value.length !== years ||
+        !value.every((v) => v >= 0 && v <= 100)
+      )
+        return drop("adoption needs one 0 to 100 figure per year");
+    } else if (entry.kind === "enum") {
+      if (typeof value !== "string" || !(ENUMS[id] ?? []).includes(value))
+        return drop("not one of the allowed choices");
+    } else return drop("not an input the agent may fill");
+    if (turn.applied.some((x) => x.input_id === id))
+      return drop("already written this turn");
+    const existing = ctx.form.inputs.find((i) => i.id === id);
+    if (existing && existing.value !== null && existing.origin === "user")
+      return drop("the user already entered this");
+
+    let applied: AppliedInput;
+    if (basis === "file_quote") {
+      const v = turn.verified.get(id);
+      if (!v)
+        return drop(
+          "no quote checked against a file for this input; call find_evidence first",
+        );
+      applied = {
+        input_id: id,
+        value,
+        tier: "documented",
+        origin: "file",
+        basis,
+        confidence,
+        rationale,
+        backing: {
+          source_file_id: v.file_id,
+          quote: v.quote,
+          quote_confirmed: false,
+        },
+      };
+    } else if (basis === "proxy") {
+      const d = defaultFor(id);
+      if (!d || d.value !== value)
+        return drop("no labeled default with that value");
+      applied = {
+        input_id: id,
+        value,
+        tier: "benchmark",
+        origin: "default",
+        basis,
+        confidence,
+        rationale: `${rationale} (${d.source})`.slice(0, 300),
+      };
+    } else if (basis === "user_said") {
+      if (typeof value !== "number" || !saidIn(turn.message, String(value)))
+        return drop("that figure is not in the user's message");
+      applied = {
+        input_id: id,
+        value,
+        tier: "estimate",
+        origin: "user",
+        basis,
+        confidence,
+        rationale,
+      };
+    } else {
+      if (confidence < ESTIMATE_CONFIDENCE_BAR)
+        return drop(
+          "not confident enough to fill this in; ask the user instead",
+        );
+      applied = {
+        input_id: id,
+        value,
+        tier: "estimate",
+        origin: "assistant_estimate",
+        basis,
+        confidence,
+        rationale,
+      };
+    }
+    turn.applied.push(applied);
+    return {
+      ok: true,
+      input_id: id,
+      applied: value,
+      tier: applied.tier,
+      basis,
+    };
+  },
+};
+
 export const TOOLS: readonly ToolDef[] = [
   validate_inputs,
   get_defaults,
@@ -1251,6 +1403,7 @@ export const TOOLS: readonly ToolDef[] = [
 export const INTAKE_ONLY_TOOLS: readonly ToolDef[] = [
   describe_input,
   propose_input,
+  apply_estimate,
 ];
 
 /** ask_user is tabled until after the demo: the tool and its tests stay, the model is not offered it. */

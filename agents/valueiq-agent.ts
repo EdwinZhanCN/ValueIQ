@@ -157,6 +157,7 @@ export class ValueIQAgent extends Agent<Env, RunView> {
     message: unknown,
     history?: unknown,
     draft?: unknown,
+    options?: unknown,
   ): Promise<CallResult<AssistantReply>> {
     const who = await this.memberOrError();
     if (!who.ok) return who;
@@ -167,7 +168,16 @@ export class ValueIQAgent extends Agent<Env, RunView> {
       );
     return assistantChat(
       { projectId: this.name, userId: who.userId },
-      { message, history, draft },
+      {
+        message,
+        history,
+        draft,
+        // Only the preparation turn after Intake sets this; anything else is ignored.
+        prep:
+          typeof options === "object" &&
+          options !== null &&
+          (options as { prep?: unknown }).prep === true,
+      },
     );
   }
 

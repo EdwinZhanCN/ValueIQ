@@ -95,6 +95,18 @@ export interface AssistantProposal {
   tier: "measured" | "documented" | "estimate";
 }
 
+/** A value the Clarify agent wrote into the form itself. Code, never the model, chose the tier and origin. */
+export interface AppliedInput {
+  input_id: string;
+  value: number | string | number[];
+  tier: "documented" | "benchmark" | "estimate";
+  origin: "file" | "default" | "user" | "assistant_estimate";
+  basis: "file_quote" | "proxy" | "user_said" | "reasoning";
+  confidence: number;
+  rationale: string;
+  backing?: { source_file_id: string; quote: string; quote_confirmed: false };
+}
+
 export interface AssistantReply {
   text: string;
   /** "engine" when the model's text failed the number check and a fixed text was used. */
@@ -102,6 +114,8 @@ export interface AssistantReply {
   mode: RunMode;
   cards: AssistantCard[];
   proposals: AssistantProposal[];
+  /** Values the agent applied itself, each labeled by what it rests on. */
+  applied?: AppliedInput[];
   /** Code-written notices, for example a file that contains instructions. */
   notices: string[];
 }

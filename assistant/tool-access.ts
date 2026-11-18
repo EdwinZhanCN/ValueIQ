@@ -16,14 +16,16 @@ export const TOOL_AGENTS: Readonly<Record<string, readonly AgentName[]>> = {
   describe_input: BOTH,
   read_project_file: BOTH,
   find_evidence: BOTH,
+  // Readiness only (what is missing, how well backed); it produces no money figure.
+  preflight_gate: BOTH,
   // Writes or proposes inputs: Clarify only.
   propose_input: CLARIFY,
+  apply_estimate: CLARIFY,
   propose_backing: CLARIFY,
   propose_adjustment: CLARIFY,
   apply_override: CLARIFY,
   ask_user: CLARIFY,
   // Computes numbers: Process only. The Clarify agent can never produce an NPV, ROI or payback.
-  preflight_gate: PROCESS,
   compute_haircut: PROCESS,
   compute_driver: PROCESS,
   compute_project: PROCESS,

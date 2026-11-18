@@ -89,7 +89,7 @@ export function IntakeStep({
     if (!result) return;
     if (result.saved) {
       setUnsaved(false);
-      if (next) void navigate(`/projects/${projectId}/clarify`);
+      if (next) void navigate(`/projects/${projectId}/clarify?prep=1`);
     }
     setNext(false);
   }, [result]);

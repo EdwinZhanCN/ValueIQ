@@ -15,7 +15,12 @@ export type Tier =
   | "assumption"
   | "user_unknown";
 export type Origin =
-  "user" | "file" | "default" | "proxy_accepted" | "assistant_accepted";
+  | "user"
+  | "file"
+  | "default"
+  | "proxy_accepted"
+  | "assistant_accepted"
+  | "assistant_estimate";
 export type InputValue = number | string | boolean | number[] | string[] | null;
 export interface Backing {
   source_file_id?: string;
@@ -42,6 +47,10 @@ export interface Input {
   high?: number;
   vendor_supplied?: boolean;
   note?: string;
+  /** Written by the Clarify agent: why, and how sure it was (0 to 1). */
+  rationale?: string;
+  confidence?: number;
+  updated_by?: string;
 }
 export interface FormFile {
   version: 1;
