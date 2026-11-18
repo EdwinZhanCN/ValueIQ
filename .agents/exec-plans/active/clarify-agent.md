@@ -1,6 +1,6 @@
 # Clarify agent, New clients goal and evidence fixes
 
-Status: active - 2026-11-17. Phase 1 started (tool allowlist). Frozen contracts: none yet; the items under "Needs agreement" below must be settled with the infrastructure owner before Phase 1 tables or Phase 3 land.
+Status: active - 2026-11-17. Phase 1 started (tool allowlist). The direction below was agreed with the infrastructure owner (Zihao) before work started, per Eli, 2026-11-17.
 
 Goal: after Intake the user lands on a Clarify page with a chat on top and the existing cards below. A Clarify agent fills what it can from the user's descriptions, files and curated proxies, labels each value by its evidence, and asks for the rest. Only the Process agent can run the engine. A New clients goal values incremental gross profit with a capacity cap. The test-run findings F1 to F10 and B1 to B7 are closed.
 
@@ -12,12 +12,12 @@ Source documents: `valueiq-clarify-agent-spec.md` and `valueiq-improvements-from
 - Free SQL, web access or file deletion for any agent.
 - Changing engine formulas outside the items below, team settings, or the access rule.
 
-## Needs agreement before building (these touch `docs/core-beliefs.md`)
+## Agreed departures from `docs/core-beliefs.md`
 
-1. **Agent-filled values count immediately.** Core beliefs say missing facts produce follow-up questions, not invented monetary results, and a suggestion is not used until accepted. The product decision (2026-11-17) is that the agent applies a value only when it is confident, labels its tier by the evidence behind it, and asks otherwise. The server assigns the tier, never the model: file passage with the number verified in code gives `documented`; curated proxy gives `benchmark`; a figure typed by the user gives `estimate` unless attached to a file or record; the agent's own reasoning gives `estimate` above a confidence bar and is otherwise not applied. The agent can never set `measured`, confirm a passage or set a reviewer. Needs a decision record when implemented.
+1. **Agent-filled values count immediately.** Core beliefs say missing facts produce follow-up questions, not invented monetary results, and a suggestion is not used until accepted. The product decision (2026-11-17) is that the agent applies a value only when it is confident, labels its tier by the evidence behind it, and asks otherwise. The server assigns the tier, never the model: file passage with the number verified in code gives `documented`; curated proxy gives `benchmark`; a figure typed by the user gives `estimate` unless attached to a file or record; the agent's own reasoning gives `estimate` above a confidence bar and is otherwise not applied. The agent can never set `measured`, confirm a passage or set a reviewer. A decision record follows when this ships.
 2. **Two agents.** Core beliefs list multi-agent orchestration as outside initialization. The concrete need: the agent that edits inputs must not be able to compute results. Implemented as one tool registry with a per-tool agent allowlist enforced in the dispatcher (`assistant/tool-access.ts`), not as separate services.
-3. **Conversation persistence.** Core beliefs treat conversations as working context. Proposal: keep the chat in the Durable Object's own storage first; add D1 `agent_runs` and `agent_messages` only if audit needs it, and record why.
-4. **Branch and issue.** Work should map to an issue on the board and a `feature/<issue#>-<name>` branch before a PR.
+3. **Conversation persistence.** Core beliefs treat conversations as working context. Plan: keep the chat in the Durable Object's own storage first; add D1 `agent_runs` and `agent_messages` only if audit needs it, and record why.
+4. **Branch and issue.** Each phase maps to an issue on the board and a `feature/<issue#>-<name>` branch before its PR.
 
 ## Fixed contracts
 
