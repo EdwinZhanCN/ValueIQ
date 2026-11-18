@@ -377,6 +377,65 @@ function GrossAdjusted({
 }
 
 /** Review · Numbers (mock 06). */
+/** Which of the chosen goals made it into the headline; a bare confidence number hides this. */
+function CoverageLine({
+  coverage,
+}: {
+  coverage: ResultSample["result"]["coverage"];
+}) {
+  if (!coverage) return null;
+  const left = coverage.excluded.length > 0;
+  return (
+    <p
+      data-testid="coverage"
+      role={left ? "alert" : undefined}
+      className={cn(
+        "self-start rounded-xl border px-3 py-2 text-sm",
+        left
+          ? "border-amber-500/50 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+          : "text-muted-foreground",
+      )}
+    >
+      {coverage.text}
+    </p>
+  );
+}
+
+/** The benefit per year that would make this pay for itself, next to what the case models. */
+function WhatMustBeTrue({
+  breakEven,
+  currency,
+}: {
+  breakEven: ResultSample["result"]["break_even"];
+  currency: string;
+}) {
+  if (!breakEven) return null;
+  const cleared = breakEven.shortfall <= 0;
+  return (
+    <section
+      aria-label="What must be true"
+      data-testid="break-even"
+      className="flex flex-col gap-1.5 rounded-2xl border bg-card p-5"
+    >
+      <h3 className="text-sm font-semibold">What must be true</h3>
+      <p className="text-sm">
+        To break even you need about{" "}
+        <strong>
+          {money(breakEven.annual_benefit_needed, currency, "Not available")}
+        </strong>{" "}
+        of benefit a year. This case models about{" "}
+        <strong>
+          {money(breakEven.annual_benefit_modeled, currency, "Not available")}
+        </strong>
+        {cleared
+          ? ", so it clears break-even."
+          : `, which is ${money(breakEven.shortfall, currency, "Not available")} a year short.`}
+      </p>
+      <p className="output-caption">{breakEven.note}</p>
+    </section>
+  );
+}
+
 export function NumbersView({ output }: { output: ResultSample }) {
   const navigation = useContext(OutputContext);
   const [basis, setBasis] = useState<Basis>("capacity_inclusive");
@@ -453,6 +512,11 @@ export function NumbersView({ output }: { output: ResultSample }) {
           )}
         </strong>
       </div>
+      <CoverageLine coverage={output.result.coverage} />
+      <WhatMustBeTrue
+        breakEven={output.result.break_even}
+        currency={currency}
+      />
       <GrossAdjusted output={output} basis={basis} />
       <div className="flex flex-col gap-2 rounded-2xl border bg-card p-5">
         <Narrative value={narrative.summary} />
