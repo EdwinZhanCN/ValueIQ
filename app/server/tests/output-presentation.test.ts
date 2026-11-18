@@ -15,6 +15,13 @@ describe("output presentation", () => {
     ).toBe(
       "Evidence discount uses the least-supported input and must clear the minimum confidence we require.",
     );
+    expect(
+      plainLanguage(
+        "previous step x (1 - haircut); haircut = weakest link over the effect inputs",
+      ),
+    ).toContain(
+      "the least-backed key input (the inputs that drive the benefit",
+    );
     expect(inputLabel("recapture_pct")).toBe(
       "Freed time used productively (%)",
     );
