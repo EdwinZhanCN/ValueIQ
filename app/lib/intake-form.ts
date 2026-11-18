@@ -230,6 +230,21 @@ export function validateFormFile(
     }
     if (
       object(backing) &&
+      typeof backing.verified_by === "string" &&
+      context.members &&
+      !context.members.some(
+        (member) =>
+          member.trim().toLowerCase() ===
+          (backing.verified_by as string).trim().toLowerCase(),
+      )
+    )
+      add(
+        "REVIEWER_NOT_MEMBER",
+        id,
+        "The reviewer must be a member of this team.",
+      );
+    if (
+      object(backing) &&
       backing.quote_confirmed === true &&
       typeof backing.quote === "string" &&
       finite(raw.value) &&

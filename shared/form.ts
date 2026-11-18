@@ -78,6 +78,8 @@ export interface FormFile {
 export interface FormContext {
   projectId: string;
   files: readonly { id: string; projectId: string }[];
+  /** Names or emails of this team's members. When given, a reviewer must be one of them. */
+  members?: readonly string[];
 }
 export interface FormIssue {
   code: string;

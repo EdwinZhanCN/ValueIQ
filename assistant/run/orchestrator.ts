@@ -294,6 +294,7 @@ export class RunOrchestrator {
       const form = await this.d.getForm();
       const ctx = createContext(form, {
         run_id: "preflight",
+        agent: "process",
         now: this.d.now(),
         mode: this.d.mode ?? "real",
         ...(this.d.config ? { config: this.d.config } : {}),
@@ -416,6 +417,7 @@ export class RunOrchestrator {
 
     const ctx: ToolContext = createContext(f, {
       run_id,
+      agent: "process",
       now: this.d.now(),
       mode: this.d.mode ?? "real",
       ...(this.d.config ? { config: this.d.config } : {}),

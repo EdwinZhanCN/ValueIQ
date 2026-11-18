@@ -158,6 +158,7 @@ function ClarifyQuestions({
   // Saving runs after the next render, so it includes this click's edits.
   const [saveSoon, setSaveSoon] = useState(false);
   const continuing = useRef(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const clarifyIds = new Set(groups.flatMap((group) => group.fields));
   const problems = validateFormFile(draft.candidate(), draft.context);
 
@@ -226,10 +227,16 @@ function ClarifyQuestions({
   }
 
   function confirm(group: Group) {
-    if (draft.issues.some((issue) => group.fields.includes(issue.field)))
-      return pick(
-        draft.issues.find((issue) => group.fields.includes(issue.field))!.field,
+    const issue = draft.issues.find((found) =>
+      group.fields.includes(found.field),
+    );
+    if (issue) {
+      setConfirmError(
+        `${labelOf(issue.field)}: ${issue.message ?? "check this value"}`,
       );
+      return pick(issue.field);
+    }
+    setConfirmError(null);
     show(next(group.key));
     setSaveSoon(true);
   }
@@ -313,6 +320,26 @@ function ClarifyQuestions({
             aria-label="Clarify questions"
             className="flex min-w-0 flex-[2_1_34rem] flex-col gap-3.5"
           >
+            <p
+              data-testid="save-state"
+              aria-live="polite"
+              className="text-xs text-muted-foreground"
+            >
+              {draft.saving
+                ? "Saving…"
+                : draft.unsaved
+                  ? "Unsaved changes. They save when you confirm a card or continue."
+                  : "All changes saved."}
+            </p>
+            {confirmError && (
+              <p
+                role="alert"
+                data-testid="confirm-error"
+                className="rounded-xl border border-destructive p-3 text-sm"
+              >
+                {confirmError}
+              </p>
+            )}
             {draft.saved?.error && (
               <p
                 role="alert"

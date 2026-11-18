@@ -792,7 +792,18 @@ export async function renderEngineReport({
       : "Pre-funding estimate",
     `${meta.horizon_years} years · ${meta.currency} · discount rate ${pct(meta.discount_rate_pct)}. This report renders the stored engine output for the recorded run. The exporter formats supplied values and does not recompute financial metrics. Refer to the recorded evidence before making a funding decision.`,
   );
-  plan.sections.forEach((id, index) => {
+  const hardNpv = result.headline.npv.hard;
+  const decision =
+    typeof hardNpv === "number"
+      ? hardNpv > 0
+        ? "Decision line: on hard savings alone the project returns more than it costs."
+        : "Decision line: on hard savings alone the project does not return its cost; see the capacity-inclusive figures before deciding."
+      : "";
+  if (decision) note("Decision line", decision.replace("Decision line: ", ""));
+  const shown = plan.sections.filter(
+    (id) => !(id === "charts" && plan.charts.length === 0),
+  );
+  shown.forEach((id, index) => {
     const title = REPORT_SECTIONS.find((s) => s.id === id).pdfTitle;
     if (index > 0 && OWN_PAGE.has(id)) newPage(title);
     else group = title;
@@ -813,14 +824,7 @@ export async function renderEngineReport({
       regular,
       C.muted,
     );
-    text(
-      `${meta.run_id} · engine-sample-template-1`,
-      M,
-      H - 30,
-      6.5,
-      regular,
-      C.muted,
-    );
+    text(`Run ${meta.run_id}`, M, H - 30, 6.5, regular, C.muted);
     right(`${i + 1} / ${pages.length}`, W - M, H - 37, 8, bold, C.muted);
   });
   return {
