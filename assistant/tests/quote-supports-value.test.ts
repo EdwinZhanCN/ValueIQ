@@ -46,3 +46,22 @@ describe("reviewer must be a team member", () => {
     expect(withRoster).toContain("REVIEWER_NOT_MEMBER");
   });
 });
+
+describe("measured needs a passage with the figure", () => {
+  it("is demoted to documented by the engine when the quote lacks the number", async () => {
+    const { effectiveTier } = await import("../../engine/evidence");
+    const ctx = { known_file_ids: new Set(["f1"]) } as never;
+    const input = {
+      id: "hours_saved_per_person_per_week",
+      value: 5,
+      tier: "measured",
+      origin: "file",
+      backing: {
+        source_file_id: "f1",
+        quote: "Handle time improved a lot",
+        quote_confirmed: true,
+      },
+    } as never;
+    expect(effectiveTier(input, ctx, false).tier).toBe("documented");
+  });
+});

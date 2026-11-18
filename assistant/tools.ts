@@ -108,6 +108,13 @@ export interface IntakeTurnState {
 /** Lowest confidence at which the agent may apply a value that rests only on its own reasoning. */
 export const ESTIMATE_CONFIDENCE_BAR = 0.7;
 
+/** The user's own words ask the assistant to estimate or fill things in for them. */
+export function delegatesEstimates(message: string): boolean {
+  return /\b(estimate|fill|guess|assume|complete|finish|decide|your best|make (it|them|something) up|reasonable|ballpark|for me)\b/i.test(
+    message,
+  );
+}
+
 export function deepFreeze<T>(x: T): T {
   if (typeof x === "object" && x !== null && !Object.isFrozen(x)) {
     Object.freeze(x);
@@ -1243,7 +1250,7 @@ const VALUE_SCHEMA: JsonSchema = {
 const apply_estimate: ToolDef = {
   name: "apply_estimate",
   description:
-    "Write a value into one input. You say what it rests on (`basis`); code decides whether it is applied and which evidence tier it gets: a quote find_evidence verified gives documented, the labeled default gives benchmark, a figure the user wrote in this message gives estimate, and your own reasoning gives estimate only if `confidence` is at least 0.7. Below that nothing is applied and you must ask the user. You cannot set measured and you cannot confirm anything.",
+    "Write a value into one input. You say what it rests on (`basis`); code decides whether it is applied and which evidence tier it gets: a quote find_evidence verified gives documented, the labeled default gives benchmark, a figure the user wrote in this message gives estimate, and your own reasoning gives estimate only if `confidence` is at least 0.7. Below that nothing is applied and you must ask the user, unless the user's message asks you to estimate or fill things in for them; then a basis of reasoning is applied from confidence 0.3 and is labeled as your estimate. You cannot set measured and you cannot confirm anything.",
   parameters: {
     type: "object",
     properties: {
@@ -1352,7 +1359,10 @@ const apply_estimate: ToolDef = {
         rationale,
       };
     } else {
-      if (confidence < ESTIMATE_CONFIDENCE_BAR)
+      if (
+        confidence < ESTIMATE_CONFIDENCE_BAR &&
+        !(delegatesEstimates(turn.message) && confidence >= 0.3)
+      )
         return drop(
           "not confident enough to fill this in; ask the user instead",
         );
