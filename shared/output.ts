@@ -145,7 +145,23 @@ const scenario = object({
   roi_pv_capacity_inclusive: nullable(number),
   what_moved: string,
 });
+const breakEven = object({
+  annual_benefit_needed: number,
+  annual_benefit_modeled: number,
+  shortfall: number,
+  years: count,
+  discount_rate_pct: number,
+  note: string,
+});
+const coverage = object({
+  selected: array(driverId),
+  included: array(driverId),
+  excluded: array(driverId),
+  text: string,
+});
 const result = object({
+  break_even: optional(breakEven),
+  coverage: optional(coverage),
   headline: object({
     npv: headlineBasis,
     roi: object({ undiscounted: headlineBasis, pv: headlineBasis }),

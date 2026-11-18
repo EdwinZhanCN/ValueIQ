@@ -46,6 +46,8 @@ import type {
   GapItem,
   GapList,
   Headline,
+  BreakEven,
+  Coverage,
   Input,
   Meta,
   Payback,
@@ -887,9 +889,42 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
     };
   }
 
+  const annuity = Array.from(
+    { length: horizon },
+    (_, t) => (1 + rate / 100) ** -(t + 1),
+  ).reduce((a, b) => a + b, 0);
+  const break_even: BreakEven | undefined =
+    annuity > 0 && finAll.pv_costs !== null && finAll.pv_benefits !== null
+      ? {
+          annual_benefit_needed: round4(finAll.pv_costs / annuity),
+          annual_benefit_modeled: round4(finAll.pv_benefits / annuity),
+          shortfall: round4((finAll.pv_costs - finAll.pv_benefits) / annuity),
+          years: horizon,
+          discount_rate_pct: rate,
+          note: `Level benefit per year, received at each year end over ${horizon} years at ${rate}%, that makes net present value zero.`,
+        }
+      : undefined;
+  const includedIds = included.map((p) => p.id);
+  const excludedIds = goals.filter((g) => !includedIds.includes(g));
+  const coverage: Coverage = {
+    selected: [...goals],
+    included: includedIds,
+    excluded: excludedIds,
+    text:
+      excludedIds.length === 0
+        ? `All ${goals.length} selected goals are in this result.`
+        : `${includedIds.length} of ${goals.length} selected goals are in this result; ${excludedIds
+            .map((g) => CATALOG[g]?.label ?? g)
+            .join(
+              ", ",
+            )} left out for lack of evidence, so the headline understates the full case.`,
+  };
+
   const baseline = byId.get("baseline_alternative");
   const result: Result = {
     headline,
+    ...(break_even ? { break_even } : {}),
+    coverage,
     drivers,
     costs: {
       lines: costsBuilt.lines.map(({ kind: _k, ...l }) => l),

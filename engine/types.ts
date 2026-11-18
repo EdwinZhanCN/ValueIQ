@@ -211,8 +211,28 @@ export interface Warning {
   refs: string[];
 }
 
+/** What benefit per year would make the capacity-inclusive NPV zero (level yearly amount, year-end). */
+export interface BreakEven {
+  annual_benefit_needed: number;
+  annual_benefit_modeled: number;
+  /** needed minus modeled; zero or negative means the case already clears break-even. */
+  shortfall: number;
+  years: number;
+  discount_rate_pct: number;
+  note: string;
+}
+/** How much of what the user selected is actually in the headline. */
+export interface Coverage {
+  selected: DriverId[];
+  included: DriverId[];
+  excluded: DriverId[];
+  text: string;
+}
+
 export interface Result {
   headline: Headline;
+  break_even?: BreakEven;
+  coverage?: Coverage;
   drivers: Driver[];
   costs: Costs;
   cash_flows: CashFlowRow[];
