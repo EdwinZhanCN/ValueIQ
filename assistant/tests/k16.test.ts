@@ -56,7 +56,7 @@ const VALID: Record<string, Record<string, unknown>> = {
   compute_haircut: { input_id: "hours_saved_per_staff_week" },
   propose_backing: {
     input_id: "hours_saved_per_staff_week",
-    evidence: { file_id: "f1", quote: "average 30 minutes" },
+    evidence: { file_id: "f1", quote: "average 5 hours a week" },
   },
   propose_adjustment: {
     input_id: "cost_training_change",

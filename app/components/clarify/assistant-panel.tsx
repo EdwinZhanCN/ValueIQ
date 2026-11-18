@@ -233,14 +233,46 @@ function ConnectedAssistant({
   return (
     <section
       aria-label="Assistant"
-      className="flex flex-col gap-3 rounded-2xl border bg-card p-4"
+      className="flex flex-col gap-3 rounded-2xl border-2 border-primary/60 bg-primary/5 p-4 shadow-sm"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {availability.scripted ? (
-          <Badge variant="destructive">STUB</Badge>
-        ) : (
-          <span />
-        )}
+      <div className="flex flex-col gap-1" data-testid="assistant-intro">
+        <div className="flex items-center gap-2">
+          <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+            AI assistant
+          </span>
+          <h2 className="text-base font-semibold">
+            Your estimate helper, working on the cards below
+          </h2>
+          {availability.scripted && <Badge variant="destructive">STUB</Badge>}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          It reads your descriptions and files, then fills in the inputs below
+          for you. Everything it fills is labeled &quot;AI estimate&quot; (or by
+          its source) and counts toward your estimate right away. You can ask it
+          to make changes, estimate what is missing, or explain any field, and
+          you can edit or undo anything it wrote. It never does the math; the
+          Process step does.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {[
+            "Estimate everything that is still missing",
+            "What do I still need to answer?",
+            "Explain the fields I am unsure about",
+          ].map((suggestion) => (
+            <Button
+              key={suggestion}
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!open || busy}
+              onClick={() => void send(suggestion)}
+            >
+              {suggestion}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           type="button"
           size="sm"

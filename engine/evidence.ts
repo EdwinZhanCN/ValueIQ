@@ -1,4 +1,5 @@
 // EVIDENCE LAYER: tier bands, backing score, sliding haircut, weakest link, release gate.
+import { quoteSupportsValue } from "../shared/quote.ts";
 import type { DriverId, EngineConfig, Input, Tier } from "./types";
 
 export const TIER_ORDER: Tier[] = [
@@ -153,6 +154,16 @@ export function effectiveTier(
     return {
       tier: "documented",
       note: "Measured needs a same-project source file and a confirmed quote; treated as documented.",
+    };
+  }
+  if (
+    typeof bk.quote === "string" &&
+    typeof input.value === "number" &&
+    !quoteSupportsValue(bk.quote, input.value)
+  ) {
+    return {
+      tier: "documented",
+      note: "The confirmed passage does not contain this figure; treated as documented.",
     };
   }
   return { tier: "measured", note: null };

@@ -145,3 +145,21 @@ describe("apply_estimate: code sets the tier, never the model", () => {
     ).rejects.toThrow(/not available/);
   });
 });
+
+describe("apply_estimate: the user asks the assistant to estimate", () => {
+  const low = { ...base, basis: "reasoning", confidence: 0.4 };
+  it("refuses a low-confidence guess when nobody asked", async () => {
+    expect((await run(ctxFor("what next?"), low)).ok).toBe(false);
+  });
+  it("applies it as an estimate when the user asked to estimate", async () => {
+    const ctx = ctxFor("please estimate the rest for me");
+    expect(await run(ctx, low)).toMatchObject({ ok: true, tier: "estimate" });
+    expect(ctx.intake!.applied[0]).toMatchObject({
+      origin: "assistant_estimate",
+    });
+  });
+  it("still refuses a very low confidence guess", async () => {
+    const r = await run(ctxFor("estimate it"), { ...low, confidence: 0.1 });
+    expect(r.ok).toBe(false);
+  });
+});
