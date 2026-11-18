@@ -55,8 +55,11 @@ const object =
     if (!value || typeof value !== "object" || Array.isArray(value))
       return fail();
     const record = value as Record<string, unknown>;
+    // An absent optional field leaves no key behind, so a validated copy equals the original.
     return Object.fromEntries(
-      Object.entries(shape).map(([key, parse]) => [key, parse(record[key])]),
+      Object.entries(shape)
+        .map(([key, parse]) => [key, parse(record[key])] as const)
+        .filter(([, parsed]) => parsed !== undefined),
     ) as { [K in keyof S]: ReturnType<S[K]> };
   };
 const numericOrText: Parser<number | string> = (value) =>
