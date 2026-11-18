@@ -19,6 +19,8 @@ export const LABELS: Record<string, string> = {
   decision_statement: "Decision to support",
   company_description: "About the company",
   product_description: "The product or idea",
+  team_utilization_pct:
+    "How busy the team is today (% of time on paid or planned work)",
   leads_reached_per_year: "Leads reached per year",
   response_rate_pct: "Response rate (%)",
   close_rate_pct: "Close rate (%)",

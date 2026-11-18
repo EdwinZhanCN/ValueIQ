@@ -76,6 +76,7 @@ export function sectionsFor(goals: readonly Goal[], paths: Paths): Section[] {
         "weeks_per_year",
         "loaded_hourly_cost",
         "recapture_pct",
+        "team_utilization_pct",
         "realized_as_cash",
       ],
     });
@@ -201,6 +202,7 @@ export const OPTIONAL: ReadonlySet<string> = new Set([
   "stages_downstream",
   "realized_as_cash",
   "capacity_cap_customers",
+  "team_utilization_pct",
 ]);
 
 export const pretty = (value: Input["value"]) =>

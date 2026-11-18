@@ -85,3 +85,32 @@ describe("program cost split (F5)", () => {
     );
   });
 });
+
+describe("utilization caps freed time that counts (F6)", () => {
+  const run = (util?: number) => {
+    const f = goldenResultForm();
+    if (util !== undefined)
+      f.inputs.push({
+        id: "team_utilization_pct",
+        value: util,
+        tier: "documented",
+        origin: "user",
+      });
+    const r = computeProject(f, OPTS).result!;
+    return {
+      ts: r.drivers.find((d) => d.id === "time_savings")!.total,
+      notes: r.warnings.map((w) => w.message).join(" "),
+    };
+  };
+
+  it("lowers capacity value for a team with spare capacity, and says why", () => {
+    const busy = run();
+    const idle = run(25);
+    expect(idle.ts).toBeLessThan(busy.ts);
+    expect(idle.notes).toMatch(/Team utilization is 25%/);
+  });
+
+  it("changes nothing when the team is busier than the recapture share", () => {
+    expect(run(90).ts).toBeCloseTo(run().ts, 6);
+  });
+});

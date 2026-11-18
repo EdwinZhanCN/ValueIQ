@@ -178,6 +178,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
     max: 100,
   }),
   cost_bearer: e("Cost bearer", "enum", "context"),
+  team_utilization_pct: e("Team utilization today", "percent", "known", {
+    min: 0,
+    max: 100,
+  }),
   // new clients (sales): incremental gross profit, capped by what the team can serve
   leads_reached_per_year: e("Leads reached per year", "int", "known", {
     min: 0,

@@ -98,6 +98,7 @@ export const INPUT_RULES: Readonly<Record<string, InputRule>> = {
   loss_per_event: numeric("effect"),
   asset_value: numeric("effect"),
   exposure_factor_pct: percentage("effect"),
+  team_utilization_pct: percentage("known"),
   leads_reached_per_year: count(),
   response_rate_pct: percentage("effect"),
   close_rate_pct: percentage("effect"),

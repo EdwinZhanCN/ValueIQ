@@ -198,10 +198,18 @@ export function prepareDriver(id: DriverId, ctx: PrepContext): PreparedDriver {
     const rate = num(ctx, "loaded_hourly_cost") as number;
     const gross = staff * hours * weeks * rate;
     const recInput = ctx.byId.get("recapture_pct") as Input;
+    // Team judgment (F6): freed time cannot be used productively beyond the work that exists, so a
+    // team that is only partly busy today caps how much freed time counts. Absent, nothing changes.
+    const util = num(ctx, "team_utilization_pct");
+    const rawRecapture = num(ctx, "recapture_pct");
+    const cappedRecapture =
+      util !== null && rawRecapture !== null
+        ? Math.min(rawRecapture, util)
+        : rawRecapture;
     const p = finish(
       {
         ...base,
-        recapture_pct: num(ctx, "recapture_pct"),
+        recapture_pct: cappedRecapture,
         recapture_origin: srcType(recInput.origin),
         recapture_tier: recInput.tier === "user_unknown" ? null : recInput.tier,
       },
@@ -215,6 +223,15 @@ export function prepareDriver(id: DriverId, ctx: PrepContext): PreparedDriver {
       hoursFormula,
       gross,
     );
+    if (
+      util !== null &&
+      rawRecapture !== null &&
+      cappedRecapture !== null &&
+      cappedRecapture < rawRecapture
+    )
+      p.notes.push(
+        `Team utilization is ${util}%, so at most ${util}% of freed time is counted as used productively (you entered ${rawRecapture}%).`,
+      );
     // documented cash reduction = the only hard savings
     const cash = num(ctx, "realized_as_cash");
     if (cash !== null && cash > 0) {
