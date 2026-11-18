@@ -181,6 +181,10 @@ const reportPath = `/projects/${project}/runs/${run}/reports/${report}`;
 const download = await call(reportPath);
 assert.equal(download.status, 200);
 assert.equal(download.headers.get("content-type"), "application/pdf");
+assert.equal(
+  download.headers.get("content-disposition"),
+  `attachment; filename="valueiq-pipeline-project-${suffix}.pdf"; filename*=UTF-8''valueiq-pipeline-project-${suffix}.pdf`,
+);
 assert.equal(download.headers.get("cache-control"), "private, no-store");
 const pdf = Buffer.from(await download.arrayBuffer());
 assert(pdf.subarray(0, 5).equals(Buffer.from("%PDF-")));
