@@ -1,5 +1,5 @@
 // EVIDENCE LAYER: tier bands, backing score, sliding haircut, weakest link, release gate.
-import { quoteSupportsValue } from "../shared/quote";
+import { quoteSupportsValue } from "../shared/quote.ts";
 import type { DriverId, EngineConfig, Input, Tier } from "./types";
 
 export const TIER_ORDER: Tier[] = [

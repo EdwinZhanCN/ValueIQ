@@ -1,5 +1,5 @@
-export { quoteSupportsValue } from "../../shared/quote";
-import { quoteSupportsValue } from "../../shared/quote";
+export { quoteSupportsValue } from "../../shared/quote.ts";
+import { quoteSupportsValue } from "../../shared/quote.ts";
 import type { FormContext, FormFile, FormIssue } from "../../shared/form";
 import { INPUT_RULES } from "./intake-catalog.ts";
 
