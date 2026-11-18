@@ -233,6 +233,16 @@ export interface BreakEven {
   discount_rate_pct: number;
   note: string;
 }
+/** One bar of the tornado: how far the capacity-inclusive NPV moves across an input's own low to high range. */
+export interface TornadoRow {
+  input_id: string;
+  label: string;
+  low_value: number;
+  high_value: number;
+  npv_at_low: number;
+  npv_at_high: number;
+  swing: number;
+}
 /** How much of what the user selected is actually in the headline. */
 export interface Coverage {
   selected: DriverId[];
@@ -245,6 +255,8 @@ export interface Result {
   headline: Headline;
   break_even?: BreakEven;
   coverage?: Coverage;
+  /** The inputs that matter most, from the user's own ranges; absent when no input has one. */
+  tornado?: TornadoRow[];
   drivers: Driver[];
   costs: Costs;
   cash_flows: CashFlowRow[];

@@ -34,3 +34,21 @@ describe("break-even and coverage (F2, F4)", () => {
     expect(r.coverage!.included.length).toBe(r.coverage!.selected.length);
   });
 });
+
+describe("tornado from the user's own ranges (F7)", () => {
+  it("ranks the input whose low to high range moves NPV most", () => {
+    const t = computeProject(goldenResultForm(), OPTS).result!.tornado!;
+    expect(t.length).toBeGreaterThan(0);
+    expect(t[0]!.input_id).toBe("loss_per_event");
+    expect(t[0]!.npv_at_high).toBeGreaterThan(t[0]!.npv_at_low);
+    expect(t[0]!.swing).toBeCloseTo(t[0]!.npv_at_high - t[0]!.npv_at_low, 2);
+    for (let i = 1; i < t.length; i++)
+      expect(t[i - 1]!.swing).toBeGreaterThanOrEqual(t[i]!.swing);
+  });
+
+  it("is absent when no input has a range, instead of inventing one", () => {
+    const f = goldenResultForm();
+    f.inputs = f.inputs.map(({ low: _l, high: _h, ...rest }) => rest);
+    expect(computeProject(f, OPTS).result!.tornado).toBeUndefined();
+  });
+});

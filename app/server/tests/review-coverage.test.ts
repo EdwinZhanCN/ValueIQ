@@ -60,3 +60,22 @@ describe("Review: coverage line and what must be true (F2, F4)", () => {
     expect(h).not.toContain('data-testid="break-even"');
   });
 });
+
+describe("Review: tornado", () => {
+  it("lists the inputs that matter most from the user's ranges", async () => {
+    const { ChartsView } = await import("../../components/output/result-views");
+    const out = parseRunOutput(
+      JSON.parse(JSON.stringify(computeProject(goldenResultForm(), OPTS))),
+    );
+    if (out.kind !== "result") throw new Error("expected a result");
+    const h = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(ChartsView, { output: out }),
+      ),
+    );
+    expect(h).toContain('data-testid="tornado"');
+    expect(h).toContain("Loss per event");
+  });
+});

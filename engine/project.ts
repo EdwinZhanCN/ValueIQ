@@ -48,6 +48,7 @@ import type {
   Headline,
   BreakEven,
   Coverage,
+  TornadoRow,
   Input,
   Meta,
   Payback,
@@ -607,6 +608,74 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
     ),
   };
 
+  // ---- tornado: swing NPV by each input's own low and high ----
+  const npvWith = (id: string, value: number): number => {
+    const byId2 = new Map(byId);
+    byId2.set(id, { ...(byId.get(id) as Input), value });
+    const ctx2: PrepContext = { ...ctx, byId: byId2 };
+    const again = included
+      .map((q) => prepareDriver(q.id, ctx2))
+      .filter((q) => q.status === "ok");
+    const s2 = streamsFor(again, BASE_PARAMS, delay, horizon);
+    const b2 = s2.hard.map((h, t) => h + (s2.cap[t] ?? 0));
+    return financeSummary({
+      c0,
+      benefits: b2,
+      costs: annualFlows,
+      rate_pct: rate,
+    }).npv;
+  };
+  const tornadoRows: TornadoRow[] = [];
+  const seen = new Set<string>();
+  for (const p of included)
+    for (const e of p.effects) {
+      const inp = byId.get(e.id);
+      if (
+        seen.has(e.id) ||
+        !inp ||
+        typeof inp.value !== "number" ||
+        typeof inp.low !== "number" ||
+        typeof inp.high !== "number" ||
+        inp.low === inp.high
+      )
+        continue;
+      seen.add(e.id);
+      const lo = npvWith(e.id, inp.low);
+      const hi = npvWith(e.id, inp.high);
+      tornadoRows.push({
+        id: e.id,
+        input_id: e.id,
+        label: CATALOG[e.id]?.label ?? e.id,
+        low_value: inp.low,
+        high_value: inp.high,
+        npv_at_low: round4(lo),
+        npv_at_high: round4(hi),
+        swing: round4(Math.abs(hi - lo)),
+      } as TornadoRow);
+    }
+  const tornado = tornadoRows
+    .sort((a, b) => b.swing - a.swing)
+    .slice(0, 5)
+    .map(
+      ({
+        input_id,
+        label,
+        low_value,
+        high_value,
+        npv_at_low,
+        npv_at_high,
+        swing,
+      }) => ({
+        input_id,
+        label,
+        low_value,
+        high_value,
+        npv_at_low,
+        npv_at_high,
+        swing,
+      }),
+    );
+
   // ---- charts ----
   const sumStage = (pick: (c: DriverCalc) => number[]) =>
     sum(
@@ -925,6 +994,7 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
     headline,
     ...(break_even ? { break_even } : {}),
     coverage,
+    ...(tornado.length ? { tornado } : {}),
     drivers,
     costs: {
       lines: costsBuilt.lines.map(({ kind: _k, ...l }) => l),

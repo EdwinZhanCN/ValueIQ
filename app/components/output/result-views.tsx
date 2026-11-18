@@ -614,6 +614,45 @@ export function ChartById({
   }
 }
 
+/** The inputs that move NPV most across the user's own low-to-high ranges. */
+function TornadoView({ output }: { output: ResultSample }) {
+  const rows = output.result.tornado;
+  if (!rows || rows.length === 0) return null;
+  const { currency } = output.meta;
+  const widest = Math.max(...rows.map((r) => r.swing), 1);
+  return (
+    <section
+      aria-label="Inputs that matter most"
+      data-testid="tornado"
+      className="flex flex-col gap-3 rounded-2xl border bg-card p-5"
+    >
+      <h3 className="text-sm font-semibold">Inputs that matter most</h3>
+      <p className="output-caption">
+        How far net present value moves when each input goes from its low to its
+        high value, using the ranges you entered.
+      </p>
+      <ul className="flex flex-col gap-2">
+        {rows.map((r) => (
+          <li key={r.input_id} className="flex flex-col gap-1 text-sm">
+            <span className="flex flex-wrap justify-between gap-2">
+              <span className="font-medium">{r.label}</span>
+              <span className="text-muted-foreground">
+                {money(r.npv_at_low, currency, "n/a")} to{" "}
+                {money(r.npv_at_high, currency, "n/a")}
+              </span>
+            </span>
+            <span
+              aria-hidden="true"
+              className="h-2 rounded-full bg-primary/70"
+              style={{ width: `${Math.max((r.swing / widest) * 100, 3)}%` }}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** Review · Charts (mock 06b): the three charts a new report starts with. */
 export function ChartsView({ output }: { output: ResultSample }) {
   const navigation = useContext(OutputContext);
@@ -627,6 +666,7 @@ export function ChartsView({ output }: { output: ResultSample }) {
           <ChartById key={id} id={id} output={output} />
         ))}
       </div>
+      <TornadoView output={output} />
       {navigation.reportLink && (
         <div className="flex justify-end border-t pt-5">
           <Link

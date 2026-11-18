@@ -163,7 +163,17 @@ const coverage = object({
   excluded: array(driverId),
   text: string,
 });
+const tornadoRow = object({
+  input_id: string,
+  label: string,
+  low_value: number,
+  high_value: number,
+  npv_at_low: number,
+  npv_at_high: number,
+  swing: number,
+});
 const result = object({
+  tornado: optional(array(tornadoRow)),
   break_even: optional(breakEven),
   coverage: optional(coverage),
   headline: object({
