@@ -260,7 +260,19 @@ export interface Coverage {
   text: string;
 }
 
+export type RecommendedAction =
+  "implement" | "pilot" | "need_more_info" | "reconsider" | "do_not_implement";
+
+/** The suggested action, computed in code from the scenario NPVs and coverage. */
+export interface Recommendation {
+  action: RecommendedAction;
+  label: string;
+  text: string;
+  reasons: string[];
+}
+
 export interface Result {
+  recommendation?: Recommendation;
   headline: Headline;
   break_even?: BreakEven;
   coverage?: Coverage;

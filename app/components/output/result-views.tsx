@@ -378,6 +378,48 @@ function GrossAdjusted({
 
 /** Review · Numbers (mock 06). */
 /** Which of the chosen goals made it into the headline; a bare confidence number hides this. */
+/** The engine's suggested action: computed in code from the scenarios and coverage, never by the model. */
+function SuggestedAction({
+  recommendation,
+}: {
+  recommendation: ResultSample["result"]["recommendation"];
+}) {
+  if (!recommendation) return null;
+  const good = recommendation.action === "implement";
+  const bad =
+    recommendation.action === "do_not_implement" ||
+    recommendation.action === "reconsider";
+  return (
+    <section
+      aria-label="Suggested action"
+      data-testid="suggested-action"
+      data-action={recommendation.action}
+      className={cn(
+        "flex flex-col gap-2 rounded-2xl border-2 p-5",
+        good && "border-primary/60 bg-primary/5",
+        bad && "border-destructive/50 bg-destructive/5",
+        !good && !bad && "border-amber-500/50 bg-amber-500/10",
+      )}
+    >
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Suggested action
+      </p>
+      <p className="text-2xl font-semibold">{recommendation.label}</p>
+      <p className="text-sm">{recommendation.text}</p>
+      <ul className="list-disc pl-5 text-xs text-muted-foreground">
+        {recommendation.reasons.map((reason) => (
+          <li key={reason}>{reason}</li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted-foreground">
+        Calculated by the engine from the scenario results and which goals are
+        counted. It is a recommendation from the inputs you gave, not a
+        guarantee.
+      </p>
+    </section>
+  );
+}
+
 function CoverageLine({
   coverage,
 }: {
@@ -494,6 +536,7 @@ export function NumbersView({ output }: { output: ResultSample }) {
           </button>
         ))}
       </div>
+      <SuggestedAction recommendation={output.result.recommendation} />
       <section
         aria-label="Headline results"
         data-testid="headline"

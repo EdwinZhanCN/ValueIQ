@@ -180,7 +180,23 @@ const costSplit = object({
   program_buys_unvalued_outcome: (v: unknown) =>
     typeof v === "boolean" ? v : fail(),
 });
+const recommendation = object({
+  action: (v: unknown) =>
+    [
+      "implement",
+      "pilot",
+      "need_more_info",
+      "reconsider",
+      "do_not_implement",
+    ].includes(v as string)
+      ? (v as string)
+      : fail(),
+  label: string,
+  text: string,
+  reasons: array(string),
+});
 const result = object({
+  recommendation: optional(recommendation),
   cost_split: optional(costSplit),
   tornado: optional(array(tornadoRow)),
   break_even: optional(breakEven),
