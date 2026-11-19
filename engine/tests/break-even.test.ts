@@ -114,3 +114,30 @@ describe("utilization caps freed time that counts (F6)", () => {
     expect(run(90).ts).toBeCloseTo(run().ts, 6);
   });
 });
+
+describe("a driver left out for weak evidence", () => {
+  it("is named, and the NPV with it counted is shown but not the headline", () => {
+    const form = goldenResultForm();
+    // Weaken risk reduction: loss per event becomes an unbacked assumption.
+    form.inputs = form.inputs.map((i) =>
+      i.id === "loss_per_event"
+        ? {
+            ...i,
+            tier: "assumption" as const,
+            origin: "user" as const,
+            backing: undefined,
+          }
+        : i,
+    );
+    const out = computeProject(form, OPTS);
+    const r = out.result!;
+    const c = r.coverage!;
+    expect(c.excluded).toEqual(["risk_reduction"]);
+    expect(c.text).toContain("not a verdict");
+    expect(c.text).toContain("Risk reduction");
+    expect(c.npv_if_counted).toBeGreaterThan(
+      r.headline.npv.capacity_inclusive as number,
+    );
+    expect(c.excluded.length + c.included.length).toBe(c.selected.length);
+  });
+});

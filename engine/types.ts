@@ -255,6 +255,8 @@ export interface Coverage {
   selected: DriverId[];
   included: DriverId[];
   excluded: DriverId[];
+  /** NPV if drivers dropped only for weak evidence were counted at current inputs; absent when none. */
+  npv_if_counted?: number;
   text: string;
 }
 

@@ -161,7 +161,13 @@ function ConnectedAssistant({
   useEffect(() => {
     if (!open || opened.current) return;
     opened.current = true;
-    void send("", prep === true);
+    // From the gap list: "have the assistant estimate these" opens with that request.
+    const estimate =
+      new URLSearchParams(window.location.search).get("estimate") === "1";
+    void send(
+      estimate ? "Estimate everything that is still missing" : "",
+      prep === true,
+    );
   }, [open]);
 
   useEffect(() => {

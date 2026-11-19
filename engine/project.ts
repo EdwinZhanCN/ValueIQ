@@ -976,18 +976,36 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
       : undefined;
   const includedIds = included.map((p) => p.id);
   const excludedIds = goals.filter((g) => !includedIds.includes(g));
+  const weakOnly = quantified.filter((p) => !included.includes(p));
+  let npvIfCounted: number | undefined;
+  if (weakOnly.length > 0) {
+    const s2 = streamsFor(quantified, BASE_PARAMS, delay, horizon);
+    npvIfCounted = round4(
+      financeSummary({
+        c0,
+        benefits: s2.hard.map((h, t) => h + (s2.cap[t] ?? 0)),
+        costs: annualFlows,
+        rate_pct: rate,
+      }).npv,
+    );
+  }
   const coverage: Coverage = {
     selected: [...goals],
     included: includedIds,
     excluded: excludedIds,
+    ...(npvIfCounted !== undefined ? { npv_if_counted: npvIfCounted } : {}),
     text:
       excludedIds.length === 0
         ? `All ${goals.length} selected goals are in this result.`
         : `${includedIds.length} of ${goals.length} selected goals are in this result; ${excludedIds
-            .map((g) => CATALOG[g]?.label ?? g)
+            .map((g) => DRIVER_LABELS[g] ?? g)
             .join(
               ", ",
-            )} left out for lack of evidence, so the headline understates the full case.`,
+            )} left out for lack of evidence or missing inputs, so the headline understates the full case and is not a verdict on the project.${
+            npvIfCounted !== undefined
+              ? ` Counting the drivers that were left out only for weak evidence, at your current inputs, NPV would be ${formatMoney(npvIfCounted, currency)}; that figure is below our evidence bar.`
+              : ""
+          }`,
   };
 
   const programLine = costsBuilt.lines.find(
