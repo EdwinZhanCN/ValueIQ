@@ -583,6 +583,18 @@ function GapCard({
       {gap.items.length > 0 ? (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium">What to add, in order</p>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 p-3 text-sm">
+            <span className="min-w-0 flex-1">
+              Don&apos;t have these numbers? The AI assistant can estimate them
+              for you. They are labeled as AI estimates and you can edit them.
+            </span>
+            <Link
+              to={`/projects/${projectId}/clarify?estimate=1`}
+              className={buttonVariants({ size: "sm" })}
+            >
+              Have the assistant estimate these
+            </Link>
+          </div>
           <ol aria-label="What to add" className="flex flex-col gap-2">
             {gap.items.map((item) => (
               <li
