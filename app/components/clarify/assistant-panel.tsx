@@ -170,6 +170,22 @@ function ConnectedAssistant({
     );
   }, [open]);
 
+  // A card's "Ask the assistant to estimate this" button asks through the same chat.
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  useEffect(() => {
+    function onAsk(event: Event) {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !open || busy) return;
+      document
+        .querySelector('[aria-label="Assistant"]')
+        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+      void sendRef.current(text);
+    }
+    window.addEventListener("valueiq:assistant-ask", onAsk);
+    return () => window.removeEventListener("valueiq:assistant-ask", onAsk);
+  }, [open, busy]);
+
   useEffect(() => {
     end.current?.scrollIntoView({ block: "nearest" });
   }, [lines.length, busy]);
