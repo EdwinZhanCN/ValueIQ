@@ -30,6 +30,7 @@ import { DEFAULT_CONFIG } from "../../engine/config";
 import type { EngineConfig } from "../../engine/types";
 import {
   engineConfigFor,
+  MVP_FORMULA_VERSION,
   getTeamSettings,
   runSettings,
   teamOfProject,
@@ -222,7 +223,7 @@ export async function startRunRecord(
     mode: modelSource().mode,
     form_hash,
     contract_version: v.contract,
-    formula_version: v.formula,
+    formula_version: MVP_FORMULA_VERSION,
     settings_version: version,
     started_by: caller.userId,
     started_at: new Date().toISOString(),

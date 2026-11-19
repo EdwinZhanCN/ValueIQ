@@ -223,15 +223,38 @@ export async function settingsUsedByRun(
   };
 }
 
+/**
+ * MVP evidence discounts (Eli, Nov 19): an "estimate" cuts a value by 5 to 15% instead of 25 to 40%
+ * and a benchmark by 3 to 12% instead of 10 to 25%, so honest estimates can reach the release floors
+ * while we measure how accurate the tool is. The engine's own defaults (and the tests that pin them
+ * to the published cases) are unchanged; only live runs use these. Revisit after the accuracy review.
+ */
+const MVP_BANDS: EngineConfig["bands"] = {
+  measured: [0, 0],
+  documented: [0, 0.1],
+  benchmark: [0.03, 0.12],
+  estimate: [0.05, 0.15],
+  assumption: [0.4, 0.6],
+};
+export const MVP_FORMULA_VERSION = "0.1-mvp1";
+
 /** The engine configuration for these settings: cost uplift and the version. */
 export function engineConfigFor(
   values: TeamSettingValues,
 ): Partial<EngineConfig> {
   const merged = mergeConfig({
     cost_uplift_pct: { ...values.cost_uplift_pct },
-    versions: { settings: settingsVersion(values) } as EngineConfig["versions"],
+    bands: MVP_BANDS,
+    versions: {
+      settings: settingsVersion(values),
+      formula: MVP_FORMULA_VERSION,
+    } as EngineConfig["versions"],
   });
-  return { cost_uplift_pct: merged.cost_uplift_pct, versions: merged.versions };
+  return {
+    cost_uplift_pct: merged.cost_uplift_pct,
+    bands: merged.bands,
+    versions: merged.versions,
+  };
 }
 
 /** The team's financial defaults as Clarify offers them ("Team default"). */
