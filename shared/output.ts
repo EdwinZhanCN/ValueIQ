@@ -161,6 +161,7 @@ const coverage = object({
   selected: array(driverId),
   included: array(driverId),
   excluded: array(driverId),
+  npv_if_counted: optional(number),
   text: string,
 });
 const tornadoRow = object({

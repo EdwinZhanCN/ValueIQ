@@ -316,7 +316,7 @@ export async function renderEngineReport({
       .filter(([, count]) => count > 0)
       .map(([level, count]) => `${count} ${level}`)
       .join(", ");
-    return `Confidence ${ratioWhole(value)}, based on ${evidence || "the documented evidence"} inputs.`;
+    return `Confidence ${ratioWhole(value)} for the counted drivers${result.coverage ? ` (${result.coverage.included.length} of ${result.coverage.selected.length} selected goals)` : ""}, based on ${evidence || "the documented evidence"} inputs.`;
   };
   const bars = (title, points) => {
     const height = 72 + points.length * 47;
@@ -528,6 +528,11 @@ export async function renderEngineReport({
           ],
         ],
       );
+      if (result.break_even)
+        note(
+          "What must be true to break even",
+          `${result.break_even.note} Needed: ${money(result.break_even.annual_benefit_needed)} per year; modeled: ${money(result.break_even.annual_benefit_modeled)} per year.`,
+        );
       note(
         confidenceSummary(
           result.confidence.project.confidence,
@@ -792,13 +797,21 @@ export async function renderEngineReport({
       : "Pre-funding estimate",
     `${meta.horizon_years} years · ${meta.currency} · discount rate ${pct(meta.discount_rate_pct)}. This report renders the stored engine output for the recorded run. The exporter formats supplied values and does not recompute financial metrics. Refer to the recorded evidence before making a funding decision.`,
   );
+  const cov = result.coverage;
+  const partial = cov && cov.excluded.length > 0;
   const hardNpv = result.headline.npv.hard;
-  const decision =
-    typeof hardNpv === "number"
+  const incl = result.headline.npv.capacity_inclusive;
+  const decision = partial
+    ? `Decision line: partial result, not a verdict. ${cov.text}`
+    : typeof hardNpv === "number"
       ? hardNpv > 0
         ? "Decision line: on hard savings alone the project returns more than it costs."
         : "Decision line: on hard savings alone the project does not return its cost; see the capacity-inclusive figures before deciding."
-      : "";
+      : typeof incl === "number"
+        ? incl > 0
+          ? "Decision line: counting freed time and avoided loss, the project returns more than it costs (no documented cash reduction)."
+          : "Decision line: counting freed time and avoided loss, the project does not return its cost on the goals counted."
+        : "";
   if (decision) note("Decision line", decision.replace("Decision line: ", ""));
   const shown = plan.sections.filter(
     (id) => !(id === "charts" && plan.charts.length === 0),
