@@ -590,8 +590,9 @@ export function NumbersView({ output }: { output: ResultSample }) {
       <div className="flex flex-col gap-2 rounded-2xl border bg-card p-5">
         <Narrative value={narrative.summary} />
         <p className="output-caption">
-          Capacity value is freed time and expected avoided loss is reduced risk
-          exposure. Neither is a documented cash reduction.
+          Capacity value is freed time, expected avoided loss is reduced risk
+          exposure, and incremental profit is gross profit from new customers
+          the tool is expected to bring in. None is a documented cash reduction.
         </p>
       </div>
       {warnings.length > 0 && (

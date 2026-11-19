@@ -302,6 +302,9 @@ export async function renderEngineReport({
       hard_savings: "Hard savings",
       capacity_value: "Capacity value",
       avoided_loss: "Expected avoided loss",
+      incremental_profit: "Incremental profit",
+      customer_benefit: "Customer benefit",
+      new_clients: "New clients",
       time_savings: "Time savings",
       data_quality: "Data quality",
       risk_reduction: "Risk reduction",
@@ -608,7 +611,7 @@ export async function renderEngineReport({
         [
           "Period",
           "Hard benefit",
-          "Capacity / avoided loss",
+          "Capacity / avoided loss / new profit",
           "Cost",
           "Net inclusive",
           "Cumulative inclusive",
@@ -625,7 +628,7 @@ export async function renderEngineReport({
       );
       note(
         "Financial basis",
-        "Capacity value and expected avoided loss are distinct from documented hard savings. The net and cumulative figures include these benefits; they do not establish a cash reduction.",
+        "Capacity value, expected avoided loss and incremental profit from new clients are distinct from documented hard savings. The net and cumulative figures include these benefits; they do not establish a cash reduction.",
       );
     },
     charts: () => {

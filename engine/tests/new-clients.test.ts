@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeProject } from "../index";
-import { inp, cost, backing, OPTS, FILES } from "./forms";
+import { inp, cost, backing, OPTS, FILES, goldenResultForm } from "./forms";
 import type { FormFile } from "../types";
 
 const full = backing("source", "coverage", "recent", "verified");
@@ -80,5 +80,41 @@ describe("New clients driver", () => {
     expect(
       out.kind === "gap_list" || out.result?.unquantified.length,
     ).toBeTruthy();
+  });
+});
+
+describe("New clients flows through the whole project result", () => {
+  const g = goldenResultForm();
+  const form = {
+    ...g,
+    goals: ["new_clients"],
+    inputs: [
+      ...g.inputs.filter((i) =>
+        ["adoption_by_year", "discount_rate_pct"].includes(i.id),
+      ),
+      inp("leads_reached_per_year", 240, "documented"),
+      inp("response_rate_pct", 5, "documented"),
+      inp("close_rate_pct", 20, "documented"),
+      inp("gross_profit_per_customer", 5000, "documented"),
+      inp("capacity_cap_customers", 12, "documented"),
+      cost("cost_one_time_vendor_license", 150, "estimated"),
+      cost("cost_annual_run", 3900, "estimated"),
+    ],
+  } as never;
+  const r = computeProject(form, OPTS).result!;
+  it("is a driver, counted as incremental profit (not hard savings)", () => {
+    const d = r.drivers.find((x) => x.id === "new_clients")!;
+    expect(d.label_class).toBe("incremental_profit");
+    expect(r.headline.npv.hard).toBeNull();
+    expect(r.coverage!.included).toEqual(["new_clients"]);
+  });
+  it("feeds the scenarios, break-even and the suggested action", () => {
+    const s = r.scenarios;
+    expect(s.conservative.npv_capacity_inclusive!).toBeLessThan(
+      s.optimistic.npv_capacity_inclusive!,
+    );
+    expect(r.break_even).toBeDefined();
+    expect(r.recommendation).toBeDefined();
+    expect(r.measurement_plan.new_clients).toBeDefined();
   });
 });
