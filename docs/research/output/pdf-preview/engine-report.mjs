@@ -801,6 +801,7 @@ export async function renderEngineReport({
   const partial = cov && cov.excluded.length > 0;
   const hardNpv = result.headline.npv.hard;
   const incl = result.headline.npv.capacity_inclusive;
+  const rec = result.recommendation;
   const decision = partial
     ? `Decision line: partial result, not a verdict. ${cov.text}`
     : typeof hardNpv === "number"
@@ -812,7 +813,13 @@ export async function renderEngineReport({
           ? "Decision line: counting freed time and avoided loss, the project returns more than it costs (no documented cash reduction)."
           : "Decision line: counting freed time and avoided loss, the project does not return its cost on the goals counted."
         : "";
-  if (decision) note("Decision line", decision.replace("Decision line: ", ""));
+  if (rec)
+    note(
+      `Suggested action: ${rec.label}`,
+      `${rec.text} ${rec.reasons.join(" ")} Calculated by the engine from the scenario results and which goals are counted.`,
+    );
+  else if (decision)
+    note("Decision line", decision.replace("Decision line: ", ""));
   const shown = plan.sections.filter(
     (id) => !(id === "charts" && plan.charts.length === 0),
   );

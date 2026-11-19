@@ -33,6 +33,7 @@ import {
   sum,
   upliftedCost,
 } from "./finance";
+import { recommend } from "./recommend";
 import { assertJsonSafe, formatMoney, formatPct, round4 } from "./present";
 import { BLOCKING_CODES, isUnknown, validateInputs } from "./validate";
 import type {
@@ -1037,6 +1038,15 @@ export function computeProject(form: FormFile, opts: RunOptions): RunOutput {
   const baseline = byId.get("baseline_alternative");
   const result: Result = {
     headline,
+    recommendation: recommend({
+      currency,
+      expected: finAll.npv,
+      conservative: scenarios.conservative.npv_capacity_inclusive,
+      optimistic: scenarios.optimistic.npv_capacity_inclusive,
+      hard: finHard ? finHard.npv : null,
+      coverage,
+      shortfall: break_even ? break_even.shortfall : null,
+    }),
     ...(break_even ? { break_even } : {}),
     coverage,
     ...(cost_split ? { cost_split } : {}),
