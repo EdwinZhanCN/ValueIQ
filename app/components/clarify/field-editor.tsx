@@ -178,6 +178,23 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
           </button>
         )}
       </div>
+      {(record?.tier === "user_unknown" || text.trim() === "") &&
+        rule.role !== "context" && (
+          <button
+            type="button"
+            data-testid={`ask-estimate-${id}`}
+            className="self-start text-xs font-medium text-primary underline"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("valueiq:assistant-ask", {
+                  detail: `Estimate "${label}" for me.`,
+                }),
+              )
+            }
+          >
+            Ask the assistant to estimate this
+          </button>
+        )}
       {record?.tier === "user_unknown" && (
         <p className="text-xs text-muted-foreground">
           Unknown, not zero.

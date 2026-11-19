@@ -163,3 +163,29 @@ describe("apply_estimate: the user asks the assistant to estimate", () => {
     expect(r.ok).toBe(false);
   });
 });
+
+describe("apply_estimate: implausible rates are asked about, not written", () => {
+  it("refuses a 50% response rate from reasoning", async () => {
+    const ctx = ctxFor("please estimate the response rate");
+    const r = await run(ctx, {
+      input_id: "response_rate_pct",
+      value: 50,
+      basis: "reasoning",
+      confidence: 0.8,
+      rationale: "x",
+    });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("typical range");
+  });
+  it("accepts a realistic one", async () => {
+    const ctx = ctxFor("please estimate the response rate");
+    const r = await run(ctx, {
+      input_id: "response_rate_pct",
+      value: 5,
+      basis: "reasoning",
+      confidence: 0.8,
+      rationale: "x",
+    });
+    expect(r.ok).toBe(true);
+  });
+});

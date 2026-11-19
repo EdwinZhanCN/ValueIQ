@@ -108,6 +108,17 @@ export interface IntakeTurnState {
 /** Lowest confidence at which the agent may apply a value that rests only on its own reasoning. */
 export const ESTIMATE_CONFIDENCE_BAR = 0.7;
 
+/**
+ * Sanity ranges for figures the assistant estimates from its own reasoning. Team judgment, not a
+ * sourced benchmark (the sales research is snippet-only, SOURCES.md N and O): a rate outside the range
+ * is more likely a slip than a business, so the assistant asks instead of writing it.
+ */
+const TYPICAL_RANGE: Readonly<Record<string, readonly [number, number]>> = {
+  response_rate_pct: [0.5, 25],
+  close_rate_pct: [1, 40],
+  recapture_pct: [10, 90],
+};
+
 /** The user's own words ask the assistant to estimate or fill things in for them. */
 export function delegatesEstimates(message: string): boolean {
   return /\b(estimate|fill|guess|assume|complete|finish|decide|your best|make (it|them|something) up|reasonable|ballpark|for me)\b/i.test(
@@ -1359,6 +1370,15 @@ const apply_estimate: ToolDef = {
         rationale,
       };
     } else {
+      const typical = TYPICAL_RANGE[id];
+      if (
+        typical &&
+        typeof value === "number" &&
+        (value < typical[0] || value > typical[1])
+      )
+        return drop(
+          `${value} is outside the typical range (${typical[0]} to ${typical[1]}) for this input; ask the user`,
+        );
       if (
         confidence < ESTIMATE_CONFIDENCE_BAR &&
         !(delegatesEstimates(turn.message) && confidence >= 0.3)
