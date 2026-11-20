@@ -349,8 +349,8 @@ function Preview({
               <Narrative value={result.narrative.summary} />
             </div>
             <p className="output-caption">
-              Capacity value and expected avoided loss are not documented cash
-              reductions.
+              Capacity value, expected avoided loss and incremental profit from
+              new clients are not documented cash reductions.
             </p>
           </Section>
         );
