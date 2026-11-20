@@ -111,6 +111,73 @@ export function computeChecks(input: Input, ctx: EvidenceCtx): Checks {
   };
 }
 
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+/** 1 inside the tolerance, falling to 0 at twice the tolerance. */
+const within = (deviation: number, tolerance: number) =>
+  clamp01(2 - deviation / Math.max(tolerance, EPS));
+
+/** The same six checks as scores from 0 to 1, for graded backing. */
+export function computeScores(
+  input: Input,
+  ctx: EvidenceCtx,
+): Record<CheckName, number> {
+  const { cfg } = ctx;
+  const bk = input.backing ?? {};
+  const value = numeric(input.value);
+  const checks = computeChecks(input, ctx);
+
+  let corroborated = 0;
+  const second = numeric(bk.second_source_value);
+  if (second !== null && value !== null && value !== 0)
+    corroborated = within(
+      Math.abs(second - value) / Math.abs(value),
+      cfg.corroboration_tolerance,
+    );
+
+  const obs = numeric(bk.observations);
+  const months = numeric(bk.period_months);
+  const coverage = clamp01(
+    Math.max(
+      obs !== null ? obs / cfg.coverage_observations : 0,
+      months !== null ? months / cfg.coverage_months : 0,
+    ),
+  );
+
+  let recent = 0;
+  if (typeof bk.source_date === "string") {
+    const t = Date.parse(bk.source_date);
+    if (Number.isFinite(t) && t <= ctx.now.getTime()) {
+      const ageMonths = (ctx.now.getTime() - t) / (30.4375 * 86_400_000);
+      recent = within(ageMonths, cfg.recency_months);
+    }
+  }
+
+  let tight = 0;
+  const lo = numeric(input.low);
+  const hi = numeric(input.high);
+  if (
+    lo !== null &&
+    hi !== null &&
+    value !== null &&
+    value !== 0 &&
+    lo <= value &&
+    value <= hi
+  )
+    tight = within(
+      Math.max(value - lo, hi - value) / Math.abs(value),
+      cfg.tight_range_tolerance,
+    );
+
+  return {
+    source: checks.source ? 1 : 0,
+    corroborated,
+    coverage,
+    recent,
+    tight_range: tight,
+    verified: checks.verified ? 1 : 0,
+  };
+}
+
 export interface EffectEval {
   id: string;
   stated_tier: Tier;
@@ -176,7 +243,13 @@ export function evaluateEffect(
 ): EffectEval {
   const { tier, note } = effectiveTier(input, ctx, typedTimeSavings);
   const checks = computeChecks(input, ctx);
-  const b = backingScore(checks, ctx.cfg);
+  const scores = ctx.cfg.graded_backing ? computeScores(input, ctx) : null;
+  const b = scores
+    ? CHECK_NAMES.reduce(
+        (sum, name) => sum + ctx.cfg.weights[name] * scores[name],
+        0,
+      )
+    : backingScore(checks, ctx.cfg);
   const [h_min, h_max] = ctx.cfg.bands[tier];
   const h = haircutFor(tier, b, ctx.cfg);
   return {
