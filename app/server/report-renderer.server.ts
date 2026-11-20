@@ -2,7 +2,7 @@ import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import regular from "../assets/report-regular.ttf?inline";
 import bold from "../assets/report-bold.ttf?inline";
-import { renderEngineReport } from "../../docs/research/output/pdf-preview/engine-report.mjs";
+import { renderEngineReport } from "./report-pdf.server.mjs";
 import type { ResultOutput } from "../../shared/output";
 import type { ReportLayout } from "../../shared/report-layout";
 
@@ -14,6 +14,7 @@ function bytes(dataUrl: string) {
 export async function renderReport(
   output: ResultOutput,
   layout?: ReportLayout,
+  options: { projectName?: string } = {},
 ) {
   const report = await renderEngineReport({
     PDFDocument,
@@ -21,6 +22,7 @@ export async function renderReport(
     fontkit,
     fonts: { regular: bytes(regular), bold: bytes(bold) },
     data: output,
+    projectName: options.projectName,
     ...(layout ? { layout } : {}),
   });
   return report.bytes;

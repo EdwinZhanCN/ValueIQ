@@ -4,6 +4,7 @@ import { createDb } from "../../db/client";
 import { runReports, runs } from "../../db/schema";
 import type { ProjectAccess } from "./access.server";
 import { getRun } from "./output-runs.server";
+import { getProject } from "./projects.server";
 import { renderReport } from "./report-renderer.server";
 import {
   DEFAULT_LAYOUT,
@@ -47,7 +48,11 @@ export async function saveReportPdf(
     throw new Response("A released result is required to generate a report.", {
       status: 409,
     });
-  const bytes = await renderReport(snapshot.output, layout);
+  const project = await getProject(access.projectId);
+  if (!project) throw new Response("Not found", { status: 404 });
+  const bytes = await renderReport(snapshot.output, layout, {
+    projectName: project.name,
+  });
   if (bytes.byteLength > 10 * 1024 * 1024)
     throw new Response("The report is too large.", { status: 413 });
   const id = crypto.randomUUID();

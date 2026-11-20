@@ -7,8 +7,10 @@ import type {
   ReportPresetId,
 } from "../../../shared/report-layout";
 import {
+  confidenceSummary,
   inputLabel,
   isSpecified,
+  paybackHeadline,
   plainLanguage,
 } from "../../lib/output-presentation";
 import { inputStepHref } from "../../lib/run-ui";
@@ -51,28 +53,68 @@ const sectionLabel = (id: SectionId) =>
 function Section({
   id,
   number,
+  layer,
   children,
 }: {
   id: SectionId;
   number: number;
+  layer?: string;
   children: ReactNode;
 }) {
   const title = REPORT_SECTIONS.find((section) => section.id === id)!.pdfTitle;
   return (
-    <section
-      id={`report-${id}`}
-      className="flex scroll-mt-6 flex-col gap-3"
-      aria-labelledby={`report-${id}-title`}
-    >
-      <h3 id={`report-${id}-title`} className="text-[17px]">
-        <span className="mr-2 text-muted-foreground tabular-nums">
-          {String(number).padStart(2, "0")}
-        </span>
-        {title}
-      </h3>
-      {children}
-    </section>
+    <>
+      {layer && (
+        <p className="border-b pb-2 text-xs font-semibold tracking-[0.16em] text-primary uppercase">
+          {layer}
+        </p>
+      )}
+      <section
+        id={`report-${id}`}
+        className="flex scroll-mt-6 flex-col gap-3"
+        aria-labelledby={`report-${id}-title`}
+      >
+        <h3 id={`report-${id}-title`} className="text-[17px]">
+          <span className="mr-2 text-muted-foreground tabular-nums">
+            {String(number).padStart(2, "0")}
+          </span>
+          {title}
+        </h3>
+        {children}
+      </section>
+    </>
   );
+}
+
+const reportLayer = (id: SectionId) =>
+  id === "summary"
+    ? "Decision summary"
+    : id === "audit"
+      ? "Appendix"
+      : "Report details";
+
+function detailsToConfirm(output: ResultOutput) {
+  const fields = [
+    ["metric", "metric"],
+    ["baseline", "baseline"],
+    ["baseline_source", "baseline source"],
+    ["owner", "owner"],
+    ["frequency", "review frequency"],
+  ] as const;
+  const details = Object.entries(output.result.measurement_plan).flatMap(
+    ([key, plan]) => {
+      const missing = fields
+        .filter(([field]) => !isSpecified(plan[field]))
+        .map(([, label]) => label);
+      return missing.length
+        ? [`${labels[key] ?? key}: ${missing.join(", ")}`]
+        : [];
+    },
+  );
+  for (const driver of output.result.drivers)
+    if (!isSpecified(driver.measured_by))
+      details.push(`${driver.label}: measurement method`);
+  return details;
 }
 
 function Headline({ output }: { output: ResultOutput }) {
@@ -108,8 +150,8 @@ function Headline({ output }: { output: ResultOutput }) {
     ],
     [
       "Payback",
-      headline.payback.capacity_inclusive.text,
-      headline.payback.hard.text,
+      paybackHeadline(headline.payback.capacity_inclusive.text),
+      paybackHeadline(headline.payback.hard.text),
     ],
   ];
   return (
@@ -162,14 +204,17 @@ function Results({ output }: { output: ResultOutput }) {
           <thead>
             <tr>
               <th>Driver</th>
-              <th className="text-right">Haircut</th>
+              <th className="text-right">Evidence discount</th>
               <th className="text-right">Total</th>
               <th className="text-right">PV</th>
             </tr>
           </thead>
           <tbody>
             {drivers.map((driver) => (
-              <tr key={driver.id}>
+              <tr
+                key={driver.id}
+                className={cn(!driver.included && "text-muted-foreground")}
+              >
                 <td>
                   {driver.label}
                   {!driver.included && <small>excluded</small>}
@@ -345,12 +390,23 @@ function Preview({
   charts: string[];
 }) {
   const { result, meta } = output;
+  const confirm = detailsToConfirm(output);
   const render = (id: SectionId, index: number) => {
     const number = index + 1;
+    const layer =
+      index === 0 || reportLayer(sections[index - 1]!) !== reportLayer(id)
+        ? reportLayer(id)
+        : undefined;
     switch (id) {
       case "summary":
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
+            <p className="w-fit rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+              {confidenceSummary(
+                result.confidence.project.confidence,
+                meta.tier_counts,
+              )}
+            </p>
             <Headline output={output} />
             <div className="rounded-xl bg-primary/10 p-4">
               <Narrative value={result.narrative.summary} />
@@ -363,13 +419,13 @@ function Preview({
         );
       case "results":
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
             <Results output={output} />
           </Section>
         );
       case "charts":
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
             {charts.length === 0 ? (
               <p className="output-muted">
                 No charts were chosen for this report.
@@ -385,20 +441,20 @@ function Preview({
         );
       case "scenarios":
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
             <Scenarios output={output} />
             <DiscountTable output={output} />
           </Section>
         );
       case "assumptions":
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
             <Assumptions output={output} />
           </Section>
         );
       case "unquantified":
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
             <div className="flex flex-wrap gap-2">
               {result.unquantified.map((item) => (
                 <span
@@ -419,7 +475,7 @@ function Preview({
         );
       case "risks":
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <h4 className="text-sm font-medium">Doing nothing</h4>
@@ -442,7 +498,7 @@ function Preview({
         );
       case "measurement":
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
             <div className="output-table-wrap rounded-xl border">
               <table className="min-w-[28rem]">
                 <thead>
@@ -462,36 +518,18 @@ function Preview({
                             <small>{plan.metric}</small>
                           )}
                         </td>
-                        {[
-                          plan.metric,
-                          plan.baseline,
-                          plan.baseline_source,
-                          plan.owner,
-                          plan.frequency,
-                        ].every((value) => !isSpecified(value)) ? (
-                          <td colSpan={2} className="text-muted-foreground">
-                            Measurement details to confirm
-                          </td>
-                        ) : (
-                          <>
-                            <td>
-                              {isSpecified(plan.baseline)
-                                ? plan.baseline
-                                : "Baseline to confirm"}
-                              {isSpecified(plan.baseline_source) && (
-                                <small>{plan.baseline_source}</small>
-                              )}
-                            </td>
-                            <td>
-                              {isSpecified(plan.owner)
-                                ? plan.owner
-                                : "Owner to confirm"}
-                              {isSpecified(plan.frequency) && (
-                                <small>{plan.frequency}</small>
-                              )}
-                            </td>
-                          </>
-                        )}
+                        <td>
+                          {isSpecified(plan.baseline) ? plan.baseline : "—"}
+                          {isSpecified(plan.baseline_source) && (
+                            <small>{plan.baseline_source}</small>
+                          )}
+                        </td>
+                        <td>
+                          {isSpecified(plan.owner) ? plan.owner : "—"}
+                          {isSpecified(plan.frequency) && (
+                            <small>{plan.frequency}</small>
+                          )}
+                        </td>
                       </tr>
                     ),
                   )}
@@ -505,7 +543,7 @@ function Preview({
           (check) => check.passed,
         ).length;
         return (
-          <Section key={id} id={id} number={number}>
+          <Section key={id} id={id} number={number} layer={layer}>
             <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-sm">
               {[
                 ["Run", meta.run_id],
@@ -529,6 +567,20 @@ function Preview({
                 </div>
               ))}
             </dl>
+            <div className="rounded-xl border bg-muted/40 p-4 text-sm">
+              <h4 className="font-medium">Details to confirm</h4>
+              {confirm.length ? (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  {confirm.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-muted-foreground">
+                  No missing measurement details were recorded for this run.
+                </p>
+              )}
+            </div>
           </Section>
         );
       }

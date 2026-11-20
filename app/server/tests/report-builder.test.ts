@@ -30,7 +30,13 @@ describe("report builder", () => {
     expect(html).toContain("Gross → adjusted");
     expect(html).toContain("NPV by discount rate");
     expect(html).toContain("Driver mix");
-    expect(html).toContain("Measurement details to confirm");
+    expect(html).toContain("Details to confirm");
+    expect(html).toContain("Decision summary");
+    expect(html).toContain("Report details");
+    expect(html).toContain("Appendix");
+    expect(html).toContain("Confidence 94%, based on 7 documented inputs.");
+    expect(html).toContain("About 11 months");
+    expect(html).not.toContain("uniform-flow assumption");
     expect(html).not.toContain("Not specified");
     expect(html).not.toContain("recapture_pct");
     expect(html).toContain("Freed time used productively (%)");

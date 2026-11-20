@@ -5,7 +5,7 @@ import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb } from "pdf-lib";
 import { extractText, getDocumentProxy } from "unpdf";
 import { describe, expect, it } from "vitest";
-import { renderEngineReport } from "../../../docs/research/output/pdf-preview/engine-report.mjs";
+import { renderEngineReport } from "../report-pdf.server.mjs";
 import type { ResultOutput } from "../../../shared/output";
 import {
   DEFAULT_LAYOUT,
@@ -202,10 +202,101 @@ describe("renderEngineReport with a layout", () => {
       fontkit,
       fonts,
       data,
+      projectName: "Golden Gate",
     });
+    const t = await text(report.bytes);
     expect(report.sections).toHaveLength(9);
     expect(report.charts).toEqual(["waterfall", "npv_discount", "driver_mix"]);
-    expect(headings(await text(report.bytes))[0]).toBe("01 Executive summary");
+    expect(headings(t)[0]).toBe("01 Executive summary");
+    expect(t).toContain("DECISION SUMMARY");
+    expect(t).toContain("REPORT DETAILS");
+    expect(t).toContain("APPENDIX");
+    expect(t).toContain("Project Golden Gate");
+    expect(t).toContain(`Run ${data.meta.run_id}`);
+    expect(t).toContain("About 11 months");
+    expect(t).not.toContain("uniform-flow assumption");
+    expect(t).toContain("$127,956.73");
+    expect(
+      report.layout
+        .filter((item) => item.kind === "report-layer")
+        .map((item) => item.title),
+    ).toEqual(["Decision summary", "Report details", "Appendix"]);
+    expect(
+      report.layout.some(
+        (item) => item.kind === "table-row" && item.numericColumns?.length,
+      ),
+    ).toBe(true);
+  });
+
+  it("repeats table headers for a long driver ledger", async () => {
+    const stress = structuredClone(data);
+    const driver = stress.result.drivers[0]!;
+    const step = driver.steps[0]!;
+    driver.steps = Array.from({ length: 28 }, (_, index) => ({
+      ...structuredClone(step),
+      ref: `A${index + 1}`,
+      order: index + 1,
+      label: `Documented calculation step ${index + 1} with a deliberately descriptive label`,
+    }));
+    const report = await renderEngineReport({
+      PDFDocument,
+      rgb,
+      fontkit,
+      fonts,
+      data: stress,
+      projectName: "Pagination stress case",
+    });
+    expect(
+      report.layout.some(
+        (item) => item.kind === "table-header" && item.repeated,
+      ),
+    ).toBe(true);
+    expect(await text(report.bytes)).toContain("Time savings · continued");
+  });
+
+  it("consolidates missing measurement fields in the audit appendix", async () => {
+    const missing = structuredClone(data);
+    const plan = missing.result.measurement_plan.time_savings!;
+    plan.metric = "Not specified";
+    plan.baseline = "Not specified";
+    plan.baseline_source = "Not specified";
+    plan.owner = "Not specified";
+    plan.frequency = "Not specified";
+    missing.result.drivers[0]!.measured_by = "Not specified";
+    const report = await renderEngineReport({
+      PDFDocument,
+      rgb,
+      fontkit,
+      fonts,
+      data: missing,
+      projectName: "Missing measurement case",
+    });
+    const t = await text(report.bytes);
+    expect(t.match(/Details to confirm/g)).toHaveLength(1);
+    expect(t).toContain("baseline source");
+    expect(t).toContain("measurement method");
+    expect(t).not.toContain("Not specified");
+  });
+
+  it("wraps long project names and replaces unsupported display glyphs", async () => {
+    const report = await renderEngineReport({
+      PDFDocument,
+      rgb,
+      fontkit,
+      fonts,
+      data,
+      projectName:
+        "A deliberately long Golden Gate modernization project name for the executive committee 🚀",
+      layout: {
+        version: 2,
+        preset: "custom",
+        sections: ["summary", "audit"],
+        charts: [],
+      },
+    });
+    const t = await text(report.bytes);
+    expect(t).toContain("A deliberately long Golden Gate modernization");
+    expect(t).toContain("committee ?");
   });
 
   it("prints only the chosen sections, numbered in their order", async () => {
