@@ -101,7 +101,7 @@ export interface AppliedInput {
   value: number | string | number[];
   tier: "documented" | "benchmark" | "estimate";
   origin: "file" | "default" | "user" | "assistant_estimate";
-  basis: "file_quote" | "proxy" | "user_said" | "reasoning";
+  basis: "file_quote" | "proxy" | "user_said" | "description" | "reasoning";
   confidence: number;
   rationale: string;
   backing?: { source_file_id: string; quote: string; quote_confirmed: false };

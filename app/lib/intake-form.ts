@@ -345,9 +345,9 @@ export function validateFormFile(
       add("BOUNDS", id, "Project name must have 1-120 characters.");
     if (
       (id === "company_description" || id === "product_description") &&
-      (typeof value !== "string" || !value.trim() || value.length > 2000)
+      (typeof value !== "string" || !value.trim() || value.length > 8000)
     )
-      add("BOUNDS", id, "Description must have 1-2000 characters.");
+      add("BOUNDS", id, "Description must have 1-8000 characters.");
     if (
       id === "decision_statement" &&
       (typeof value !== "string" || !value.trim() || value.length > 500)

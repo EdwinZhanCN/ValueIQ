@@ -248,7 +248,7 @@ export function IntakeStep({
             <Textarea
               id="value-company_description"
               rows={3}
-              maxLength={2000}
+              maxLength={8000}
               value={company}
               placeholder="What the company does, its size and location, how it sells, and how busy the team is today."
               aria-invalid={descError && !company.trim()}
@@ -268,7 +268,7 @@ export function IntakeStep({
             <Textarea
               id="value-product_description"
               rows={3}
-              maxLength={2000}
+              maxLength={8000}
               value={product}
               placeholder="What you are evaluating, what it costs if you know, and what it is supposed to do."
               aria-invalid={descError && !product.trim()}
