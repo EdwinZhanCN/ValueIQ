@@ -2,6 +2,10 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { ArrowDown, ArrowUp, Download, FileText } from "lucide-react";
 import type { ResultOutput } from "../../../shared/output";
+import type {
+  ReportLayout,
+  ReportPresetId,
+} from "../../../shared/report-layout";
 import {
   inputLabel,
   isSpecified,
@@ -12,6 +16,7 @@ import { cn } from "../../lib/utils";
 import {
   REPORT_CHARTS,
   REPORT_SECTIONS,
+  REQUIRED_REPORT_SECTIONS,
   choicesKey,
   useReportChoices,
   type SectionId,
@@ -25,12 +30,14 @@ import {
   type OutputNavigation,
 } from "./result-views";
 import { labels, money, percent } from "./samples";
-import { normalizeLayout } from "../../../shared/report-layout";
+import { createReportLayout } from "../../../shared/report-layout";
 import "./output.css";
 
 type SavedReport = {
   id: string;
   createdAt: string;
+  preset: ReportPresetId;
+  layout: ReportLayout;
   sections: number;
   charts: number;
 };
@@ -578,12 +585,12 @@ export function ReportBuilder({
   const [busy, setBusy] = useState(false);
   // What the PDF will hold: the ticked sections in outline order, and the
   // chosen charts only while the Charts section is in.
-  const layout = normalizeLayout({
-    sections: choices.sections
+  const layout = createReportLayout(
+    choices.sections
       .filter((section) => section.on)
       .map((section) => section.id),
-    charts: choices.charts,
-  });
+    choices.charts,
+  );
   const fresh = reports.find((report) => report.id === savedReport);
   const move = (index: number, by: -1 | 1) =>
     update((current) => {
@@ -597,12 +604,16 @@ export function ReportBuilder({
       return { ...current, sections };
     });
   const toggleSection = (id: SectionId) =>
-    update((current) => ({
-      ...current,
-      sections: current.sections.map((section) =>
-        section.id === id ? { ...section, on: !section.on } : section,
-      ),
-    }));
+    REQUIRED_REPORT_SECTIONS.includes(
+      id as (typeof REQUIRED_REPORT_SECTIONS)[number],
+    )
+      ? undefined
+      : update((current) => ({
+          ...current,
+          sections: current.sections.map((section) =>
+            section.id === id ? { ...section, on: !section.on } : section,
+          ),
+        }));
   return (
     <OutputContext.Provider value={navigation}>
       <div className="output-root output-embedded">
@@ -629,6 +640,8 @@ export function ReportBuilder({
               action={reportAction}
               onSubmit={() => setBusy(true)}
             >
+              <input type="hidden" name="version" value={layout.version} />
+              <input type="hidden" name="preset" value={layout.preset} />
               <input
                 type="hidden"
                 name="sections"
@@ -671,9 +684,12 @@ export function ReportBuilder({
                   <input
                     type="checkbox"
                     checked={section.on}
+                    disabled={REQUIRED_REPORT_SECTIONS.includes(
+                      section.id as (typeof REQUIRED_REPORT_SECTIONS)[number],
+                    )}
                     onChange={() => toggleSection(section.id)}
                     aria-label={`Include ${sectionLabel(section.id)}`}
-                    className="ml-2 size-4 shrink-0 cursor-pointer accent-[var(--primary)]"
+                    className="ml-2 size-4 shrink-0 cursor-pointer accent-[var(--primary)] disabled:cursor-not-allowed"
                   />
                   {section.on ? (
                     <a

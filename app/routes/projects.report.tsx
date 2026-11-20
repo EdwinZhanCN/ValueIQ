@@ -20,6 +20,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     ? (await listRunReports(access, output.meta.run_id)).map((report) => ({
         id: report.id,
         createdAt: report.createdAt.toISOString(),
+        preset: report.preset,
+        layout: report.layout,
         sections: report.layout.sections.length,
         charts: report.layout.charts.length,
       }))

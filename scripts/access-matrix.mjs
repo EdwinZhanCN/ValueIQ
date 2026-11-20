@@ -129,7 +129,9 @@ const TARGETS = [
       path: `/projects/${fx.projectId}/runs/${fx.runId}/reports`,
       method: "POST",
       form: {
-        sections: JSON.stringify(["summary", "charts"]),
+        version: "2",
+        preset: "custom",
+        sections: JSON.stringify(["summary", "charts", "audit"]),
         charts: JSON.stringify(["npv_haircut"]),
       },
     }),

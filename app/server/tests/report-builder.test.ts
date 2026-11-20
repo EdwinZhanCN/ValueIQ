@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import fixture from "../../../engine/fixtures/round1/r1-result.json";
 import { parseRunOutput } from "../../../shared/output";
 import { ReportBuilder } from "../../components/output/report-builder";
+import { parseChoices } from "../../components/output/report-choices";
+import { DEFAULT_LAYOUT } from "../../../shared/report-layout";
 
 describe("report builder", () => {
   it("offers section and chart choices and plain-language contents", () => {
@@ -32,5 +34,36 @@ describe("report builder", () => {
     expect(html).not.toContain("Not specified");
     expect(html).not.toContain("recapture_pct");
     expect(html).toContain("Freed time used productively (%)");
+    expect(html).toContain('name="version" value="2"');
+    expect(html).toContain('name="preset" value="standard"');
+    expect(html).toMatch(
+      /<input[^>]*disabled[^>]*aria-label="Include Summary"/,
+    );
+    expect(html).toMatch(
+      /<input[^>]*disabled[^>]*aria-label="Include Audit trail"/,
+    );
+  });
+
+  it("restores required sections from an older browser draft", () => {
+    const choices = parseChoices(
+      JSON.stringify({
+        charts: DEFAULT_LAYOUT.charts,
+        sections: [
+          { id: "summary", on: false },
+          { id: "audit", on: false },
+          { id: "risks", on: false },
+        ],
+      }),
+    );
+
+    expect(
+      choices.sections.find((section) => section.id === "summary")?.on,
+    ).toBe(true);
+    expect(choices.sections.find((section) => section.id === "audit")?.on).toBe(
+      true,
+    );
+    expect(choices.sections.find((section) => section.id === "risks")?.on).toBe(
+      false,
+    );
   });
 });

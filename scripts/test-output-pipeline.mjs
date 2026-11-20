@@ -272,6 +272,8 @@ const reportIds = async () =>
 const custom = await call(`/projects/${project}/runs/${run}/reports`, {
   method: "POST",
   body: new URLSearchParams({
+    version: "2",
+    preset: "custom",
     sections: JSON.stringify([
       "summary",
       "risks",
@@ -280,6 +282,7 @@ const custom = await call(`/projects/${project}/runs/${run}/reports`, {
       "scenarios",
       "assumptions",
       "unquantified",
+      "audit",
     ]),
     charts: JSON.stringify(["npv_adoption", "driver_mix"]),
   }),
@@ -302,22 +305,32 @@ assert.deepEqual(headings(customText), [
   "05 Scenarios and sensitivity",
   "06 Context and assumptions",
   "07 Unquantified benefits and flexibility",
+  "08 Appendix and audit trail",
 ]);
 assert.deepEqual(chartsIn(customText), ["Driver mix", "NPV by adoption"]);
 assert(customText.includes("$127,956.73"), "Custom layout changed the NPV");
 const idsBefore = await reportIds();
-for (const [sections, charts] of [
-  ['["summary","bogus"]', "[]"],
-  ["[]", "[]"],
-  ['["summary","summary"]', "[]"],
-  ['["summary"]', '["pie"]'],
-  ["summary", "[]"],
+for (const fields of [
+  { sections: '["summary","bogus"]', charts: "[]" },
+  { sections: "[]", charts: "[]" },
+  { sections: '["summary","summary"]', charts: "[]" },
+  { sections: '["summary","audit"]', charts: '["pie"]' },
+  { sections: "summary", charts: "[]" },
+  { version: "3", preset: "standard" },
+  { version: "2", preset: "unknown" },
+  {
+    version: "2",
+    preset: "custom",
+    sections: '["summary","audit"]',
+    charts: "[]",
+    title: "x".repeat(121),
+  },
 ]) {
   const refused = await call(`/projects/${project}/runs/${run}/reports`, {
     method: "POST",
-    body: new URLSearchParams({ sections, charts }),
+    body: new URLSearchParams(fields),
   });
-  assert.equal(refused.status, 400, `${sections} ${charts}`);
+  assert.equal(refused.status, 400, JSON.stringify(fields));
 }
 assert.deepEqual(
   await reportIds(),
@@ -328,7 +341,7 @@ const listed = await (
   await call(`/projects/${project}/report?run=${run}`)
 ).text();
 assert(listed.includes("· 9 sections, 3 charts"), "Saved list lacks counts");
-assert(listed.includes("· 7 sections, 2 charts"));
+assert(listed.includes("· 8 sections, 2 charts"));
 assert.deepEqual(
   Buffer.from(await (await call(reportPath)).arrayBuffer()),
   pdf,

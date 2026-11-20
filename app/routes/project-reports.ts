@@ -23,7 +23,15 @@ export async function action({ request, params }: Route.ActionArgs) {
     const value = form?.get(name);
     return typeof value === "string" ? value : null;
   };
-  const parsed = parseReportLayout(field("sections"), field("charts"));
+  const parsed = parseReportLayout({
+    version: field("version"),
+    preset: field("preset"),
+    sections: field("sections"),
+    charts: field("charts"),
+    title: field("title"),
+    preparedFor: field("preparedFor"),
+    preparedBy: field("preparedBy"),
+  });
   if (!parsed.ok) throw new Response(parsed.error, { status: 400 });
   const id = await saveReportPdf(access, params.runId, parsed.layout);
   return redirect(

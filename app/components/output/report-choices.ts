@@ -6,14 +6,18 @@ import { useCallback, useEffect, useState } from "react";
  * it is a viewing preference, not assessment data.
  */
 export {
+  DEFAULT_LAYOUT,
   REPORT_CHARTS,
   REPORT_SECTIONS,
+  REQUIRED_REPORT_SECTIONS,
   type ChartId,
   type SectionId,
 } from "../../../shared/report-layout";
 import {
+  DEFAULT_LAYOUT,
   REPORT_CHARTS,
   REPORT_SECTIONS,
+  REQUIRED_REPORT_SECTIONS,
   type ChartId,
   type SectionId,
 } from "../../../shared/report-layout";
@@ -24,8 +28,11 @@ export type ReportChoices = {
 };
 
 export const DEFAULT_CHOICES: ReportChoices = {
-  charts: ["waterfall", "npv_discount", "driver_mix"],
-  sections: REPORT_SECTIONS.map((section) => ({ id: section.id, on: true })),
+  charts: [...DEFAULT_LAYOUT.charts],
+  sections: REPORT_SECTIONS.map((section) => ({
+    id: section.id,
+    on: DEFAULT_LAYOUT.sections.includes(section.id),
+  })),
 };
 
 const chartIds = new Set<string>(REPORT_CHARTS.map((chart) => chart.id));
@@ -45,7 +52,14 @@ export function parseChoices(raw: string | null): ReportChoices {
         (s): s is { id: SectionId; on: boolean } =>
           !!s && sectionIds.has(s.id) && !seen.has(s.id) && !!seen.add(s.id),
       )
-      .map((s) => ({ id: s.id, on: s.on !== false }));
+      .map((s) => ({
+        id: s.id,
+        on: REQUIRED_REPORT_SECTIONS.includes(
+          s.id as (typeof REQUIRED_REPORT_SECTIONS)[number],
+        )
+          ? true
+          : s.on !== false,
+      }));
     for (const s of REPORT_SECTIONS)
       if (!seen.has(s.id)) sections.push({ id: s.id, on: true });
     return { charts: [...new Set(charts)], sections };

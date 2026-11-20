@@ -7,6 +7,7 @@ import { getRun } from "./output-runs.server";
 import { renderReport } from "./report-renderer.server";
 import {
   DEFAULT_LAYOUT,
+  layoutPreset,
   storedLayout,
   type ReportLayout,
 } from "../../shared/report-layout";
@@ -24,7 +25,10 @@ export async function listRunReports(access: ProjectAccess, runId: string) {
     .orderBy(desc(runReports.createdAt))
     .all()
     .then((rows) =>
-      rows.map((row) => ({ ...row, layout: storedLayout(row.layout) })),
+      rows.map((row) => {
+        const layout = storedLayout(row.layout);
+        return { ...row, layout, preset: layoutPreset(layout) };
+      }),
     );
 }
 
