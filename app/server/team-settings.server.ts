@@ -236,7 +236,7 @@ const MVP_BANDS: EngineConfig["bands"] = {
   estimate: [0.05, 0.15],
   assumption: [0.4, 0.6],
 };
-export const MVP_FORMULA_VERSION = "0.1-mvp1";
+export const MVP_FORMULA_VERSION = "0.1-mvp2";
 
 /** The engine configuration for these settings: cost uplift and the version. */
 export function engineConfigFor(
@@ -245,6 +245,7 @@ export function engineConfigFor(
   const merged = mergeConfig({
     cost_uplift_pct: { ...values.cost_uplift_pct },
     bands: MVP_BANDS,
+    graded_backing: true,
     versions: {
       settings: settingsVersion(values),
       formula: MVP_FORMULA_VERSION,
@@ -253,6 +254,7 @@ export function engineConfigFor(
   return {
     cost_uplift_pct: merged.cost_uplift_pct,
     bands: merged.bands,
+    graded_backing: true,
     versions: merged.versions,
   };
 }

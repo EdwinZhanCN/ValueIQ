@@ -360,6 +360,12 @@ export interface EngineConfig {
   coverage_observations: number; // 30
   coverage_months: number; // 12
   recency_months: number; // 12
+  /**
+   * Score each backing check from 0 to 1 instead of pass/fail (partial credit for 20 of 30
+   * observations, a source 18 months old, a second source 30% away). Off by default so the published
+   * cases and the oracle keep their exact numbers; the live profile turns it on.
+   */
+  graded_backing?: boolean;
   cost_uplift_pct: Record<CostBasis, number>;
   driver_floors: Record<DriverId, number>;
   project_floor: number;
