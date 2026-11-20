@@ -1330,6 +1330,18 @@ const apply_estimate: ToolDef = {
     const existing = ctx.form.inputs.find((i) => i.id === id);
     if (existing && existing.value !== null && existing.origin === "user")
       return drop("the user already entered this");
+    // A value that is already filled stays unless the user asks for a change (no silent re-estimates).
+    if (
+      existing &&
+      existing.value !== null &&
+      existing.origin === "assistant_estimate" &&
+      !/\b(change|redo|re-?estimate|replace|update|revise|instead|wrong)\b/i.test(
+        turn.message,
+      )
+    )
+      return drop(
+        "already has a value; leave it unless the user asks to change it",
+      );
 
     let applied: AppliedInput;
     if (basis === "file_quote") {
