@@ -10,6 +10,7 @@ import {
 import { inputStepHref } from "../../lib/run-ui";
 import { cn } from "../../lib/utils";
 import {
+  DEFAULT_CHOICES,
   REPORT_CHARTS,
   REPORT_SECTIONS,
   choicesKey,
@@ -34,6 +35,38 @@ type SavedReport = {
   sections: number;
   charts: number;
 };
+
+/** One line per section: what it holds, so a reader can decide to keep or drop it. */
+const SECTION_BLURB: Record<SectionId, string> = {
+  summary: "The headline NPV, ROI and payback, and a plain-language summary.",
+  results: "Benefits by driver, with the math behind each number.",
+  charts: "The charts you pick below.",
+  scenarios: "Conservative, expected and optimistic cases, and sensitivity.",
+  assumptions: "Every input you entered, with its source and evidence level.",
+  unquantified: "Benefits and goals the result does not count, and why.",
+  risks: "Risks of doing nothing versus going ahead.",
+  measurement: "How to check, after launch, that the benefit shows up.",
+  audit: "Run details and the checks the engine passed (for reviewers).",
+};
+
+/** One-click starting points; the ticks below can still be changed by hand. */
+const PRESETS: { label: string; hint: string; sections: SectionId[] }[] = [
+  {
+    label: "Full business case",
+    hint: "Every section and chart",
+    sections: REPORT_SECTIONS.map((section) => section.id),
+  },
+  {
+    label: "Executive",
+    hint: "Decision summary, charts and risks",
+    sections: ["summary", "charts", "risks"],
+  },
+  {
+    label: "Financial review",
+    hint: "Numbers, assumptions and the audit appendix",
+    sections: ["summary", "results", "scenarios", "assumptions", "audit"],
+  },
+];
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -542,8 +575,17 @@ function Preview({
         </div>
         <RunBadge meta={meta} />
       </header>
+      <p
+        data-testid="preview-note"
+        className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"
+      >
+        Preview: this is what the PDF will contain. Use the choices on the left
+        to add or remove parts.
+      </p>
       {sections.length === 0 ? (
-        <p className="output-muted">Choose at least one section.</p>
+        <p className="output-muted">
+          Nothing is selected. Tick at least one section to build a PDF.
+        </p>
       ) : (
         sections.map(render)
       )}
@@ -656,77 +698,163 @@ export function ReportBuilder({
         </div>
         <div className="flex flex-wrap items-start gap-6">
           <div className="flex min-w-0 flex-[1_1_14rem] flex-col gap-6 lg:sticky lg:top-6">
-            <nav aria-label="Report outline" className="flex flex-col gap-1">
-              <h2 className="px-1 pb-1 text-sm font-medium text-muted-foreground">
-                Outline
-              </h2>
-              {choices.sections.map((section, index) => (
-                <div
-                  key={section.id}
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg pr-1 text-sm",
-                    section.on ? "hover:bg-muted" : "text-muted-foreground",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={section.on}
-                    onChange={() => toggleSection(section.id)}
-                    aria-label={`Include ${sectionLabel(section.id)}`}
-                    className="ml-2 size-4 shrink-0 cursor-pointer accent-[var(--primary)]"
-                  />
-                  {section.on ? (
-                    <a
-                      href={`#report-${section.id}`}
-                      className="flex min-h-10 flex-1 items-center px-2"
+            <section
+              aria-label="Choose what goes in the PDF"
+              data-testid="report-choices"
+              className="flex flex-col gap-3 rounded-2xl border bg-card p-4"
+            >
+              <div className="flex flex-col gap-1">
+                <h2 className="text-base font-semibold">
+                  Choose what goes in your PDF
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Tick a part to include it. Unticked parts are left out of the
+                  PDF. The preview on the right shows exactly what the PDF will
+                  hold, in this order.
+                </p>
+              </div>
+              <p
+                data-testid="report-summary"
+                aria-live="polite"
+                className="rounded-lg bg-muted px-3 py-2 text-sm font-medium"
+              >
+                PDF will contain {plural(layout.sections.length, "section")}
+                {layout.sections.includes("charts")
+                  ? ` and ${plural(layout.charts.length, "chart")}`
+                  : ""}
+                .
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Start from a preset
+                </span>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  {PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      title={preset.hint}
+                      className="rounded-md border px-2.5 py-1 hover:bg-muted"
+                      onClick={() =>
+                        update((current) => ({
+                          ...current,
+                          sections: current.sections.map((section) => ({
+                            ...section,
+                            on: preset.sections.includes(section.id),
+                          })),
+                        }))
+                      }
                     >
-                      {sectionLabel(section.id)}
-                    </a>
-                  ) : (
-                    <span className="flex min-h-10 flex-1 items-center px-2 line-through">
-                      {sectionLabel(section.id)}
-                    </span>
-                  )}
+                      {preset.label}
+                    </button>
+                  ))}
                   <button
                     type="button"
-                    onClick={() => move(index, -1)}
-                    disabled={index === 0}
-                    aria-label={`Move ${sectionLabel(section.id)} up`}
-                    className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30"
+                    className="rounded-md border px-2.5 py-1 text-muted-foreground hover:bg-muted"
+                    onClick={() => update(() => DEFAULT_CHOICES)}
                   >
-                    <ArrowUp size={14} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(index, 1)}
-                    disabled={index === choices.sections.length - 1}
-                    aria-label={`Move ${sectionLabel(section.id)} down`}
-                    className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30"
-                  >
-                    <ArrowDown size={14} aria-hidden="true" />
+                    Reset
                   </button>
                 </div>
-              ))}
-            </nav>
-            <fieldset className="flex flex-col gap-1">
-              <legend className="px-1 pb-1 text-sm font-medium text-muted-foreground">
-                Charts
-              </legend>
-              {REPORT_CHARTS.map((chart) => (
-                <label
-                  key={chart.id}
-                  className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg px-2 text-sm hover:bg-muted"
-                >
-                  <input
-                    type="checkbox"
-                    checked={choices.charts.includes(chart.id)}
-                    onChange={() => toggleChart(chart.id)}
-                    className="size-4 accent-[var(--primary)]"
-                  />
-                  {chart.label}
-                </label>
-              ))}
-            </fieldset>
+              </div>
+              <nav aria-label="Report outline" className="flex flex-col gap-1">
+                {choices.sections.map((section, index) => (
+                  <div key={section.id} className="flex flex-col">
+                    <div
+                      className={cn(
+                        "flex items-start gap-1 rounded-lg border p-2 text-sm",
+                        section.on
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-dashed text-muted-foreground",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={section.on}
+                        onChange={() => toggleSection(section.id)}
+                        aria-label={`Include ${sectionLabel(section.id)}`}
+                        className="mt-0.5 size-5 shrink-0 cursor-pointer accent-[var(--primary)]"
+                      />
+                      <div className="flex min-w-0 flex-1 flex-col px-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          {section.on ? (
+                            <a
+                              href={`#report-${section.id}`}
+                              className="font-medium hover:underline"
+                            >
+                              {sectionLabel(section.id)}
+                            </a>
+                          ) : (
+                            <span className="font-medium line-through">
+                              {sectionLabel(section.id)}
+                            </span>
+                          )}
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[0.7rem] font-medium",
+                              section.on
+                                ? "bg-primary/15 text-primary"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {section.on ? "In the PDF" : "Left out"}
+                          </span>
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {SECTION_BLURB[section.id]}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => move(index, -1)}
+                        disabled={index === 0}
+                        aria-label={`Move ${sectionLabel(section.id)} up`}
+                        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowUp size={14} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => move(index, 1)}
+                        disabled={index === choices.sections.length - 1}
+                        aria-label={`Move ${sectionLabel(section.id)} down`}
+                        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowDown size={14} aria-hidden="true" />
+                      </button>
+                    </div>
+                    {section.id === "charts" && (
+                      <fieldset
+                        disabled={!section.on}
+                        className="ml-7 mt-1 flex flex-col gap-0.5 border-l pl-3 disabled:opacity-50"
+                      >
+                        <legend className="sr-only">Charts</legend>
+                        {REPORT_CHARTS.map((chart) => (
+                          <label
+                            key={chart.id}
+                            className="flex min-h-9 cursor-pointer items-center gap-2.5 rounded-lg px-2 text-sm hover:bg-muted"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={choices.charts.includes(chart.id)}
+                              onChange={() => toggleChart(chart.id)}
+                              className="size-4 accent-[var(--primary)]"
+                            />
+                            {chart.label}
+                          </label>
+                        ))}
+                        {!section.on && (
+                          <p className="px-2 text-xs text-muted-foreground">
+                            The Charts section is left out, so none of these
+                            charts will be in the PDF.
+                          </p>
+                        )}
+                      </fieldset>
+                    )}
+                  </div>
+                ))}
+              </nav>
+            </section>
             {reports.length > 0 && (
               <details className="text-sm">
                 <summary className="cursor-pointer px-1 text-muted-foreground">
