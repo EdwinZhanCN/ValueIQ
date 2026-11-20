@@ -315,10 +315,19 @@ function ClarifyQuestions({
           prep={prep}
           onPrepDone={() => setPreparing(false)}
         />
-        <div className="flex flex-wrap items-start gap-6">
+        <div className="flex flex-col gap-6">
+          <InputsPanel
+            draft={draft}
+            groups={groups}
+            problems={problems}
+            clarifyIds={clarifyIds}
+            onPick={pick}
+            onContinue={proceed}
+            continuing={continuing.current}
+          />
           <section
             aria-label="Clarify questions"
-            className="flex min-w-0 flex-[2_1_34rem] flex-col gap-3.5"
+            className="flex min-w-0 flex-col gap-3.5"
           >
             <p
               data-testid="save-state"
@@ -397,17 +406,6 @@ function ClarifyQuestions({
               ),
             )}
           </section>
-          <div className="min-w-0 flex-[1_1_17rem]">
-            <InputsPanel
-              draft={draft}
-              groups={groups}
-              problems={problems}
-              clarifyIds={clarifyIds}
-              onPick={pick}
-              onContinue={proceed}
-              continuing={continuing.current}
-            />
-          </div>
         </div>
       </div>
     </div>

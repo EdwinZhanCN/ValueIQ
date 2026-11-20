@@ -275,9 +275,32 @@ function ConnectedAssistant({
           you can edit or undo anything it wrote. It never does the math; the
           Process step does.
         </p>
+        <div
+          data-testid="estimate-all"
+          className="flex flex-col gap-1.5 rounded-xl border border-primary/40 bg-card p-3"
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              disabled={!open || busy}
+              onClick={() => void send("Estimate all remaining numbers.")}
+            >
+              Estimate all remaining numbers
+            </Button>
+            <span className="min-w-0 flex-1 text-sm">
+              The assistant fills every input that is still missing. It uses
+              figures from your descriptions and files first, then its own best
+              estimate for the rest.
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Note: estimated numbers may make the result slightly less accurate
+            than numbers you enter or back with a document. Each one is labeled
+            &quot;AI estimate&quot; and you can change it.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2 pt-1">
           {[
-            "Estimate everything that is still missing",
             "What do I still need to answer?",
             "Explain the fields I am unsure about",
           ].map((suggestion) => (
