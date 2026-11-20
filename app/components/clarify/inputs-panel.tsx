@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Check, Circle, CircleHelp, Save } from "lucide-react";
 import { Link } from "react-router";
 import { Badge } from "~/components/ui/badge";
@@ -7,8 +8,21 @@ import type { FormIssue } from "../../../shared/form";
 import { INPUT_RULES } from "../../lib/intake-catalog";
 import { inputStep, inputStepHref } from "../../lib/run-ui";
 import { OPTIONAL } from "./draft";
+import {
+  ASK_EVENT,
+  DONE_EVENT,
+  estimateMessage,
+  settle,
+  type DoneDetail,
+} from "./estimate-ask";
 import { type Group, isAnswered, labelOf, valueOf } from "./progress";
 import type { FormDraft } from "./use-form-draft";
+
+/** Set by the user or fixed by form rules; the assistant cannot fill them. */
+const NOT_ESTIMABLE: ReadonlySet<string> = new Set([
+  "currency",
+  "horizon_years",
+]);
 
 export const ESTIMATE_ALL = "Estimate all remaining numbers.";
 
@@ -33,6 +47,40 @@ export function InputsPanel({
   onContinue: () => void;
   continuing: boolean;
 }) {
+  // Rows that asked the assistant for an estimate, and how that turn ended.
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
+  const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
+  useEffect(() => {
+    function onDone(event: Event) {
+      const done = (event as CustomEvent<DoneDetail>).detail;
+      const { resolved, failed: missed } = settle(pendingRef.current, done);
+      if (resolved.length + missed.length === 0) return;
+      setPending(new Set());
+      setFailed((previous) => {
+        const next = new Set(previous);
+        for (const id of resolved) next.delete(id);
+        for (const id of missed) next.add(id);
+        return next;
+      });
+    }
+    window.addEventListener(DONE_EVENT, onDone);
+    return () => window.removeEventListener(DONE_EVENT, onDone);
+  }, []);
+  function estimateOne(id: string) {
+    setFailed((previous) => {
+      const next = new Set(previous);
+      next.delete(id);
+      return next;
+    });
+    setPending(new Set([id]));
+    window.dispatchEvent(
+      new CustomEvent(ASK_EVENT, {
+        detail: { text: estimateMessage(labelOf(id)), ids: [id] },
+      }),
+    );
+  }
   const required = groups.flatMap((group) =>
     group.fields.filter((id) => !OPTIONAL.has(id)),
   );
@@ -106,8 +154,8 @@ export function InputsPanel({
               variant="outline"
               onClick={() =>
                 window.dispatchEvent(
-                  new CustomEvent("valueiq:assistant-ask", {
-                    detail: ESTIMATE_ALL,
+                  new CustomEvent(ASK_EVENT, {
+                    detail: { text: ESTIMATE_ALL, ids: [] },
                   }),
                 )
               }
@@ -123,10 +171,13 @@ export function InputsPanel({
         ) : (
           <ul className="flex flex-col text-sm">
             {stillNeeded.map(({ id, group }) => (
-              <li key={id} className="border-b last:border-b-0">
+              <li
+                key={id}
+                className="flex flex-wrap items-center gap-x-2 border-b last:border-b-0"
+              >
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2.5 py-1.5 text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => onPick(id)}
                 >
                   {draft.byId.get(id)?.tier === "user_unknown" ? (
@@ -147,6 +198,28 @@ export function InputsPanel({
                     {group}
                   </span>
                 </button>
+                {!NOT_ESTIMABLE.has(id) && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0 px-2 text-xs"
+                    disabled={pending.has(id)}
+                    data-testid={`estimate-row-${id}`}
+                    aria-label={`Estimate ${labelOf(id)} with AI`}
+                    onClick={() => estimateOne(id)}
+                  >
+                    {pending.has(id) ? "Estimating…" : "Estimate"}
+                  </Button>
+                )}
+                {failed.has(id) && (
+                  <p
+                    role="status"
+                    className="w-full pb-1.5 pl-6 text-xs text-muted-foreground"
+                  >
+                    Could not estimate this; ask in the chat.
+                  </p>
+                )}
               </li>
             ))}
           </ul>

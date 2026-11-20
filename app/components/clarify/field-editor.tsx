@@ -1,3 +1,4 @@
+import { ASK_EVENT, estimateMessage } from "./estimate-ask";
 import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
 import type { Input } from "../../../shared/form";
@@ -186,8 +187,8 @@ export function FieldEditor({ id, draft }: { id: string; draft: FormDraft }) {
             className="self-start text-xs font-medium text-primary underline"
             onClick={() =>
               window.dispatchEvent(
-                new CustomEvent("valueiq:assistant-ask", {
-                  detail: `Estimate "${label}" for me.`,
+                new CustomEvent(ASK_EVENT, {
+                  detail: { text: estimateMessage(label), ids: [id] },
                 }),
               )
             }
