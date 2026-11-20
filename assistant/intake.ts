@@ -15,6 +15,7 @@ import type {
   AssistantTurn,
   RunMode,
 } from "../shared/types";
+import type { EngineConfig } from "../engine/types";
 import type { FileEvidenceHost } from "./evidence/host";
 import { MaxStepsError, type FetchLike } from "./gemini";
 import { runGuarded } from "./guarded-loop";
@@ -39,6 +40,8 @@ export interface IntakeTurnInput {
   host?: FileEvidenceHost;
   /** The loading-page turn right after Intake. */
   prep?: boolean;
+  /** The same engine settings Process uses (team defaults and the live evidence bands). */
+  config?: Partial<EngineConfig>;
   apiKey: string;
   model: string;
   mode: RunMode;
@@ -155,6 +158,7 @@ export async function intakeTurn(o: IntakeTurnInput): Promise<AssistantReply> {
     run_id: "assistant",
     now: o.now,
     mode: o.mode,
+    ...(o.config ? { config: o.config } : {}),
     ...(host ? { files: host } : {}),
     intake: { message, proposals, applied: [], verified },
     agent: "clarify",

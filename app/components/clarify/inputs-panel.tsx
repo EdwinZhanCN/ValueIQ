@@ -10,6 +10,8 @@ import { OPTIONAL } from "./draft";
 import { type Group, isAnswered, labelOf, valueOf } from "./progress";
 import type { FormDraft } from "./use-form-draft";
 
+export const ESTIMATE_ALL = "Estimate all remaining numbers.";
+
 /**
  * What has been entered so far, per group, beside the questions; plus what
  * still blocks the Process step and the Continue action.
@@ -35,6 +37,15 @@ export function InputsPanel({
     group.fields.filter((id) => !OPTIONAL.has(id)),
   );
   const done = required.filter((id) => isAnswered(draft, id)).length;
+  const rows = groups.flatMap((group) =>
+    group.fields
+      .filter((id) => !OPTIONAL.has(id))
+      .map((id) => ({ id, group: group.title })),
+  );
+  const isOpen = (id: string) =>
+    !isAnswered(draft, id) || draft.byId.get(id)?.tier === "user_unknown";
+  const stillNeeded = rows.filter((row) => isOpen(row.id));
+  const doneItems = rows.filter((row) => !isOpen(row.id));
   const unknown = [...draft.byId.values()].filter(
     (record) =>
       record.tier === "user_unknown" &&
@@ -47,7 +58,7 @@ export function InputsPanel({
   return (
     <aside
       aria-labelledby="inputs-heading"
-      className="flex flex-[1_1_17rem] flex-col gap-4 rounded-2xl border bg-card p-5"
+      className="flex flex-col gap-4 rounded-2xl border bg-card p-5"
     >
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between">
@@ -80,57 +91,67 @@ export function InputsPanel({
           ))}
         </div>
       </div>
-      {groups.map((group) => (
-        <section key={group.key} aria-label={group.title}>
-          <h3 className="mb-1 text-xs font-medium text-muted-foreground">
-            {group.title}
+      <section aria-label="Still needed" data-testid="still-needed">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">
+            Still needed{" "}
+            <span className="font-normal text-muted-foreground">
+              ({stillNeeded.length})
+            </span>
           </h3>
+          {stillNeeded.length > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent("valueiq:assistant-ask", {
+                    detail: ESTIMATE_ALL,
+                  }),
+                )
+              }
+            >
+              Estimate all remaining numbers
+            </Button>
+          )}
+        </div>
+        {stillNeeded.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nothing is missing. Review the cards below, then continue.
+          </p>
+        ) : (
           <ul className="flex flex-col text-sm">
-            {group.fields.map((id) => {
-              const record = draft.byId.get(id);
-              const value = valueOf(draft, id);
-              const unsure = record?.tier === "user_unknown";
-              return (
-                <li key={id} className="border-b last:border-b-0">
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2.5 py-1.5 text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => onPick(id)}
-                  >
-                    {unsure ? (
-                      <CircleHelp
-                        aria-label="Not sure"
-                        className="size-4 shrink-0 text-chart-4"
-                      />
-                    ) : isAnswered(draft, id) ? (
-                      <Check
-                        aria-label="Entered"
-                        className="size-4 shrink-0 text-primary"
-                      />
-                    ) : (
-                      <Circle
-                        aria-label={OPTIONAL.has(id) ? "Optional" : "Missing"}
-                        className="size-4 shrink-0 text-muted-foreground/50"
-                      />
-                    )}
-                    <span className="min-w-0 flex-1 truncate">
-                      {labelOf(id)}
-                    </span>
-                    <span
-                      className={cn(
-                        "max-w-[45%] shrink-0 truncate",
-                        value ? "font-semibold" : "text-muted-foreground",
-                      )}
-                    >
-                      {value ?? (unsure ? "?" : "—")}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+            {stillNeeded.map(({ id, group }) => (
+              <li key={id} className="border-b last:border-b-0">
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 py-1.5 text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => onPick(id)}
+                >
+                  {draft.byId.get(id)?.tier === "user_unknown" ? (
+                    <CircleHelp
+                      aria-label="Not sure"
+                      className="size-4 shrink-0 text-chart-4"
+                    />
+                  ) : (
+                    <Circle
+                      aria-label="Missing"
+                      className="size-4 shrink-0 text-destructive"
+                    />
+                  )}
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {labelOf(id)}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {group}
+                  </span>
+                </button>
+              </li>
+            ))}
           </ul>
-        </section>
-      ))}
+        )}
+      </section>
       {unknown.length > 0 && (
         <div>
           <h3 className="mb-2 text-xs font-medium text-muted-foreground">
@@ -206,6 +227,52 @@ export function InputsPanel({
               : draft.savedLabel || "Not saved yet"}
         </span>
       </div>
+      <details data-testid="done-inputs" className="rounded-xl border">
+        <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">
+          Done{" "}
+          <span className="font-normal text-muted-foreground">
+            ({doneItems.length})
+          </span>
+        </summary>
+        <div className="flex flex-col gap-3 px-3 pb-3">
+          {groups.map((group) => {
+            const rows = doneItems.filter((item) => item.group === group.title);
+            if (rows.length === 0) return null;
+            return (
+              <section key={group.key} aria-label={`Done: ${group.title}`}>
+                <h3 className="mb-1 text-xs font-medium text-muted-foreground">
+                  {group.title}
+                </h3>
+                <ul className="flex flex-col text-sm">
+                  {rows.map(({ id }) => {
+                    const value = valueOf(draft, id);
+                    return (
+                      <li key={id} className="border-b last:border-b-0">
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2.5 py-1.5 text-left outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => onPick(id)}
+                        >
+                          <Check
+                            aria-label="Entered"
+                            className="size-4 shrink-0 text-primary"
+                          />
+                          <span className="min-w-0 flex-1 truncate">
+                            {labelOf(id)}
+                          </span>
+                          <span className="max-w-[45%] shrink-0 truncate font-semibold">
+                            {value ?? "—"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
+      </details>
     </aside>
   );
 }
