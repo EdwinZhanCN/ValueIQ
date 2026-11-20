@@ -1,3 +1,9 @@
+import {
+  ASK_EVENT,
+  DONE_EVENT,
+  parseAsk,
+  type DoneDetail,
+} from "./estimate-ask";
 import { useAgent } from "agents/react";
 import { ArrowRight, Check, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -100,6 +106,15 @@ function ConnectedAssistant({
   const pendingCheck = useRef(false);
   const end = useRef<HTMLDivElement>(null);
 
+  /** Tell list rows that asked for an estimate how the turn ended. */
+  function signalDone(appliedIds: string[], ok: boolean) {
+    window.dispatchEvent(
+      new CustomEvent<DoneDetail>(DONE_EVENT, {
+        detail: { applied: appliedIds, ok },
+      }),
+    );
+  }
+
   async function send(text: string, prepRun = false) {
     const history: AssistantTurn[] = lines
       .filter((l) => l.role !== "error")
@@ -122,6 +137,7 @@ function ConnectedAssistant({
     setBusy(false);
     if (!reply.ok) {
       onPrepDone?.();
+      signalDone([], false);
       setLines((previous) => [
         ...previous,
         {
@@ -155,6 +171,10 @@ function ConnectedAssistant({
       onAccepted();
     }
     onPrepDone?.();
+    signalDone(
+      applied.map((a) => a.input_id),
+      true,
+    );
   }
 
   // The opening turn: defaults first, then what is missing.
@@ -175,15 +195,20 @@ function ConnectedAssistant({
   sendRef.current = send;
   useEffect(() => {
     function onAsk(event: Event) {
-      const text = (event as CustomEvent<string>).detail;
-      if (typeof text !== "string" || !open || busy) return;
+      const ask = parseAsk((event as CustomEvent<unknown>).detail);
+      if (!ask) return;
+      if (!open || busy) {
+        // Not ready: say so, so a waiting row does not spin forever.
+        signalDone([], false);
+        return;
+      }
       document
         .querySelector('[aria-label="Assistant"]')
         ?.scrollIntoView({ block: "start", behavior: "smooth" });
-      void sendRef.current(text);
+      void sendRef.current(ask.text);
     }
-    window.addEventListener("valueiq:assistant-ask", onAsk);
-    return () => window.removeEventListener("valueiq:assistant-ask", onAsk);
+    window.addEventListener(ASK_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_EVENT, onAsk);
   }, [open, busy]);
 
   useEffect(() => {
