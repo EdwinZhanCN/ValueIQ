@@ -16,11 +16,20 @@ function ctxFor(
     agent?: Agent;
     keepStaff?: boolean;
     description?: string;
+    prefill?: { id: string; value: number };
   } = {},
 ) {
   const form = goldenResultForm();
   if (!o.keepStaff)
     form.inputs = form.inputs.filter((i) => i.id !== "staff_affected");
+  if (o.prefill)
+    form.inputs = form.inputs.filter((i) => i.id !== o.prefill!.id);
+  if (o.prefill)
+    form.inputs.push({
+      ...o.prefill,
+      tier: "estimate",
+      origin: "assistant_estimate",
+    } as never);
   if (o.description)
     form.inputs.push({
       id: "product_description",
@@ -226,5 +235,34 @@ describe("apply_estimate: figures the description states", () => {
       rationale: "guess",
     });
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("apply_estimate: filled values are not silently re-estimated", () => {
+  const filled = {
+    input_id: "weeks_per_year",
+    value: 30,
+    basis: "reasoning",
+    confidence: 0.9,
+    rationale: "x",
+  };
+  it("leaves a filled value alone when asked to estimate the rest", async () => {
+    const r = await run(
+      ctxFor("estimate everything missing", {
+        prefill: { id: "weeks_per_year", value: 40 },
+      }),
+      filled,
+    );
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("already has a value");
+  });
+  it("changes it when the user asks for a change", async () => {
+    const r = await run(
+      ctxFor("change the weeks per year, estimate it again", {
+        prefill: { id: "weeks_per_year", value: 40 },
+      }),
+      filled,
+    );
+    expect(r.ok).toBe(true);
   });
 });

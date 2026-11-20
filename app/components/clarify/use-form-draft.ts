@@ -9,6 +9,7 @@ import type {
   Input,
 } from "../../../shared/form";
 import type { AppliedInput } from "../../../shared/types";
+import { INPUT_RULES } from "../../lib/intake-catalog";
 import { defaultsFor } from "../../lib/intake-fields";
 import type { OfferedDefaults } from "../../../shared/team-settings";
 import { readFormDraft, validateFormFile } from "../../lib/intake-form";
@@ -273,6 +274,14 @@ export function useFormDraft({
       ...(a.backing ? { backing: { ...previous?.backing, ...a.backing } } : {}),
     };
     if (next.note === NOT_SURE_NOTE) delete next.note;
+    // A cost needs an explicit basis to pass validation. An assistant value is never a vendor quote:
+    // a labeled default is an assumption, everything else (description, reasoning, your words) an estimate.
+    if (
+      INPUT_RULES[a.input_id]?.role === "cost" &&
+      a.input_id !== "cost_uplift_pct" &&
+      !next.basis
+    )
+      next.basis = a.basis === "proxy" ? "assumed" : "estimated";
     replace(next);
     setRaw((current) => ({ ...current, [a.input_id]: pretty(a.value) }));
     return true;
