@@ -21,7 +21,11 @@ import { evidenceCompleter } from "./evidence.server";
 import { makeFileHost } from "./file-text.server";
 import { listProjectFiles } from "./files.server";
 import { getProjectForm } from "./projects.server";
-import { NO_KEY_MESSAGE, modelSource } from "./run-wiring.server";
+import {
+  NO_KEY_MESSAGE,
+  currentEngineConfig,
+  modelSource,
+} from "./run-wiring.server";
 import { offeredDefaults, teamOfProject } from "./team-settings.server";
 
 export type AssistantResult =
@@ -130,6 +134,7 @@ export async function assistantChat(
         name: f.name,
         description: form.file_descriptions[f.id] ?? f.description ?? "",
       })),
+      config: await currentEngineConfig(scope.projectId),
       host: makeFileHost(scope, evidenceCompleter(source)),
       apiKey: source.apiKey,
       // Filling many inputs at once (the prep turn, or "estimate the rest") needs the stronger model;
