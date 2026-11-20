@@ -1,5 +1,6 @@
 // Item 7: the assistant turn the agent's `chat` runs, on the D1 shim and in-memory R2 with the
 // local scripted model. Cards cover every missing input; nothing is written to the form.
+import { clarifyGaps } from "../clarify-gaps.server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { buildXlsx } from "../../../assistant/tests/evidence-fixtures";
 import type { FormFile } from "../../../shared/form";
@@ -48,11 +49,12 @@ describe("assistant chat (item 7)", () => {
       draft,
     });
     if (!r.ok) throw new Error(r.error.message);
-    const missing = new Set(
-      validateFormFile(draft, { projectId: "p1", files: [] }).map(
+    const missing = new Set([
+      ...clarifyGaps(draft),
+      ...validateFormFile(draft, { projectId: "p1", files: [] }).map(
         (i) => i.field,
       ),
-    );
+    ]);
     const cards = r.value.cards.filter((c) => c.kind === "missing");
     expect(new Set(cards.map((c) => c.fields[0]))).toEqual(missing);
     expect(cards.length).toBe(missing.size);

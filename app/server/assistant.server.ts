@@ -8,6 +8,7 @@
  * form, used only as context for the reply; the conversation is not stored.
  */
 import { resolveModels } from "../../assistant/models";
+import { delegatesEstimates } from "../../assistant/tools";
 import { MAX_HISTORY, MAX_MESSAGE, intakeTurn } from "../../assistant/intake";
 import { mapError } from "../../assistant/run/orchestrator";
 import type { AssistantReply, AssistantTurn } from "../../shared/types";
@@ -15,6 +16,7 @@ import { env } from "cloudflare:workers";
 import { readFormDraft, validateFormFile } from "../lib/intake-form";
 import { defaultsFor } from "../lib/intake-fields";
 import { pathsOf, sectionsFor } from "../components/clarify/draft";
+import { clarifyGaps } from "./clarify-gaps.server";
 import { evidenceCompleter } from "./evidence.server";
 import { makeFileHost } from "./file-text.server";
 import { listProjectFiles } from "./files.server";
@@ -100,8 +102,12 @@ export async function assistantChat(
     projectId: scope.projectId,
     files: projectFiles.map((f) => ({ id: f.id, projectId: scope.projectId })),
   };
+  // What the Inputs panel counts as missing, plus anything the validator rejects.
   const missing = [
-    ...new Set(validateFormFile(form, context).map((i) => i.field)),
+    ...new Set([
+      ...clarifyGaps(form),
+      ...validateFormFile(form, context).map((i) => i.field),
+    ]),
   ];
   const offered = defaultsFor(
     await offeredDefaults(await teamOfProject(scope.projectId)),
@@ -126,7 +132,12 @@ export async function assistantChat(
       })),
       host: makeFileHost(scope, evidenceCompleter(source)),
       apiKey: source.apiKey,
-      model: resolveModels(vars).assistant,
+      // Filling many inputs at once (the prep turn, or "estimate the rest") needs the stronger model;
+      // the cheap one skips inputs and ignores figures the descriptions state.
+      model:
+        args.prep === true || delegatesEstimates(args.message)
+          ? resolveModels(vars).calc
+          : resolveModels(vars).assistant,
       mode: source.mode,
       now: new Date().toISOString(),
       ...(source.kind === "dry" ? { fetch: source.fetch } : {}),

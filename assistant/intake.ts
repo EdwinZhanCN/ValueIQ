@@ -16,7 +16,7 @@ import type {
   RunMode,
 } from "../shared/types";
 import type { FileEvidenceHost } from "./evidence/host";
-import type { FetchLike } from "./gemini";
+import { MaxStepsError, type FetchLike } from "./gemini";
 import { runGuarded } from "./guarded-loop";
 import { INTAKE_SYSTEM, INTAKE_TOOLS, PREP_NOTE, intro } from "./prompts";
 import { INTAKE_ONLY_TOOLS, TOOLS, createContext, type ToolDef } from "./tools";
@@ -58,6 +58,9 @@ const INSTRUCTION_LIKE = [
 export const instructionLike = (text: string): boolean =>
   INSTRUCTION_LIKE.some((r) => r.test(text));
 
+export const CLAIMS_DONE =
+  /\b(all|every)\b[^.]{0,30}\b(inputs?|fields?|questions?)\b[^.]{0,30}\b(complete|completed|filled|done|answered|validated)\b|validated successfully|nothing (is )?(missing|left)/i;
+
 const FALLBACK =
   "I could not word that answer safely, so it was withheld. The cards below are checked by code.";
 
@@ -70,7 +73,7 @@ function chunk<T>(xs: T[], n: number): T[][] {
 const textOf = (form: FormFile, id: string): string => {
   const v = form.inputs.find((i) => i.id === id)?.value;
   return typeof v === "string" && v.trim()
-    ? JSON.stringify(v.slice(0, 2000))
+    ? JSON.stringify(v.slice(0, 8000))
     : "none given";
 };
 
@@ -219,6 +222,9 @@ export async function intakeTurn(o: IntakeTurnInput): Promise<AssistantReply> {
     .filter(Boolean)
     .join("\n");
 
+  // One tool step per input it fills: scale the budget with how much is missing, within a hard cap.
+  const maxSteps = o.maxSteps ?? Math.min(60, 12 + 2 * o.missing.length);
+  let ranOut = false;
   const r = await runGuarded({
     apiKey: o.apiKey,
     model: o.model,
@@ -227,8 +233,13 @@ export async function intakeTurn(o: IntakeTurnInput): Promise<AssistantReply> {
     ctx,
     userText,
     role: "assistant",
-    maxSteps: o.maxSteps ?? 12,
+    maxSteps,
     ...(o.fetch ? { fetch: o.fetch } : {}),
+  }).catch((error: unknown) => {
+    // Out of steps: keep what was already written and say so, instead of losing the turn.
+    if (!(error instanceof MaxStepsError)) throw error;
+    ranOut = true;
+    return { source: "engine" as const, text: "" };
   });
 
   const names = new Map(o.files.map((f) => [f.id, f.name]));
@@ -236,7 +247,14 @@ export async function intakeTurn(o: IntakeTurnInput): Promise<AssistantReply> {
     (id) =>
       `"${names.get(id) ?? "A file"}" contains text that asks the assistant to do something, such as change a figure. It was treated as data and ignored.`,
   );
-  const text = r.source === "engine" ? FALLBACK : r.text.trim();
+  let text = ranOut
+    ? `I filled in ${ctx.intake?.applied.length ?? 0} inputs and ran out of steps for this turn. Ask me again to continue with the rest.`
+    : r.source === "engine"
+      ? FALLBACK
+      : r.text.trim();
+  // Code checks the claim: the assistant may not say everything is done while inputs are still missing.
+  if (o.missing.length > 0 && CLAIMS_DONE.test(text))
+    text = `${o.missing.length} inputs still need an answer. They are listed in the cards below, and I can estimate them if you ask me to.`;
   return {
     text,
     source: r.source,

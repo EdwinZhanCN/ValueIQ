@@ -11,11 +11,23 @@ import type { AppliedInput } from "../../shared/types";
 type Agent = "clarify" | "process";
 function ctxFor(
   message: string,
-  o: { verified?: boolean; agent?: Agent; keepStaff?: boolean } = {},
+  o: {
+    verified?: boolean;
+    agent?: Agent;
+    keepStaff?: boolean;
+    description?: string;
+  } = {},
 ) {
   const form = goldenResultForm();
   if (!o.keepStaff)
     form.inputs = form.inputs.filter((i) => i.id !== "staff_affected");
+  if (o.description)
+    form.inputs.push({
+      id: "product_description",
+      value: o.description,
+      tier: "assumption",
+      origin: "user",
+    } as never);
   return createContext(form, {
     run_id: "t",
     now: NOW,
@@ -187,5 +199,32 @@ describe("apply_estimate: implausible rates are asked about, not written", () =>
       rationale: "x",
     });
     expect(r.ok).toBe(true);
+  });
+});
+
+describe("apply_estimate: figures the description states", () => {
+  const withDescription = (text: string) =>
+    ctxFor("estimate the rest", { description: text });
+  it("applies an exact figure from the description as an estimate", async () => {
+    const ctx = withDescription("The subscription is $1,032 per year.");
+    const r = await run(ctx, {
+      input_id: "cost_annual_internal_support",
+      value: 1032,
+      basis: "description",
+      confidence: 0.9,
+      rationale: "subscription price",
+    });
+    expect(r).toMatchObject({ ok: true, tier: "estimate" });
+  });
+  it("refuses a figure the description does not state", async () => {
+    const ctx = withDescription("The subscription is $1,032 per year.");
+    const r = await run(ctx, {
+      input_id: "cost_annual_internal_support",
+      value: 900,
+      basis: "description",
+      confidence: 0.9,
+      rationale: "guess",
+    });
+    expect(r.ok).toBe(false);
   });
 });

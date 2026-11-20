@@ -1261,7 +1261,7 @@ const VALUE_SCHEMA: JsonSchema = {
 const apply_estimate: ToolDef = {
   name: "apply_estimate",
   description:
-    "Write a value into one input. You say what it rests on (`basis`); code decides whether it is applied and which evidence tier it gets: a quote find_evidence verified gives documented, the labeled default gives benchmark, a figure the user wrote in this message gives estimate, and your own reasoning gives estimate only if `confidence` is at least 0.7. Below that nothing is applied and you must ask the user, unless the user's message asks you to estimate or fill things in for them; then a basis of reasoning is applied from confidence 0.3 and is labeled as your estimate. You cannot set measured and you cannot confirm anything.",
+    "Write a value into one input. You say what it rests on (`basis`); code decides whether it is applied and which evidence tier it gets: a quote find_evidence verified gives documented, the labeled default gives benchmark, a figure the user wrote in this message or in their company/product description (basis `description`, exact figure) gives estimate, and your own reasoning gives estimate only if `confidence` is at least 0.7. Below that nothing is applied and you must ask the user, unless the user's message asks you to estimate or fill things in for them; then a basis of reasoning is applied from confidence 0.3 and is labeled as your estimate. You cannot set measured and you cannot confirm anything.",
   parameters: {
     type: "object",
     properties: {
@@ -1269,7 +1269,7 @@ const apply_estimate: ToolDef = {
       value: VALUE_SCHEMA,
       basis: {
         type: "string",
-        enum: ["file_quote", "proxy", "user_said", "reasoning"],
+        enum: ["file_quote", "proxy", "user_said", "description", "reasoning"],
       },
       confidence: { type: "number", minimum: 0, maximum: 1 },
       rationale: { type: "string", minLength: 1, maxLength: 240 },
@@ -1306,6 +1306,14 @@ const apply_estimate: ToolDef = {
         return drop("outside the allowed range");
     } else if (entry.kind === "array") {
       const years = ctx.form.horizon_years;
+      if (
+        Array.isArray(value) &&
+        value.length > 0 &&
+        value.every((v) => typeof v === "number" && v <= 1)
+      )
+        return drop(
+          "adoption is a percent from 0 to 100 per year, not a fraction",
+        );
       if (
         id !== "adoption_by_year" ||
         !Array.isArray(value) ||
@@ -1356,6 +1364,31 @@ const apply_estimate: ToolDef = {
         basis,
         confidence,
         rationale: `${rationale} (${d.source})`.slice(0, 300),
+      };
+    } else if (basis === "description") {
+      // The user's own company or product description states this exact figure.
+      const said = ["company_description", "product_description"]
+        .map((d) => ctx.form.inputs.find((i) => i.id === d)?.value)
+        .filter((v): v is string => typeof v === "string")
+        .join(" ");
+      if (
+        typeof value !== "number" ||
+        !(
+          saidIn(said, String(value)) ||
+          saidIn(said, value.toLocaleString("en-US"))
+        )
+      )
+        return drop(
+          "that figure is not stated in the company or product description",
+        );
+      applied = {
+        input_id: id,
+        value,
+        tier: "estimate",
+        origin: "assistant_estimate",
+        basis,
+        confidence,
+        rationale: `Stated in your description. ${rationale}`.slice(0, 300),
       };
     } else if (basis === "user_said") {
       if (typeof value !== "number" || !saidIn(turn.message, String(value)))
